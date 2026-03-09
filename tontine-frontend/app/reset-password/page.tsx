@@ -54,11 +54,11 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <main className="relative min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center p-6">
+    <main className="relative min-h-screen bg-transparent flex items-center justify-center p-6">
       <AuthLocaleToggle />
-      <section className="w-full max-w-lg rounded-3xl bg-white shadow-xl border border-slate-100 p-8 sm:p-10">
-        <h1 className="text-2xl font-semibold text-slate-900">{t("reset.title")}</h1>
-        <p className="mt-1 text-slate-600">{t("reset.subtitle")}</p>
+      <section className="w-full max-w-lg rounded-3xl border border-[rgba(79,107,194,0.16)] bg-white/84 p-8 shadow-[0_24px_70px_rgba(44,102,215,0.12)] backdrop-blur-sm sm:p-10">
+        <h1 className="text-2xl font-semibold text-[color:var(--brand-ink)]">{t("reset.title")}</h1>
+        <p className="mt-1 text-[color:var(--brand-muted)]">{t("reset.subtitle")}</p>
 
         {err && (
           <div className="mt-6 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-rose-700">
@@ -76,21 +76,21 @@ export default function ResetPasswordPage() {
 
         <form onSubmit={onSubmit} className="mt-6 space-y-4">
           <div>
-            <label className="text-sm font-medium text-slate-700">{t("common.phone")}</label>
+            <label className="text-sm font-medium text-[color:var(--brand-ink)]">{t("common.phone")}</label>
             <input
-              className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400 caret-slate-900 outline-none focus:ring-4 focus:ring-slate-200 focus:border-slate-300"
+              className="mt-1 w-full rounded-2xl border border-[rgba(79,107,194,0.18)] bg-white/90 px-4 py-3 text-[color:var(--brand-ink)] placeholder:text-[color:var(--brand-muted)] caret-[color:var(--brand-blue)] outline-none focus:border-[rgba(44,102,215,0.42)] focus:ring-4 focus:ring-[rgba(46,207,227,0.16)]"
               placeholder={t("login.placeholder_phone")}
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               required
             />
-            <p className="mt-1 text-xs text-slate-500">{t("common.phone_format_hint")}</p>
+            <p className="mt-1 text-xs text-[color:var(--brand-muted)]">{t("common.phone_format_hint")}</p>
           </div>
 
           <div>
-            <label className="text-sm font-medium text-slate-700">{t("reset.code")}</label>
+            <label className="text-sm font-medium text-[color:var(--brand-ink)]">{t("reset.code")}</label>
             <input
-              className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400 caret-slate-900 outline-none focus:ring-4 focus:ring-slate-200 focus:border-slate-300"
+              className="mt-1 w-full rounded-2xl border border-[rgba(79,107,194,0.18)] bg-white/90 px-4 py-3 text-[color:var(--brand-ink)] placeholder:text-[color:var(--brand-muted)] caret-[color:var(--brand-blue)] outline-none focus:border-[rgba(44,102,215,0.42)] focus:ring-4 focus:ring-[rgba(46,207,227,0.16)]"
               placeholder={t("reset.placeholder_code")}
               value={code}
               onChange={(e) => setCode(e.target.value)}
@@ -99,9 +99,9 @@ export default function ResetPasswordPage() {
           </div>
 
           <div>
-            <label className="text-sm font-medium text-slate-700">{t("reset.new_password")}</label>
+            <label className="text-sm font-medium text-[color:var(--brand-ink)]">{t("reset.new_password")}</label>
             <input
-              className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400 caret-slate-900 outline-none focus:ring-4 focus:ring-slate-200 focus:border-slate-300"
+              className="mt-1 w-full rounded-2xl border border-[rgba(79,107,194,0.18)] bg-white/90 px-4 py-3 text-[color:var(--brand-ink)] placeholder:text-[color:var(--brand-muted)] caret-[color:var(--brand-blue)] outline-none focus:border-[rgba(44,102,215,0.42)] focus:ring-4 focus:ring-[rgba(46,207,227,0.16)]"
               placeholder={t("reset.placeholder_password")}
               type="password"
               value={newPassword}
@@ -113,14 +113,14 @@ export default function ResetPasswordPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-2xl bg-slate-900 text-white py-3 font-medium shadow-sm hover:bg-slate-800 disabled:opacity-60 disabled:cursor-not-allowed transition"
+            className="w-full rounded-2xl bg-[linear-gradient(135deg,#2ecfe3_0%,#2c66d7_46%,#8a37c9_100%)] py-3 font-medium text-white shadow-[0_16px_35px_rgba(44,102,215,0.22)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? t("reset.resetting") : t("reset.button")}
           </button>
 
-          <div className="text-sm text-center text-slate-600">
+          <div className="text-center text-sm text-[color:var(--brand-muted)]">
             {t("reset.no_code")}{" "}
-            <a href="/forgot-password" className="font-medium text-slate-900 hover:underline">
+            <a href="/forgot-password" className="font-medium text-[color:var(--brand-blue)] hover:underline">
               {t("reset.request_again")}
             </a>
           </div>

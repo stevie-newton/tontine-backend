@@ -1,8 +1,20 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #eef6ff;
+  --foreground: #16213d;
+  --surface: rgba(255, 255, 255, 0.82);
+  --surface-strong: #ffffff;
+  --brand-cyan: #2ecfe3;
+  --brand-blue: #2c66d7;
+  --brand-violet: #8a37c9;
+  --brand-ink: #142344;
+  --brand-muted: #5d6c8f;
+  --brand-border: rgba(79, 107, 194, 0.16);
+  --brand-gradient: linear-gradient(135deg, #2ecfe3 0%, #2c66d7 46%, #8a37c9 100%);
+  --brand-gradient-soft: radial-gradient(circle at top left, rgba(46, 207, 227, 0.22), transparent 38%),
+    radial-gradient(circle at top right, rgba(138, 55, 201, 0.18), transparent 32%),
+    linear-gradient(180deg, #f6fbff 0%, #eef4ff 100%);
 }
 
 @theme inline {
@@ -20,7 +32,24 @@
 }
 
 body {
-  background: var(--background);
+  background: var(--brand-gradient-soft);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), "Segoe UI", sans-serif;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 15% 15%, rgba(46, 207, 227, 0.18), transparent 24%),
+    radial-gradient(circle at 85% 10%, rgba(138, 55, 201, 0.14), transparent 22%),
+    radial-gradient(circle at 50% 100%, rgba(44, 102, 215, 0.1), transparent 30%);
+  z-index: -1;
+}
+
+::selection {
+  background: rgba(44, 102, 215, 0.18);
+  color: var(--brand-ink);
 }

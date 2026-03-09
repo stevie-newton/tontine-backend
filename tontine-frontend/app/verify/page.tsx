@@ -80,11 +80,11 @@ function VerifyPhoneContent() {
   }
 
   return (
-    <main className="relative min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center p-6">
+    <main className="relative min-h-screen bg-transparent flex items-center justify-center p-6">
       <AuthLocaleToggle />
-      <section className="w-full max-w-md rounded-3xl bg-white shadow-xl border border-slate-100 p-8">
-        <h1 className="text-2xl font-semibold text-slate-900">{t("verify_phone.title")}</h1>
-        <p className="mt-1 text-slate-600">{t("verify_phone.subtitle")}</p>
+      <section className="w-full max-w-md rounded-3xl border border-[rgba(79,107,194,0.16)] bg-white/84 p-8 shadow-[0_24px_70px_rgba(44,102,215,0.12)] backdrop-blur-sm">
+        <h1 className="text-2xl font-semibold text-[color:var(--brand-ink)]">{t("verify_phone.title")}</h1>
+        <p className="mt-1 text-[color:var(--brand-muted)]">{t("verify_phone.subtitle")}</p>
 
         {err && (
           <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
@@ -99,9 +99,9 @@ function VerifyPhoneContent() {
 
         <form className="mt-5 space-y-4" onSubmit={verifyPhone}>
           <div>
-            <label className="text-sm font-medium text-slate-700">{t("common.phone")}</label>
+            <label className="text-sm font-medium text-[color:var(--brand-ink)]">{t("common.phone")}</label>
             <input
-              className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:ring-4 focus:ring-slate-200 focus:border-slate-300"
+              className="mt-1 w-full rounded-2xl border border-[rgba(79,107,194,0.18)] bg-white/90 px-4 py-3 text-[color:var(--brand-ink)] outline-none focus:border-[rgba(44,102,215,0.42)] focus:ring-4 focus:ring-[rgba(46,207,227,0.16)]"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               required
@@ -109,9 +109,9 @@ function VerifyPhoneContent() {
           </div>
 
           <div>
-            <label className="text-sm font-medium text-slate-700">{t("verify_phone.code_label")}</label>
+            <label className="text-sm font-medium text-[color:var(--brand-ink)]">{t("verify_phone.code_label")}</label>
             <input
-              className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:ring-4 focus:ring-slate-200 focus:border-slate-300"
+              className="mt-1 w-full rounded-2xl border border-[rgba(79,107,194,0.18)] bg-white/90 px-4 py-3 text-[color:var(--brand-ink)] outline-none focus:border-[rgba(44,102,215,0.42)] focus:ring-4 focus:ring-[rgba(46,207,227,0.16)]"
               value={code}
               onChange={(e) => setCode(e.target.value)}
               placeholder={t("verify_phone.code_placeholder")}
@@ -122,7 +122,7 @@ function VerifyPhoneContent() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-2xl bg-slate-900 text-white py-3 font-medium hover:bg-slate-800 disabled:opacity-60"
+            className="w-full rounded-2xl bg-[linear-gradient(135deg,#2ecfe3_0%,#2c66d7_46%,#8a37c9_100%)] py-3 font-medium text-white shadow-[0_16px_35px_rgba(44,102,215,0.22)] hover:brightness-105 disabled:opacity-60"
           >
             {loading ? t("verify_phone.verifying") : t("verify_phone.verify")}
           </button>
@@ -131,7 +131,7 @@ function VerifyPhoneContent() {
             type="button"
             onClick={resendOtp}
             disabled={resending}
-            className="w-full rounded-2xl border border-slate-300 bg-white py-3 text-sm font-medium text-slate-900 hover:bg-slate-50 disabled:opacity-60"
+            className="w-full rounded-2xl border border-[rgba(79,107,194,0.24)] bg-white/88 py-3 text-sm font-medium text-[color:var(--brand-ink)] hover:bg-[rgba(46,207,227,0.08)] disabled:opacity-60"
           >
             {resending ? t("verify_phone.resending") : t("verify_phone.resend")}
           </button>

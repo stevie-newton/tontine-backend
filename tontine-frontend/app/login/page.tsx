@@ -52,10 +52,10 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="relative min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center p-6">
+    <main className="relative min-h-screen bg-transparent flex items-center justify-center p-6">
       <AuthLocaleToggle />
       <div className="w-full max-w-5xl grid lg:grid-cols-2 gap-6">
-        <section className="hidden lg:flex flex-col justify-between rounded-3xl p-10 bg-slate-900 text-white shadow-xl">
+        <section className="hidden lg:flex flex-col justify-between rounded-3xl p-10 text-white shadow-[0_30px_80px_rgba(44,102,215,0.22)] bg-[linear-gradient(160deg,#102448_0%,#1e4ebc_40%,#7e35c2_100%)]">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-sm">
               <span className="h-2 w-2 rounded-full bg-emerald-400" />
@@ -70,11 +70,11 @@ export default function LoginPage() {
           <div className="text-sm text-white/70">{t("login.brand_tip")}</div>
         </section>
 
-        <section className="rounded-3xl bg-white shadow-xl border border-slate-100 p-8 sm:p-10">
+        <section className="rounded-3xl border border-[rgba(79,107,194,0.16)] bg-white/84 p-8 shadow-[0_24px_70px_rgba(44,102,215,0.12)] backdrop-blur-sm sm:p-10">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-semibold text-slate-900">{t("login.welcome")}</h2>
-              <p className="mt-1 text-slate-600">{t("login.subtitle")}</p>
+              <h2 className="text-2xl font-semibold text-[color:var(--brand-ink)]">{t("login.welcome")}</h2>
+              <p className="mt-1 text-[color:var(--brand-muted)]">{t("login.subtitle")}</p>
             </div>
 
             <BrandLogo width={260} height={180} className="max-w-[180px] h-auto" />
@@ -89,22 +89,22 @@ export default function LoginPage() {
 
           <form onSubmit={onSubmit} className="mt-6 space-y-4">
             <div>
-              <label className="text-sm font-medium text-slate-700">{t("common.phone")}</label>
+              <label className="text-sm font-medium text-[color:var(--brand-ink)]">{t("common.phone")}</label>
               <input
-                className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400 caret-slate-900 outline-none focus:ring-4 focus:ring-slate-200 focus:border-slate-300"
+                className="mt-1 w-full rounded-2xl border border-[rgba(79,107,194,0.18)] bg-white/90 px-4 py-3 text-[color:var(--brand-ink)] placeholder:text-[color:var(--brand-muted)] caret-[color:var(--brand-blue)] outline-none focus:border-[rgba(44,102,215,0.42)] focus:ring-4 focus:ring-[rgba(46,207,227,0.16)]"
                 placeholder={t("login.placeholder_phone")}
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 autoComplete="username"
                 required
               />
-              <p className="mt-1 text-xs text-slate-500">{t("common.phone_format_hint")}</p>
+              <p className="mt-1 text-xs text-[color:var(--brand-muted)]">{t("common.phone_format_hint")}</p>
             </div>
 
             <div>
-              <label className="text-sm font-medium text-slate-700">{t("common.password")}</label>
+              <label className="text-sm font-medium text-[color:var(--brand-ink)]">{t("common.password")}</label>
               <input
-                className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400 caret-slate-900 outline-none focus:ring-4 focus:ring-slate-200 focus:border-slate-300"
+                className="mt-1 w-full rounded-2xl border border-[rgba(79,107,194,0.18)] bg-white/90 px-4 py-3 text-[color:var(--brand-ink)] placeholder:text-[color:var(--brand-muted)] caret-[color:var(--brand-blue)] outline-none focus:border-[rgba(44,102,215,0.42)] focus:ring-4 focus:ring-[rgba(46,207,227,0.16)]"
                 placeholder={t("login.placeholder_password")}
                 type="password"
                 value={password}
@@ -113,7 +113,7 @@ export default function LoginPage() {
                 required
               />
               <div className="mt-2 text-right">
-                <a href="/forgot-password" className="text-sm font-medium text-slate-900 hover:underline">
+                <a href="/forgot-password" className="text-sm font-medium text-[color:var(--brand-blue)] hover:underline">
                   {t("login.forgot_password")}
                 </a>
               </div>
@@ -122,14 +122,14 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-2xl bg-slate-900 text-white py-3 font-medium shadow-sm hover:bg-slate-800 disabled:opacity-60 disabled:cursor-not-allowed transition"
+              className="w-full rounded-2xl bg-[linear-gradient(135deg,#2ecfe3_0%,#2c66d7_46%,#8a37c9_100%)] py-3 font-medium text-white shadow-[0_16px_35px_rgba(44,102,215,0.22)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loading ? t("login.signing_in") : t("login.sign_in")}
             </button>
 
-            <div className="text-sm text-slate-600 text-center">
+            <div className="text-center text-sm text-[color:var(--brand-muted)]">
               {t("login.no_account")}{" "}
-              <a href="/register" className="font-medium text-slate-900 hover:underline">
+              <a href="/register" className="font-medium text-[color:var(--brand-blue)] hover:underline">
                 {t("login.create_one")}
               </a>
             </div>
