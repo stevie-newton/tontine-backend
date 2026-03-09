@@ -71,6 +71,17 @@ export default function RegisterPage() {
         </section>
 
         <section className="rounded-3xl border border-[rgba(79,107,194,0.16)] bg-white/84 p-8 shadow-[0_24px_70px_rgba(44,102,215,0.12)] backdrop-blur-sm sm:p-10">
+          <div className="mb-6 rounded-3xl bg-[linear-gradient(145deg,rgba(16,36,72,0.96)_0%,rgba(30,78,188,0.92)_42%,rgba(126,53,194,0.92)_100%)] p-5 text-white shadow-[0_18px_40px_rgba(44,102,215,0.18)] lg:hidden">
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-medium">
+              <span className="h-2 w-2 rounded-full bg-sky-400" />
+              {t("register.badge")}
+            </div>
+            <div className="mt-4">
+              <BrandLogo width={260} height={180} className="h-auto max-w-[150px]" />
+            </div>
+            <h1 className="mt-4 text-2xl font-semibold leading-tight">{t("register.brand_title")}</h1>
+          </div>
+
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-2xl font-semibold text-[color:var(--brand-ink)]">{t("register.title")}</h2>
