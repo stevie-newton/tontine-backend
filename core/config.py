@@ -40,6 +40,10 @@ class Settings:
         "DATABASE_URL",
         "postgresql://postgres:postgres@localhost:5432/tontine_db"
     )
+    AUTO_RUN_MIGRATIONS: bool = _as_bool.__func__(
+        os.getenv("AUTO_RUN_MIGRATIONS", "true"),
+        default=True,
+    )
 
     # Monetbil
     MONETBIL_API_KEY: str = os.getenv("MONETBIL_API_KEY", "")

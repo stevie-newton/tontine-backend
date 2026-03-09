@@ -2,6 +2,7 @@ from logging.config import fileConfig
 from pathlib import Path
 import pkgutil
 import sys
+import types
 
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
@@ -18,13 +19,18 @@ if config.config_file_name is not None:
 # Calculate project root more robustly
 # Assuming env.py is in: project_root/app/alembic/env.py
 current_file = Path(__file__).resolve()
-PROJECT_ROOT = current_file.parents[2]  # Go up 3 levels from env.py
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
+PROJECT_ROOT = current_file.parents[1]
+PROJECT_PARENT = PROJECT_ROOT.parent
+if str(PROJECT_PARENT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_PARENT))
+if "app" not in sys.modules:
+    package = types.ModuleType("app")
+    package.__path__ = [str(PROJECT_ROOT)]
+    sys.modules["app"] = package
 
 # Optional: Print for debugging
 print(f"Project root: {PROJECT_ROOT}")
-print(f"Python path includes: {PROJECT_ROOT in map(Path, sys.path)}")
+print(f"Python path includes parent: {PROJECT_PARENT in map(Path, sys.path)}")
 
 try:
     from app.core.config import settings

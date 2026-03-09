@@ -1,16 +1,24 @@
 import asyncio
 import sys
+import types
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+from alembic import command
+from alembic.config import Config
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 # Allow running from either project parent (import app.main) or app root (uvicorn main:app).
-PROJECT_PARENT = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = Path(__file__).resolve().parent
+PROJECT_PARENT = PROJECT_ROOT.parent
 if str(PROJECT_PARENT) not in sys.path:
     sys.path.insert(0, str(PROJECT_PARENT))
+if "app" not in sys.modules:
+    package = types.ModuleType("app")
+    package.__path__ = [str(PROJECT_ROOT)]
+    sys.modules["app"] = package
 
 from app.core.config import settings
 from app.core.database import SessionLocal
@@ -20,6 +28,14 @@ from app.services.reminder_service import send_pre_deadline_sms_reminders
 
 # Import models so Alembic/autogenerate sees the full metadata
 import app.models  # noqa: F401
+
+
+def run_startup_migrations() -> None:
+    alembic_ini_path = Path(__file__).resolve().with_name("alembic.ini")
+    alembic_cfg = Config(str(alembic_ini_path))
+    alembic_cfg.set_main_option("script_location", str(alembic_ini_path.with_name("alembic")))
+    alembic_cfg.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+    command.upgrade(alembic_cfg, "head")
 
 
 @asynccontextmanager
@@ -39,6 +55,13 @@ async def lifespan(app: FastAPI):
             finally:
                 db.close()
             await asyncio.sleep(interval_seconds)
+
+    if settings.AUTO_RUN_MIGRATIONS:
+        print("Running database migrations")
+        run_startup_migrations()
+        print("Database migrations complete")
+    else:
+        print("Database migrations: skipped")
 
     print(f"{settings.APP_NAME} v{app.version} started successfully")
     print(f"Debug mode: {settings.DEBUG}")
