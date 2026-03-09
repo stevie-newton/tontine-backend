@@ -71,13 +71,13 @@ export default function RegisterPage() {
         </section>
 
         <section className="rounded-3xl border border-[rgba(79,107,194,0.16)] bg-white/84 p-8 shadow-[0_24px_70px_rgba(44,102,215,0.12)] backdrop-blur-sm sm:p-10">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-2xl font-semibold text-[color:var(--brand-ink)]">{t("register.title")}</h2>
               <p className="mt-1 text-[color:var(--brand-muted)]">{t("register.subtitle")}</p>
             </div>
 
-            <BrandLogo width={260} height={180} className="max-w-[180px] h-auto" />
+            <BrandLogo width={260} height={180} className="h-auto max-w-[140px] self-start sm:max-w-[180px] sm:self-auto" />
           </div>
 
           {err && (

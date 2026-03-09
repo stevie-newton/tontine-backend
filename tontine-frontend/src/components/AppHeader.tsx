@@ -12,7 +12,7 @@ export default function AppHeader() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-[rgba(79,107,194,0.16)] bg-white/78 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 sm:px-6 lg:px-8">
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-3 sm:px-6 lg:px-8">
         <button
           onClick={() => router.push("/tontines")}
           className="flex items-center gap-2 rounded-2xl px-2 py-1 transition hover:bg-[rgba(46,207,227,0.08)]"
@@ -27,7 +27,7 @@ export default function AppHeader() {
           </div>
         </button>
 
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-2 max-sm:w-full">
           <div className="rounded-2xl border border-[rgba(79,107,194,0.16)] bg-white/80 p-1" aria-label={t("header.language")}>
             <button
               onClick={() => setLocale("en")}
