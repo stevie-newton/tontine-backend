@@ -62,7 +62,15 @@ export default function LoginPage() {
               {t("login.brand_secure")}
             </div>
 
-            <h1 className="mt-6 text-4xl font-semibold leading-tight">{t("login.brand_title")}</h1>
+            <div className="mt-6">
+              <BrandLogo width={260} height={180} />
+            </div>
+
+            <p className="mt-5 text-sm font-semibold uppercase tracking-[0.24em] text-cyan-300">
+              {t("login.brand_slogan")}
+            </p>
+
+            <h1 className="mt-4 text-4xl font-semibold leading-tight">{t("login.brand_title")}</h1>
 
             <p className="mt-4 text-white/80">{t("login.brand_subtitle")}</p>
           </div>
@@ -77,7 +85,7 @@ export default function LoginPage() {
               <p className="mt-1 text-slate-600">{t("login.subtitle")}</p>
             </div>
 
-            <BrandLogo size={100} />
+            <BrandLogo width={260} height={180} className="max-w-[180px] h-auto" />
           </div>
 
           {err && (

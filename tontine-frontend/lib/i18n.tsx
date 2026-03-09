@@ -48,8 +48,9 @@ const translations: Record<Locale, Record<string, string>> = {
     "reliability.no_member_reports": "No member reliability reports yet.",
 
     "login.brand_secure": "Secure Tontine Platform",
-    "login.brand_title": "Manage your tontines with clarity, transparency, and trust.",
-    "login.brand_subtitle": "Track contributions, see who paid, close cycles safely, and keep a clean ledger all in one place.",
+    "login.brand_slogan": "The modern savings circle.",
+    "login.brand_title": "Manage your rotating savings with Cercora.",
+    "login.brand_subtitle": "Track contributions, automate payouts, and keep every transaction transparent.",
     "login.brand_tip": "Tip: use your phone to sign in.",
     "login.welcome": "Welcome back",
     "login.subtitle": "Sign in to continue",
@@ -382,8 +383,9 @@ const translations: Record<Locale, Record<string, string>> = {
     "reliability.no_member_reports": "Aucun rapport de fiabilité membre pour le moment.",
 
     "login.brand_secure": "Plateforme de tontine sécurisée",
-    "login.brand_title": "Gérez vos tontines avec clarté, transparence et confiance.",
-    "login.brand_subtitle": "Suivez les contributions, voyez qui a payé, clôturez les cycles en sécurité et gardez un registre propre au même endroit.",
+    "login.brand_slogan": "Le cercle d'épargne moderne.",
+    "login.brand_title": "Gérez votre épargne rotative avec Cercora.",
+    "login.brand_subtitle": "Suivez les contributions, automatisez les paiements et gardez chaque transaction transparente.",
     "login.brand_tip": "Astuce : utilisez votre téléphone pour vous connecter.",
     "login.welcome": "Bon retour",
     "login.subtitle": "Connectez-vous pour continuer",
