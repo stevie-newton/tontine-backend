@@ -62,10 +62,6 @@ export default function LoginPage() {
               {t("login.brand_secure")}
             </div>
 
-            <div className="mt-6">
-              <BrandLogo width={260} height={180} />
-            </div>
-
             <h1 className="mt-4 text-4xl font-semibold leading-tight">{t("login.brand_title")}</h1>
 
             <p className="mt-4 text-white/80">{t("login.brand_subtitle")}</p>
