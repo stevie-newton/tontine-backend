@@ -1,11 +1,11 @@
-from pydantic import BaseModel, Field, ConfigDict, field_validator
-from typing import Optional, List
+from pydantic import BaseModel, Field, ConfigDict
+from typing import Optional
 from datetime import datetime
 from decimal import Decimal
 
 
 class PayoutBase(BaseModel):
-    amount: int = Field(..., gt=0, description="Payout amount")
+    amount: Decimal = Field(..., gt=0, description="Payout amount")
     is_processed: Optional[bool] = False
 
 
@@ -16,7 +16,7 @@ class PayoutCreate(PayoutBase):
 
 
 class PayoutUpdate(BaseModel):
-    amount: Optional[int] = Field(None, gt=0)
+    amount: Optional[Decimal] = Field(None, gt=0)
     is_processed: Optional[bool] = None
 
 
@@ -44,5 +44,5 @@ class PayoutSummary(BaseModel):
     total_payouts: int
     processed_count: int
     pending_count: int
-    total_amount: int
+    total_amount: Decimal
     last_payout_date: Optional[datetime] = None

@@ -197,11 +197,12 @@ class TontineService:
             now = datetime.now(timezone.utc)
             cycle_number = cycle.cycle_number
             payout = Payout(
+                tontine_id=tontine.id,
                 cycle_id=cycle.id,
                 membership_id=payout_membership.id,
                 amount=total_contributions,
-                is_paid=True,
-                paid_at=now,
+                is_processed=True,
+                processed_at=now,
             )
             db.add(payout)
 

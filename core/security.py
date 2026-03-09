@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import hashlib
 from typing import Optional
 
 from jose import jwt
@@ -11,11 +12,13 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    pre_hash = hashlib.sha256(password.encode('utf-8')).digest()
+    return pwd_context.hash(pre_hash)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    pre_hash = hashlib.sha256(plain_password.encode('utf-8')).digest()
+    return pwd_context.verify(pre_hash, hashed_password)
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
