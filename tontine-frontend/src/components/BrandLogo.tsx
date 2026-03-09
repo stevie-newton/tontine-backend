@@ -16,9 +16,9 @@ export default function BrandLogo({ size = 80, className = "" }: BrandLogoProps)
       <span
         className={`grid place-items-center rounded-2xl bg-slate-900 text-sm font-bold text-white ${className}`}
         style={{ width: size, height: size }}
-        aria-label="Tontine logo"
+        aria-label="Cercora logo"
       >
-        T
+        C
       </span>
     );
   }
@@ -26,7 +26,7 @@ export default function BrandLogo({ size = 80, className = "" }: BrandLogoProps)
   return (
     <Image
       src="/logo.png"
-      alt="Tontine"
+      alt="Cercora"
       width={size}
       height={size}
       className={`rounded-2xl object-contain ${className}`}
