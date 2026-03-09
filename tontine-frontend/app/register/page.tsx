@@ -77,7 +77,7 @@ export default function RegisterPage() {
               <p className="mt-1 text-slate-600">{t("register.subtitle")}</p>
             </div>
 
-            <BrandLogo size={100} />
+            <BrandLogo width={260} height={180} className="max-w-[180px] h-auto" />
           </div>
 
           {err && (

@@ -18,7 +18,7 @@ export default function AppHeader() {
           className="flex items-center gap-2 rounded-2xl px-2 py-1 transition hover:bg-slate-100"
           aria-label={t("header.go_to_tontines")}
         >
-          <BrandLogo size={80} />
+          <BrandLogo width={260} height={180} className="max-w-[120px] h-auto" />
           <div className="leading-tight text-left">
             <div className="text-sm font-semibold text-slate-900">Tontine</div>
             <div className="text-xs text-slate-500">{t("header.dashboard")}</div>
