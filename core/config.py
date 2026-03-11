@@ -16,7 +16,16 @@ class Settings:
 
     @staticmethod
     def _as_csv(value: str) -> list[str]:
-        return [part.strip() for part in value.split(",") if part.strip()]
+        # Normalize comma-separated values (e.g. CORS origins).
+        # Browsers send Origin without a trailing slash, so strip it here to avoid
+        # accidental mismatches like "https://cercora.vercel.app/" vs "https://cercora.vercel.app".
+        parts: list[str] = []
+        for raw in value.split(","):
+            part = raw.strip()
+            if not part:
+                continue
+            parts.append(part.rstrip("/"))
+        return parts
 
     # App
     APP_NAME: str = "Family Tontine API"
