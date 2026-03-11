@@ -102,7 +102,12 @@ def overview_stats(
     )
     payout_volume_last_30 = (
         db.query(func.coalesce(func.sum(Payout.amount), 0))
-        .filter(and_(Payout.paid_at.isnot(None), Payout.paid_at >= last_30))
+        .filter(
+            and_(
+                Payout.is_processed.is_(True),
+                func.coalesce(Payout.processed_at, Payout.created_at) >= last_30,
+            )
+        )
         .scalar()
         or 0
     )
