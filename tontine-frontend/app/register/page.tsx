@@ -142,7 +142,14 @@ export default function RegisterPage() {
               {loading ? t("register.creating") : t("register.create_account")}
             </button>
 
-            <div className="text-center text-xs text-[color:var(--brand-muted)]">{t("register.terms")}</div>
+            <div className="space-y-2 text-center text-xs text-[color:var(--brand-muted)]">
+              <div>{t("register.terms")}</div>
+              <div>
+                <a href="/privacy-policy" className="font-medium text-[color:var(--brand-blue)] hover:underline">
+                  {t("common.privacy_policy")}
+                </a>
+              </div>
+            </div>
           </form>
         </section>
       </div>

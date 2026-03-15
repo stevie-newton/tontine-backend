@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/useAuth";
 import { useI18n } from "@/lib/i18n";
@@ -69,6 +70,13 @@ export default function AppHeader() {
           >
             {t("header.support")}
           </button>
+
+          <Link
+            href="/privacy-policy"
+            className="rounded-2xl border border-[rgba(79,107,194,0.24)] bg-white/85 px-3 py-2 text-xs font-semibold text-[color:var(--brand-ink)] transition hover:bg-[rgba(46,207,227,0.08)]"
+          >
+            {t("common.privacy_policy")}
+          </Link>
 
           <button
             onClick={logout}

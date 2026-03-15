@@ -144,6 +144,12 @@ export default function LoginPage() {
                 {t("login.create_one")}
               </a>
             </div>
+
+            <div className="text-center text-xs text-[color:var(--brand-muted)]">
+              <a href="/privacy-policy" className="font-medium text-[color:var(--brand-blue)] hover:underline">
+                {t("common.privacy_policy")}
+              </a>
+            </div>
           </form>
         </section>
       </div>
