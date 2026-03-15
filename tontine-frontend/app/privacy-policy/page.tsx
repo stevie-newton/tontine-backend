@@ -19,7 +19,6 @@ type PolicyContent = {
   effectiveDate: string;
   intro: string;
   sections: PolicySection[];
-  footnote: string;
   primaryCta: string;
   secondaryCta: string;
 };
@@ -87,8 +86,6 @@ const POLICY_CONTENT: Record<Locale, PolicyContent> = {
         ],
       },
     ],
-    footnote:
-      "This page should reflect your actual data practices. If you need store or regulatory compliance review, have final legal text reviewed before launch.",
     primaryCta: "Back to login",
     secondaryCta: "Create account",
   },
@@ -154,8 +151,6 @@ const POLICY_CONTENT: Record<Locale, PolicyContent> = {
         ],
       },
     ],
-    footnote:
-      "Cette page doit correspondre a vos pratiques reelles de traitement des donnees. Si vous avez besoin d une validation legale ou de conformite pour une boutique d applications, faites relire le texte final avant le lancement.",
     primaryCta: "Retour a la connexion",
     secondaryCta: "Creer un compte",
   },
@@ -224,10 +219,6 @@ export default function PrivacyPolicyPage() {
                 )}
               </section>
             ))}
-          </div>
-
-          <div className="mt-8 rounded-3xl border border-dashed border-[rgba(79,107,194,0.2)] bg-[rgba(46,207,227,0.06)] p-5 text-sm leading-7 text-[color:var(--brand-ink)]">
-            {content.footnote}
           </div>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
