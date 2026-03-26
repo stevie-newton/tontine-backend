@@ -41,7 +41,7 @@ export default function RegisterPage() {
         throw new Error(msg);
       }
 
-      router.push(`/verify?phone=${encodeURIComponent(phone)}`);
+      router.push(`/verify-phone?phone=${encodeURIComponent(phone)}`);
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {
