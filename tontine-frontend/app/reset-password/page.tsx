@@ -2,8 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import AuthCodeField from "@/components/AuthCodeField";
 import { useI18n } from "@/lib/i18n";
 import AuthLocaleToggle from "@/components/AuthLocaleToggle";
+import AuthPasswordField from "@/components/AuthPasswordField";
+import AuthPhoneField from "@/components/AuthPhoneField";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
@@ -76,37 +79,34 @@ export default function ResetPasswordPage() {
 
         <form onSubmit={onSubmit} className="mt-6 space-y-4">
           <div>
-            <label className="text-sm font-medium text-[color:var(--brand-ink)]">{t("common.phone")}</label>
-            <input
-              className="mt-1 w-full rounded-2xl border border-[rgba(79,107,194,0.18)] bg-white/90 px-4 py-3 text-[color:var(--brand-ink)] placeholder:text-[color:var(--brand-muted)] caret-[color:var(--brand-blue)] outline-none focus:border-[rgba(44,102,215,0.42)] focus:ring-4 focus:ring-[rgba(46,207,227,0.16)]"
-              placeholder={t("login.placeholder_phone")}
+            <AuthPhoneField
+              label={t("common.phone")}
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              onChange={setPhone}
+              autoComplete="tel"
               required
             />
-            <p className="mt-1 text-xs text-[color:var(--brand-muted)]">{t("common.phone_format_hint")}</p>
           </div>
 
           <div>
-            <label className="text-sm font-medium text-[color:var(--brand-ink)]">{t("reset.code")}</label>
-            <input
-              className="mt-1 w-full rounded-2xl border border-[rgba(79,107,194,0.18)] bg-white/90 px-4 py-3 text-[color:var(--brand-ink)] placeholder:text-[color:var(--brand-muted)] caret-[color:var(--brand-blue)] outline-none focus:border-[rgba(44,102,215,0.42)] focus:ring-4 focus:ring-[rgba(46,207,227,0.16)]"
-              placeholder={t("reset.placeholder_code")}
+            <AuthCodeField
+              label={t("reset.code")}
               value={code}
-              onChange={(e) => setCode(e.target.value)}
+              onChange={setCode}
+              placeholder={t("reset.placeholder_code")}
               required
             />
           </div>
 
           <div>
-            <label className="text-sm font-medium text-[color:var(--brand-ink)]">{t("reset.new_password")}</label>
-            <input
-              className="mt-1 w-full rounded-2xl border border-[rgba(79,107,194,0.18)] bg-white/90 px-4 py-3 text-[color:var(--brand-ink)] placeholder:text-[color:var(--brand-muted)] caret-[color:var(--brand-blue)] outline-none focus:border-[rgba(44,102,215,0.42)] focus:ring-4 focus:ring-[rgba(46,207,227,0.16)]"
-              placeholder={t("reset.placeholder_password")}
-              type="password"
+            <AuthPasswordField
+              label={t("reset.new_password")}
               value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
+              onChange={setNewPassword}
+              placeholder={t("reset.placeholder_password")}
+              autoComplete="new-password"
               required
+              showStrength
             />
           </div>
 

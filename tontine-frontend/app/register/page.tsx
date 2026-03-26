@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
 import AuthLocaleToggle from "@/components/AuthLocaleToggle";
+import AuthPasswordField from "@/components/AuthPasswordField";
+import AuthPhoneField from "@/components/AuthPhoneField";
 import BrandLogo from "@/src/components/BrandLogo";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!;
@@ -111,26 +113,24 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="text-sm font-medium text-[color:var(--brand-ink)]">{t("common.phone")}</label>
-              <input
-                className="mt-1 w-full rounded-2xl border border-[rgba(79,107,194,0.18)] bg-white/90 px-4 py-3 text-[color:var(--brand-ink)] placeholder:text-[color:var(--brand-muted)] caret-[color:var(--brand-blue)] outline-none focus:border-[rgba(44,102,215,0.42)] focus:ring-4 focus:ring-[rgba(46,207,227,0.16)]"
-                placeholder={t("register.placeholder_phone")}
+              <AuthPhoneField
+                label={t("common.phone")}
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={setPhone}
+                autoComplete="tel"
                 required
               />
-              <p className="mt-1 text-xs text-[color:var(--brand-muted)]">{t("common.phone_format_hint")}</p>
             </div>
 
             <div>
-              <label className="text-sm font-medium text-[color:var(--brand-ink)]">{t("common.password")}</label>
-              <input
-                className="mt-1 w-full rounded-2xl border border-[rgba(79,107,194,0.18)] bg-white/90 px-4 py-3 text-[color:var(--brand-ink)] placeholder:text-[color:var(--brand-muted)] caret-[color:var(--brand-blue)] outline-none focus:border-[rgba(44,102,215,0.42)] focus:ring-4 focus:ring-[rgba(46,207,227,0.16)]"
-                placeholder={t("register.placeholder_password")}
-                type="password"
+              <AuthPasswordField
+                label={t("common.password")}
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={setPassword}
+                placeholder={t("register.placeholder_password")}
+                autoComplete="new-password"
                 required
+                showStrength
               />
             </div>
 

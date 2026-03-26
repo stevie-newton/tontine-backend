@@ -4,6 +4,8 @@ import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import AuthLocaleToggle from "@/components/AuthLocaleToggle";
+import AuthCodeField from "@/components/AuthCodeField";
+import AuthPhoneField from "@/components/AuthPhoneField";
 import { useI18n } from "@/lib/i18n";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!;
@@ -99,21 +101,20 @@ function VerifyPhoneContent() {
 
         <form className="mt-5 space-y-4" onSubmit={verifyPhone}>
           <div>
-            <label className="text-sm font-medium text-[color:var(--brand-ink)]">{t("common.phone")}</label>
-            <input
-              className="mt-1 w-full rounded-2xl border border-[rgba(79,107,194,0.18)] bg-white/90 px-4 py-3 text-[color:var(--brand-ink)] outline-none focus:border-[rgba(44,102,215,0.42)] focus:ring-4 focus:ring-[rgba(46,207,227,0.16)]"
+            <AuthPhoneField
+              label={t("common.phone")}
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              onChange={setPhone}
+              autoComplete="tel"
               required
             />
           </div>
 
           <div>
-            <label className="text-sm font-medium text-[color:var(--brand-ink)]">{t("verify_phone.code_label")}</label>
-            <input
-              className="mt-1 w-full rounded-2xl border border-[rgba(79,107,194,0.18)] bg-white/90 px-4 py-3 text-[color:var(--brand-ink)] outline-none focus:border-[rgba(44,102,215,0.42)] focus:ring-4 focus:ring-[rgba(46,207,227,0.16)]"
+            <AuthCodeField
+              label={t("verify_phone.code_label")}
               value={code}
-              onChange={(e) => setCode(e.target.value)}
+              onChange={setCode}
               placeholder={t("verify_phone.code_placeholder")}
               required
             />
