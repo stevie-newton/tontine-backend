@@ -18,7 +18,7 @@ if "app" not in sys.modules:
     sys.modules["app"] = package
 
 from app.core.config import settings
-from app.core.database import SessionLocal
+from app.core.database import SessionLocal, mark_database_schema_ready
 from app.core.i18n import get_locale_from_request, translate_detail
 from app.core.migrations import run_startup_migrations
 from app.routes import (
@@ -79,6 +79,7 @@ async def lifespan(app: FastAPI):
     if settings.AUTO_RUN_MIGRATIONS:
         print("Running database migrations")
         run_startup_migrations()
+        mark_database_schema_ready()
         print("Database migrations complete")
     else:
         print("Database migrations: skipped")

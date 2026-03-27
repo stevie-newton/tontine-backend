@@ -22,8 +22,14 @@ SessionLocal = sessionmaker(
 # Base class for models
 Base = declarative_base()
 
-_MIGRATIONS_READY = settings.AUTO_RUN_MIGRATIONS
+_MIGRATIONS_READY = False
 _MIGRATIONS_LOCK = Lock()
+
+
+def mark_database_schema_ready() -> None:
+    global _MIGRATIONS_READY
+    with _MIGRATIONS_LOCK:
+        _MIGRATIONS_READY = True
 
 
 def ensure_database_schema_ready() -> None:
