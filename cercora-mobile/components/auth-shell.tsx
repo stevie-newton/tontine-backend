@@ -89,11 +89,18 @@ export function AuthScreenShell({
   return (
     <KeyboardAvoidingView
       style={styles.keyboard}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 24 : 0}
     >
       <ThemedView style={styles.container} lightColor={BrandColors.canvas}>
         <BrandBackdrop />
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
+          showsVerticalScrollIndicator={false}
+        >
           <View style={[styles.hero, { backgroundColor: palette.hero }]}>
             <View style={[styles.heroGlowTop, { backgroundColor: palette.glowTop }]} />
             <View style={[styles.heroGlowBottom, { backgroundColor: palette.glowBottom }]} />
@@ -269,8 +276,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
+    flexGrow: 1,
     padding: 18,
-    paddingBottom: 28,
+    paddingBottom: 44,
     gap: 18,
   },
   hero: {

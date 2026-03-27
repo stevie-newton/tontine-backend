@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
+import axios from "axios";
 import { Stack } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -12,9 +13,17 @@ import {
   View,
 } from "react-native";
 
+import { BrandBackdrop } from "@/components/brand-backdrop";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
+import { BrandColors, BrandShadow } from "@/constants/brand";
 import { api } from "@/hooks/api-client";
+import {
+  disableNativePush,
+  enableNativePush,
+  getNativePushStatus,
+  NATIVE_PUSH_SUPPORTED,
+} from "@/hooks/native-push";
 import { useAuth } from "@/hooks/use-auth";
 import { getErrorMessage } from "@/hooks/error-utils";
 import { getCurrentLocale, useI18n } from "@/hooks/use-i18n";
@@ -73,9 +82,18 @@ function formatShortDate(value: string) {
   }).format(d);
 }
 
+function isMissingReminderFeedError(error: unknown) {
+  return (
+    (axios.isAxiosError(error) && error.response?.status === 404) ||
+    (error instanceof Error && error.message.trim().toLowerCase() === "not found") ||
+    (typeof error === "string" && error.trim().toLowerCase() === "not found")
+  );
+}
+
 export default function RemindersScreen() {
   const { user } = useAuth();
   const { t } = useI18n();
+  const nativePushSupported = NATIVE_PUSH_SUPPORTED;
 
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [remindersError, setRemindersError] = useState<string | null>(null);
@@ -117,6 +135,11 @@ export default function RemindersScreen() {
       const res = await api.get<{ reminders: Reminder[] }>("/reminders/pre-deadline/me");
       setReminders(res.data.reminders ?? []);
     } catch (e) {
+      if (isMissingReminderFeedError(e)) {
+        setRemindersError(null);
+        setReminders([]);
+        return;
+      }
       setRemindersError(getErrorMessage(e));
       setReminders([]);
     } finally {
@@ -157,13 +180,22 @@ export default function RemindersScreen() {
   );
 
   useEffect(() => {
-    if (!webPushSupported) return;
+    if (nativePushSupported || !webPushSupported) return;
     setPermission(
       (globalThis as any).Notification.permission as NotificationPermission
     );
-  }, [webPushSupported]);
+  }, [nativePushSupported, webPushSupported]);
 
   const refreshPushSubscriptionState = useCallback(async () => {
+    if (nativePushSupported) {
+      try {
+        const status = await getNativePushStatus();
+        setPushSubscribed(status.subscribed);
+      } catch {
+        setPushSubscribed(false);
+      }
+      return;
+    }
     if (!webPushSupported) return;
     try {
       const reg = await (globalThis as any).navigator.serviceWorker.getRegistration();
@@ -176,7 +208,7 @@ export default function RemindersScreen() {
     } catch {
       setPushSubscribed(false);
     }
-  }, [webPushSupported]);
+  }, [nativePushSupported, webPushSupported]);
 
   useEffect(() => {
     void refreshPushSubscriptionState();
@@ -202,11 +234,20 @@ export default function RemindersScreen() {
     await Promise.all([loadReminders(), loadAdminData()]);
   }
 
-  async function enableWebPush() {
-    if (!webPushSupported) return;
+  async function enablePush() {
     setPushBusy(true);
     setPushError(null);
     try {
+      if (nativePushSupported) {
+        const result = await enableNativePush();
+        setPushSubscribed(result.subscribed);
+        if (result.message) {
+          setPushError(t(result.message));
+        }
+        return;
+      }
+
+      if (!webPushSupported) return;
       const next = (await (globalThis as any).Notification.requestPermission()) as NotificationPermission;
       setPermission(next);
       if (next !== "granted") {
@@ -237,11 +278,17 @@ export default function RemindersScreen() {
     }
   }
 
-  async function disableWebPush() {
-    if (!webPushSupported) return;
+  async function disablePush() {
     setPushBusy(true);
     setPushError(null);
     try {
+      if (nativePushSupported) {
+        await disableNativePush();
+        setPushSubscribed(false);
+        return;
+      }
+
+      if (!webPushSupported) return;
       const reg = await (globalThis as any).navigator.serviceWorker.getRegistration();
       const sub = reg ? await reg.pushManager.getSubscription() : null;
       if (!sub) {
@@ -261,7 +308,7 @@ export default function RemindersScreen() {
   }
 
   async function sendTestPush() {
-    if (!webPushSupported) return;
+    if (!nativePushSupported && !webPushSupported) return;
     setPushBusy(true);
     setPushError(null);
     try {
@@ -290,7 +337,8 @@ export default function RemindersScreen() {
   }
 
   return (
-    <ThemedView style={styles.container} lightColor="#F4F7FB">
+    <ThemedView style={styles.container} lightColor={BrandColors.canvas}>
+      <BrandBackdrop />
       <Stack.Screen options={{ title: t("Reminders") }} />
 
       <ScrollView
@@ -315,7 +363,11 @@ export default function RemindersScreen() {
             </View>
             <View style={styles.heroBadgeCool}>
               <ThemedText style={styles.heroBadgeCoolText}>
-                {permission === "unsupported"
+                {nativePushSupported
+                  ? pushSubscribed
+                    ? "Push on"
+                    : "Push off"
+                  : permission === "unsupported"
                   ? "Web only"
                   : pushSubscribed
                     ? "Push on"
@@ -349,7 +401,11 @@ export default function RemindersScreen() {
           <View style={styles.cardHeader}>
             <ThemedText type="subtitle">Push notifications</ThemedText>
             <ThemedText style={styles.supportText}>
-              {webPushSupported ? "Secure web delivery" : "Available on secure web only"}
+              {nativePushSupported
+                ? t("Native mobile delivery")
+                : webPushSupported
+                  ? "Secure web delivery"
+                  : "Available on secure web only"}
             </ThemedText>
           </View>
 
@@ -361,7 +417,9 @@ export default function RemindersScreen() {
               <ThemedText style={styles.metricLabel}>Permission</ThemedText>
             </View>
             <View style={styles.metricTile}>
-              <ThemedText style={styles.metricValue}>{pushSubscribed ? "Subscribed" : "Idle"}</ThemedText>
+              <ThemedText style={styles.metricValue}>
+                {nativePushSupported ? (pushSubscribed ? "Subscribed" : "Idle") : pushSubscribed ? "Subscribed" : "Idle"}
+              </ThemedText>
               <ThemedText style={styles.metricLabel}>Delivery state</ThemedText>
             </View>
           </View>
@@ -369,15 +427,16 @@ export default function RemindersScreen() {
           <View style={styles.actionsRow}>
             <Pressable
               style={styles.secondaryButton}
-              disabled={pushBusy || !webPushSupported}
-              onPress={() => void (pushSubscribed ? disableWebPush() : enableWebPush())}
+              disabled={pushBusy || (!nativePushSupported && !webPushSupported)}
+              onPress={() => void (pushSubscribed ? disablePush() : enablePush())}
             >
               <ThemedText style={styles.secondaryButtonText}>
                 {pushBusy ? "Working..." : pushSubscribed ? "Disable push" : "Enable push"}
               </ThemedText>
             </Pressable>
 
-            {webPushSupported && permission === "granted" && pushSubscribed ? (
+            {(nativePushSupported && pushSubscribed) ||
+            (webPushSupported && permission === "granted" && pushSubscribed) ? (
               <Pressable
                 style={styles.primaryButton}
                 disabled={pushBusy}
@@ -409,12 +468,7 @@ export default function RemindersScreen() {
           ) : remindersError ? (
             <ThemedText style={styles.errorText}>{remindersError}</ThemedText>
           ) : reminders.length === 0 ? (
-            <View style={styles.emptyState}>
-              <ThemedText style={styles.emptyTitle}>Nothing urgent right now</ThemedText>
-              <ThemedText style={styles.supportText}>
-                You are caught up. New contribution reminders will show here automatically.
-              </ThemedText>
-            </View>
+            <ThemedText style={styles.supportText}>{t("No reminder")}</ThemedText>
           ) : (
             reminders.map((reminder, index) => (
               <View
@@ -560,16 +614,17 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: {
     padding: 18,
-    paddingBottom: 28,
+    paddingBottom: 120,
     gap: 18,
   },
   hero: {
     position: "relative",
     overflow: "hidden",
     borderRadius: 28,
-    backgroundColor: "#21304F",
+    backgroundColor: BrandColors.blueDeep,
     padding: 22,
     gap: 14,
+    ...BrandShadow,
   },
   heroGlowTop: {
     position: "absolute",
@@ -578,8 +633,8 @@ const styles = StyleSheet.create({
     width: 148,
     height: 148,
     borderRadius: 999,
-    backgroundColor: "#4B68A8",
-    opacity: 0.24,
+    backgroundColor: BrandColors.blue,
+    opacity: 0.26,
   },
   heroGlowBottom: {
     position: "absolute",
@@ -588,7 +643,7 @@ const styles = StyleSheet.create({
     width: 148,
     height: 148,
     borderRadius: 999,
-    backgroundColor: "#9DD1C4",
+    backgroundColor: BrandColors.violet,
     opacity: 0.16,
   },
   eyebrow: {
@@ -684,12 +739,13 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   card: {
-    borderRadius: 24,
-    backgroundColor: "#FFFFFF",
+    borderRadius: 28,
+    backgroundColor: BrandColors.surface,
     borderWidth: 1,
-    borderColor: "#E6ECF5",
-    padding: 16,
+    borderColor: BrandColors.border,
+    padding: 18,
     gap: 14,
+    ...BrandShadow,
   },
   cardHeader: {
     flexDirection: "row",
@@ -698,7 +754,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   supportText: {
-    color: "#475467",
+    color: BrandColors.muted,
     fontSize: 14,
     lineHeight: 20,
   },
@@ -711,9 +767,9 @@ const styles = StyleSheet.create({
     minWidth: 110,
     flexGrow: 1,
     borderRadius: 18,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: "rgba(255,255,255,0.88)",
     borderWidth: 1,
-    borderColor: "#E7EEF7",
+    borderColor: BrandColors.border,
     padding: 14,
     gap: 4,
   },
@@ -721,27 +777,27 @@ const styles = StyleSheet.create({
     minWidth: 110,
     flexGrow: 1,
     borderRadius: 16,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "rgba(255,255,255,0.78)",
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: BrandColors.border,
     padding: 12,
     gap: 2,
   },
   metricValue: {
-    color: "#0F172A",
+    color: BrandColors.ink,
     fontSize: 20,
     lineHeight: 24,
     fontWeight: "800",
     textTransform: "capitalize",
   },
   metricValueCompact: {
-    color: "#0F172A",
+    color: BrandColors.ink,
     fontSize: 16,
     lineHeight: 20,
     fontWeight: "800",
   },
   metricLabel: {
-    color: "#667085",
+    color: BrandColors.muted,
     fontSize: 13,
     lineHeight: 18,
   },
@@ -754,9 +810,10 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 150,
     borderRadius: 16,
-    backgroundColor: "#0A2A66",
+    backgroundColor: BrandColors.blueDeep,
     paddingVertical: 14,
     alignItems: "center",
+    ...BrandShadow,
   },
   primaryButtonText: {
     color: "#FFFFFF",
@@ -768,13 +825,13 @@ const styles = StyleSheet.create({
     minWidth: 150,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#0A2A66",
-    backgroundColor: "#FFFFFF",
+    borderColor: BrandColors.borderStrong,
+    backgroundColor: BrandColors.surfaceStrong,
     paddingVertical: 14,
     alignItems: "center",
   },
   secondaryButtonText: {
-    color: "#0A2A66",
+    color: BrandColors.inkSoft,
     fontWeight: "800",
     fontSize: 14,
   },
@@ -787,22 +844,22 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   emptyTitle: {
-    color: "#101828",
+    color: BrandColors.ink,
     fontSize: 18,
     lineHeight: 24,
     fontWeight: "800",
   },
   reminderCard: {
     borderRadius: 18,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: "rgba(255,255,255,0.74)",
     borderWidth: 1,
-    borderColor: "#E7EEF7",
+    borderColor: BrandColors.border,
     padding: 14,
     gap: 10,
   },
   reminderCardPriority: {
-    backgroundColor: "#FFF7ED",
-    borderColor: "#FED7AA",
+    backgroundColor: "rgba(46,207,227,0.08)",
+    borderColor: BrandColors.borderStrong,
   },
   reminderMetaRow: {
     flexDirection: "row",
@@ -815,7 +872,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   reminderTitle: {
-    color: "#101828",
+    color: BrandColors.ink,
     fontSize: 16,
     lineHeight: 22,
     fontWeight: "800",
@@ -823,49 +880,49 @@ const styles = StyleSheet.create({
   reminderHoursBadge: {
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: "#FEDF89",
-    backgroundColor: "#FFFAEB",
+    borderColor: BrandColors.borderStrong,
+    backgroundColor: "rgba(16,36,72,0.92)",
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
   reminderHoursText: {
-    color: "#B54708",
+    color: "#FFFFFF",
     fontSize: 12,
     lineHeight: 16,
     fontWeight: "800",
   },
   helperCard: {
     borderRadius: 18,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: "rgba(255,255,255,0.8)",
     borderWidth: 1,
-    borderColor: "#E7EEF7",
+    borderColor: BrandColors.borderStrong,
     padding: 14,
     gap: 4,
   },
   helperTitle: {
-    color: "#101828",
+    color: BrandColors.ink,
     fontSize: 15,
     lineHeight: 20,
     fontWeight: "800",
   },
   previewCard: {
     borderRadius: 18,
-    backgroundColor: "#FBFCFE",
+    backgroundColor: "rgba(255,255,255,0.78)",
     borderWidth: 1,
-    borderColor: "#E8EDF5",
+    borderColor: BrandColors.border,
     padding: 14,
     gap: 8,
   },
   previewBadge: {
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: "#B2DDFF",
-    backgroundColor: "#EFF8FF",
+    borderColor: BrandColors.borderStrong,
+    backgroundColor: "rgba(46,207,227,0.12)",
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
   previewBadgeText: {
-    color: "#175CD3",
+    color: BrandColors.blue,
     fontSize: 12,
     lineHeight: 16,
     fontWeight: "800",

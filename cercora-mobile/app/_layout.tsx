@@ -1,26 +1,27 @@
-import React from "react";
-import { ActivityIndicator, StyleSheet } from "react-native";
+import React, { useEffect } from "react";
 import { Stack } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
 
-import { BrandBackdrop } from "@/components/brand-backdrop";
 import { AppErrorBoundary } from "@/components/app-error-boundary";
 import { ErrorBannerHost } from "@/components/error-banner";
-import { ThemedView } from "@/components/themed-view";
-import { BrandColors } from "@/constants/brand";
+import { PushBridge } from "@/components/push-bridge";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { I18nProvider, useI18n } from "@/hooks/use-i18n";
+
+void SplashScreen.preventAutoHideAsync();
 
 function RootNavigator() {
   const { isLoading } = useAuth();
   const { t } = useI18n();
 
+  useEffect(() => {
+    if (!isLoading) {
+      void SplashScreen.hideAsync();
+    }
+  }, [isLoading]);
+
   if (isLoading) {
-    return (
-      <ThemedView style={styles.loading} lightColor={BrandColors.canvas}>
-        <BrandBackdrop />
-        <ActivityIndicator color={BrandColors.blue} />
-      </ThemedView>
-    );
+    return null;
   }
 
   return (
@@ -41,17 +42,10 @@ export default function RootLayout() {
       <AppErrorBoundary>
         <AuthProvider>
           <RootNavigator />
+          <PushBridge />
           <ErrorBannerHost />
         </AuthProvider>
       </AppErrorBoundary>
     </I18nProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  loading: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-});

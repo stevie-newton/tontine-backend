@@ -1,13 +1,13 @@
 {
   "expo": {
-    "name": "cercora-mobile",
+    "name": "Cercora",
     "slug": "cercora-mobile",
     "version": "1.0.0",
     "runtimeVersion": {
       "policy": "appVersion"
     },
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./public/ios/Icon-App-1024x1024@1x.png",
     "scheme": "cercoramobile",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -22,10 +22,11 @@
     "android": {
       "package": "com.cercora.mobile",
       "versionCode": 1,
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
+        "foregroundImage": "./public/android/play-store-512.png",
+        "backgroundImage": "./public/android/play-store-512.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
@@ -33,15 +34,23 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./public/android/play-store-512.png"
     },
     "plugins": [
       "expo-router",
       [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/android-icon-monochrome.png",
+          "color": "#2ECFE3",
+          "defaultChannel": "default"
+        }
+      ],
+      [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
+          "image": "./public/ios/Icon-App-1024x1024@1x.png",
+          "imageWidth": 220,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",
           "dark": {

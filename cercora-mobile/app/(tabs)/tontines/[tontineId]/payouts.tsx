@@ -120,6 +120,13 @@ export default function PayoutsScreen() {
           contentContainerStyle={styles.content}
           refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />}
         >
+          <View style={styles.pageHeader}>
+            <ThemedText style={styles.pageTitle}>Payout ledger</ThemedText>
+            <ThemedText style={styles.pageSubtitle}>
+              The mobile payout view now follows the rebuilt tontine workflow, with summary, processing state, and full payout history in one place.
+            </ThemedText>
+          </View>
+
           <View style={styles.hero}>
             <View style={styles.heroGlowTop} />
             <View style={styles.heroGlowBottom} />
@@ -175,6 +182,16 @@ export default function PayoutsScreen() {
               <View style={styles.metricTile}>
                 <ThemedText style={styles.metricValue}>{summary?.pending_count ?? 0}</ThemedText>
                 <ThemedText style={styles.metricLabel}>Still pending</ThemedText>
+              </View>
+            </View>
+            <View style={styles.metricGrid}>
+              <View style={styles.metricTileCompact}>
+                <ThemedText style={styles.metricValueCompact}>{summary?.processed_count ?? 0}</ThemedText>
+                <ThemedText style={styles.metricLabel}>Processed entries</ThemedText>
+              </View>
+              <View style={styles.metricTileCompact}>
+                <ThemedText style={styles.metricValueCompact}>{summary?.pending_count ?? 0}</ThemedText>
+                <ThemedText style={styles.metricLabel}>Awaiting processing</ThemedText>
               </View>
             </View>
           </View>
@@ -266,6 +283,20 @@ const styles = StyleSheet.create({
     padding: 18,
     paddingBottom: 120,
     gap: 18,
+  },
+  pageHeader: {
+    gap: 6,
+  },
+  pageTitle: {
+    color: BrandColors.ink,
+    fontSize: 28,
+    lineHeight: 32,
+    fontWeight: "800",
+  },
+  pageSubtitle: {
+    color: BrandColors.muted,
+    fontSize: 14,
+    lineHeight: 20,
   },
   hero: {
     position: "relative",

@@ -37,6 +37,24 @@ function t(en: string, fr: string) {
   return getCurrentLocale() === "fr" ? fr : en;
 }
 
+function extractResponseMessage(detail: unknown) {
+  if (typeof detail === "string" && detail.trim().length > 0) {
+    return detail;
+  }
+
+  if (Array.isArray(detail)) {
+    const firstMessage = detail.find(
+      (item) => item && typeof item === "object" && typeof (item as { msg?: unknown }).msg === "string"
+    ) as { msg?: string } | undefined;
+
+    if (firstMessage?.msg?.trim()) {
+      return firstMessage.msg.trim();
+    }
+  }
+
+  return null;
+}
+
 export function normalizeApiError(
   error: unknown,
   fallbackMessage = t("Something went wrong. Please try again.", "Une erreur s'est produite. Veuillez réessayer.")
@@ -47,8 +65,7 @@ export function normalizeApiError(
     const status = error.response?.status;
     const detail = error.response?.data?.detail;
     const code = error.code;
-    const responseMessage =
-      typeof detail === "string" && detail.trim().length > 0 ? detail : null;
+    const responseMessage = extractResponseMessage(detail);
 
     if (code === "ECONNABORTED") {
       return new AppApiError({

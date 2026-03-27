@@ -1,8 +1,11 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 
 import { AuthScreenShell, authStyles } from "@/components/auth-shell";
+import { OtpInput } from "@/components/otp-input";
+import { PasswordInput } from "@/components/password-input";
+import { PhoneInput } from "@/components/phone-input";
 import { ThemedText } from "@/components/themed-text";
 import { useAuth } from "@/hooks/use-auth";
 import { getErrorMessage } from "@/hooks/error-utils";
@@ -14,11 +17,12 @@ export default function ResetPasswordScreen() {
   const { phone: phoneParam } = useLocalSearchParams<{ phone?: string }>();
   const initialPhone = useMemo(() => (phoneParam ? String(phoneParam) : ""), [phoneParam]);
 
-  const { resetPassword } = useAuth();
+  const { forgotPassword, resetPassword } = useAuth();
   const [phone, setPhone] = useState(initialPhone);
   const [code, setCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResending, setIsResending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,18 +45,38 @@ export default function ResetPasswordScreen() {
     }
   }
 
+  async function onResendCode() {
+    const cleanPhone = phone.trim();
+    if (!cleanPhone) {
+      setError(t("Enter your phone number first."));
+      return;
+    }
+
+    setError(null);
+    setMessage(null);
+    setIsResending(true);
+    try {
+      await forgotPassword({ phone: cleanPhone });
+      setMessage(t("A new reset code was sent if that phone number exists."));
+    } catch (e) {
+      setError(getErrorMessage(e));
+    } finally {
+      setIsResending(false);
+    }
+  }
+
   return (
     <>
       <Stack.Screen options={{ title: t("Reset Password") }} />
       <AuthScreenShell
-        eyebrow="Finish reset"
-        title="Choose a new password"
-        subtitle="Enter the reset code you received, then set the password you want to use the next time you sign in."
+        eyebrow={t("Finish reset")}
+        title={t("Choose a new password")}
+        subtitle={t("Enter the reset code you received, then set the password you want to use the next time you sign in.")}
         tone="slate"
         stats={[
-          { label: "Phone", value: phone.trim() ? "Ready" : "Needed" },
-          { label: "Code", value: code.trim() ? "Entered" : "Needed" },
-          { label: "Password", value: newPassword ? "Ready" : "Needed" },
+          { label: t("Phone"), value: phone.trim() ? t("Ready") : t("Needed") },
+          { label: t("Code"), value: code.trim() ? t("Entered") : t("Needed") },
+          { label: t("Password"), value: newPassword ? t("Ready") : t("Needed") },
         ]}
       >
         <ThemedText type="subtitle">Reset details</ThemedText>
@@ -62,39 +86,41 @@ export default function ResetPasswordScreen() {
 
         <View style={styles.form}>
           <ThemedText style={authStyles.label}>Phone number</ThemedText>
-          <TextInput
+          <PhoneInput
             value={phone}
             onChangeText={setPhone}
-            placeholder={t("Phone number")}
-            placeholderTextColor="#98A2B3"
-            keyboardType="phone-pad"
-            autoCapitalize="none"
-            style={authStyles.input}
+            placeholder={t("Local phone number")}
           />
-          <ThemedText style={authStyles.sectionText}>
-            Use international format (e.g. +237670000000)
-          </ThemedText>
 
           <ThemedText style={authStyles.label}>Reset code</ThemedText>
-          <TextInput
+          <OtpInput
             value={code}
             onChangeText={setCode}
             placeholder={t("Reset code")}
-            placeholderTextColor="#98A2B3"
-            keyboardType="number-pad"
-            autoCapitalize="none"
-            style={authStyles.input}
           />
 
+          <Pressable
+            style={({ pressed }) => [
+              authStyles.linkRow,
+              styles.resendLink,
+              pressed ? styles.resendLinkPressed : null,
+            ]}
+            disabled={isSubmitting || isResending}
+            onPress={() => void onResendCode()}
+          >
+            {isResending ? (
+              <ActivityIndicator color="#1849A9" />
+            ) : (
+              <ThemedText style={authStyles.linkRowText}>{t("Resend code")}</ThemedText>
+            )}
+          </Pressable>
+
           <ThemedText style={authStyles.label}>New password</ThemedText>
-          <TextInput
+          <PasswordInput
             value={newPassword}
             onChangeText={setNewPassword}
             placeholder={t("Create a new password")}
-            placeholderTextColor="#98A2B3"
-            secureTextEntry
-            autoCapitalize="none"
-            style={authStyles.input}
+            mode="create"
           />
 
           {message ? <ThemedText style={authStyles.message}>{message}</ThemedText> : null}
@@ -123,5 +149,12 @@ export default function ResetPasswordScreen() {
 const styles = StyleSheet.create({
   form: {
     gap: 10,
+  },
+  resendLink: {
+    alignSelf: "flex-start",
+    marginTop: -2,
+  },
+  resendLinkPressed: {
+    opacity: 0.7,
   },
 });

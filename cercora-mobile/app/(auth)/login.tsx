@@ -1,8 +1,10 @@
 import { Link, Stack } from "expo-router";
 import React, { useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 
 import { AuthScreenShell, authStyles } from "@/components/auth-shell";
+import { PasswordInput } from "@/components/password-input";
+import { PhoneInput } from "@/components/phone-input";
 import { ThemedText } from "@/components/themed-text";
 import { useAuth } from "@/hooks/use-auth";
 import { getErrorMessage } from "@/hooks/error-utils";
@@ -32,13 +34,13 @@ export default function LoginScreen() {
     <>
       <Stack.Screen options={{ title: t("Sign In") }} />
       <AuthScreenShell
-        eyebrow="Welcome back"
-        title="Sign in to Cercora"
-        subtitle="Pick up where you left off with your phone number and password."
+        eyebrow={t("Welcome back")}
+        title={t("Sign in to Cercora")}
+        subtitle={t("Pick up where you left off with your phone number and password.")}
         tone="midnight"
         stats={[
-          { label: "Phone", value: phone.trim() ? "Ready" : "Needed" },
-          { label: "Password", value: password ? "Entered" : "Needed" },
+          { label: t("Phone"), value: phone.trim() ? t("Ready") : t("Needed") },
+          { label: t("Password"), value: password ? t("Entered") : t("Needed") },
         ]}
       >
         <ThemedText type="subtitle">Your account</ThemedText>
@@ -48,28 +50,17 @@ export default function LoginScreen() {
 
         <View style={styles.form}>
           <ThemedText style={authStyles.label}>Phone number</ThemedText>
-          <TextInput
+          <PhoneInput
             value={phone}
             onChangeText={setPhone}
-            placeholder={t("Phone number")}
-            placeholderTextColor="#98A2B3"
-            autoCapitalize="none"
-            keyboardType="phone-pad"
-            style={authStyles.input}
+            placeholder={t("Local phone number")}
           />
-          <ThemedText style={authStyles.sectionText}>
-            Use international format (e.g. +237670000000)
-          </ThemedText>
 
           <ThemedText style={authStyles.label}>Password</ThemedText>
-          <TextInput
+          <PasswordInput
             value={password}
             onChangeText={setPassword}
             placeholder={t("Enter your password")}
-            placeholderTextColor="#98A2B3"
-            secureTextEntry
-            autoCapitalize="none"
-            style={authStyles.input}
           />
 
           {error ? <ThemedText style={authStyles.error}>{error}</ThemedText> : null}

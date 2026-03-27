@@ -118,3 +118,29 @@ This project supports Web Push (Service Worker + VAPID) for the web build.
    - `EXPO_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY` (same value as backend public key)
 
 4. In the app: open Dashboard -> Push notifications -> Enable -> Send test.
+
+## Native mobile push notifications (APK / iOS app)
+
+The mobile app now supports native Expo push tokens for Android and iOS builds.
+
+1. Android:
+
+   - Add `google-services.json` to the project root when you are ready to build a push-enabled Android app.
+   - Configure Firebase Cloud Messaging credentials in Expo/EAS for the Android app.
+
+2. iOS:
+
+   - Add `GoogleService-Info.plist` when you are ready to build a push-enabled iOS app.
+   - Configure the Apple push credentials in Expo/EAS once your Apple Developer account is active.
+
+3. Build a new app after credentials are configured:
+
+   ```bash
+   eas build --platform android --profile preview
+   eas build --platform ios --profile production
+   ```
+
+Notes:
+
+- `google-services.json` and `GoogleService-Info.plist` are ignored by git in this repo.
+- Native push works on a real device build, not on Expo web and not reliably on a simulator.

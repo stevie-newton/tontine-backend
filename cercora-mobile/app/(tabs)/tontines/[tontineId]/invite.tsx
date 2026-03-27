@@ -7,11 +7,11 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  TextInput,
   View,
 } from "react-native";
 
 import { BrandBackdrop } from "@/components/brand-backdrop";
+import { PhoneInput } from "@/components/phone-input";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { BrandColors, BrandShadow } from "@/constants/brand";
@@ -58,13 +58,20 @@ export default function InviteMemberScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.keyboard}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 24 : 0}
     >
       <ThemedView style={styles.container} lightColor={BrandColors.canvas}>
         <BrandBackdrop />
         <Stack.Screen options={{ title: t("Invite Member") }} />
 
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.hero}>
             <View style={styles.heroGlowTop} />
             <View style={styles.heroGlowBottom} />
@@ -96,18 +103,11 @@ export default function InviteMemberScreen() {
             </ThemedText>
 
             <ThemedText style={styles.label}>Phone number</ThemedText>
-            <TextInput
+            <PhoneInput
               value={phone}
               onChangeText={setPhone}
-              placeholder={t("Phone number")}
-              placeholderTextColor="#98A2B3"
-              keyboardType="phone-pad"
-              autoCapitalize="none"
-              style={styles.input}
+              placeholder={t("Local phone number")}
             />
-            <ThemedText style={styles.supportText}>
-              Use international format (e.g. +237670000000)
-            </ThemedText>
 
             <ThemedText style={styles.label}>Access level</ThemedText>
             <View style={styles.roleGrid}>
@@ -188,6 +188,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
+    flexGrow: 1,
     padding: 18,
     paddingBottom: 120,
     gap: 18,
@@ -286,15 +287,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     fontWeight: "800",
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: BrandColors.borderStrong,
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    backgroundColor: "rgba(255,255,255,0.88)",
-    color: BrandColors.ink,
   },
   roleGrid: {
     gap: 10,

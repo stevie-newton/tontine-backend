@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
+import axios from "axios";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -13,11 +14,17 @@ import {
 import { BrandBackdrop } from "@/components/brand-backdrop";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
-import { API_BASE_URL } from "@/constants/api";
 import { BrandColors, BrandShadow } from "@/constants/brand";
 import { api } from "@/hooks/api-client";
+import {
+  disableNativePush,
+  enableNativePush,
+  getNativePushStatus,
+  NATIVE_PUSH_SUPPORTED,
+} from "@/hooks/native-push";
 import { useAuth } from "@/hooks/use-auth";
 import { getErrorMessage } from "@/hooks/error-utils";
+import { useResponsiveLayout } from "@/hooks/use-responsive-layout";
 import { getCurrentLocale, useI18n } from "@/hooks/use-i18n";
 
 const WEB_PUSH_VAPID_PUBLIC_KEY =
@@ -131,9 +138,19 @@ function formatCompactNumber(value: number) {
   }).format(value);
 }
 
+function isMissingReminderFeedError(error: unknown) {
+  return (
+    (axios.isAxiosError(error) && error.response?.status === 404) ||
+    (error instanceof Error && error.message.trim().toLowerCase() === "not found") ||
+    (typeof error === "string" && error.trim().toLowerCase() === "not found")
+  );
+}
+
 export default function Dashboard() {
   const { user } = useAuth();
   const { t } = useI18n();
+  const layout = useResponsiveLayout();
+  const nativePushSupported = NATIVE_PUSH_SUPPORTED;
 
   const [isChecking, setIsChecking] = useState(true);
   const [isHealthy, setIsHealthy] = useState<boolean | null>(null);
@@ -196,6 +213,11 @@ export default function Dashboard() {
       );
       setReminders(res.data.reminders ?? []);
     } catch (e) {
+      if (isMissingReminderFeedError(e)) {
+        setRemindersError(null);
+        setReminders([]);
+        return;
+      }
       setRemindersError(getErrorMessage(e));
       setReminders([]);
     } finally {
@@ -246,13 +268,22 @@ export default function Dashboard() {
   );
 
   useEffect(() => {
-    if (!webPushSupported) return;
+    if (nativePushSupported || !webPushSupported) return;
     setPermission(
       (globalThis as any).Notification.permission as NotificationPermission
     );
-  }, [webPushSupported]);
+  }, [nativePushSupported, webPushSupported]);
 
   const refreshPushSubscriptionState = useCallback(async () => {
+    if (nativePushSupported) {
+      try {
+        const status = await getNativePushStatus();
+        setPushSubscribed(status.subscribed);
+      } catch {
+        setPushSubscribed(false);
+      }
+      return;
+    }
     if (!webPushSupported) return;
     try {
       const reg = await (globalThis as any).navigator.serviceWorker.getRegistration();
@@ -265,7 +296,7 @@ export default function Dashboard() {
     } catch {
       setPushSubscribed(false);
     }
-  }, [webPushSupported]);
+  }, [nativePushSupported, webPushSupported]);
 
   useEffect(() => {
     void refreshPushSubscriptionState();
@@ -295,11 +326,20 @@ export default function Dashboard() {
     return outputArray;
   }
 
-  async function enableWebPush() {
-    if (!webPushSupported) return;
+  async function enablePush() {
     setPushBusy(true);
     setPushError(null);
     try {
+      if (nativePushSupported) {
+        const result = await enableNativePush();
+        setPushSubscribed(result.subscribed);
+        if (result.message) {
+          setPushError(t(result.message));
+        }
+        return;
+      }
+
+      if (!webPushSupported) return;
       const next = (await (globalThis as any).Notification.requestPermission()) as NotificationPermission;
       setPermission(next);
       if (next !== "granted") {
@@ -330,11 +370,17 @@ export default function Dashboard() {
     }
   }
 
-  async function disableWebPush() {
-    if (!webPushSupported) return;
+  async function disablePush() {
     setPushBusy(true);
     setPushError(null);
     try {
+      if (nativePushSupported) {
+        await disableNativePush();
+        setPushSubscribed(false);
+        return;
+      }
+
+      if (!webPushSupported) return;
       const reg = await (globalThis as any).navigator.serviceWorker.getRegistration();
       const sub = reg ? await reg.pushManager.getSubscription() : null;
       if (!sub) {
@@ -354,7 +400,7 @@ export default function Dashboard() {
   }
 
   async function sendTestPush() {
-    if (!webPushSupported) return;
+    if (!nativePushSupported && !webPushSupported) return;
     setPushBusy(true);
     setPushError(null);
     try {
@@ -386,6 +432,12 @@ export default function Dashboard() {
     <ThemedView style={styles.container} lightColor={BrandColors.canvas}>
       <BrandBackdrop />
       <ScrollView contentContainerStyle={styles.content}>
+        <View
+          style={[
+            styles.page,
+            layout.maxWidth ? { maxWidth: layout.maxWidth } : null,
+          ]}
+        >
         <View style={styles.hero}>
           <View style={styles.heroGlowTop} />
           <View style={styles.heroGlowBottom} />
@@ -433,7 +485,11 @@ export default function Dashboard() {
             </View>
             <View style={styles.heroStatCard}>
               <ThemedText style={styles.heroStatValue}>
-                {permission === "unsupported"
+                {nativePushSupported
+                  ? pushSubscribed
+                    ? "On"
+                    : "Off"
+                  : permission === "unsupported"
                   ? "Web only"
                   : pushSubscribed
                     ? "On"
@@ -450,50 +506,21 @@ export default function Dashboard() {
           </View>
         </View>
 
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <ThemedText type="subtitle">System pulse</ThemedText>
-            <ThemedText style={styles.sectionCaption}>Live health and delivery controls</ThemedText>
-          </View>
-
-          <View style={styles.card}>
-            <View style={styles.cardTopRow}>
-              <View>
-                <ThemedText style={styles.cardLabel}>API endpoint</ThemedText>
-                <ThemedText style={styles.apiText}>{API_BASE_URL}</ThemedText>
-              </View>
-              <View
-                style={[
-                  styles.statusBadge,
-                  isHealthy ? styles.statusBadgeSuccess : styles.statusBadgeWarning,
-                ]}
-              >
-                <ThemedText
-                  style={[
-                    styles.statusBadgeText,
-                    isHealthy ? styles.statusBadgeTextSuccess : styles.statusBadgeTextWarning,
-                  ]}
-                >
-                  {isChecking ? "Checking" : isHealthy ? "Connected" : "Attention"}
-                </ThemedText>
-              </View>
+        <View style={[styles.tabletSectionGrid, layout.isTablet ? styles.tabletSectionGridOn : null]}>
+          <View style={[styles.section, layout.isTablet ? styles.tabletSectionColumn : null]}>
+            <View style={styles.sectionHeader}>
+              <ThemedText type="subtitle">System pulse</ThemedText>
+              <ThemedText style={styles.sectionCaption}>Live health and delivery controls</ThemedText>
             </View>
 
-            {backendError ? (
-              <ThemedText style={styles.errorText}>{backendError}</ThemedText>
-            ) : (
-              <ThemedText style={styles.supportText}>
-                Core services are ready for auth, payments tracking, reminders, and admin monitoring.
-              </ThemedText>
-            )}
-          </View>
-
-          <View style={styles.card}>
+            <View style={styles.card}>
             <View style={styles.cardTopRow}>
               <View>
                 <ThemedText style={styles.cardLabel}>Push notifications</ThemedText>
                 <ThemedText style={styles.supportText}>
-                  {webPushSupported
+                  {nativePushSupported
+                    ? t("Native mobile delivery")
+                    : webPushSupported
                     ? t("Permission: {{permission}}{{subscription}}", {
                         permission,
                         subscription: pushSubscribed ? ` - ${t("subscribed")}` : "",
@@ -503,9 +530,9 @@ export default function Dashboard() {
               </View>
               <Pressable
                 style={styles.actionButtonGhost}
-                disabled={pushBusy || !webPushSupported}
+                disabled={pushBusy || (!nativePushSupported && !webPushSupported)}
                 onPress={() =>
-                  void (pushSubscribed ? disableWebPush() : enableWebPush())
+                  void (pushSubscribed ? disablePush() : enablePush())
                 }
               >
                 <ThemedText style={styles.actionButtonGhostText}>
@@ -514,7 +541,8 @@ export default function Dashboard() {
               </Pressable>
             </View>
 
-            {webPushSupported && permission === "granted" && pushSubscribed ? (
+            {(nativePushSupported && pushSubscribed) ||
+            (webPushSupported && permission === "granted" && pushSubscribed) ? (
               <Pressable
                 style={styles.actionButtonPrimary}
                 disabled={pushBusy}
@@ -527,30 +555,27 @@ export default function Dashboard() {
             ) : null}
 
             {pushError ? <ThemedText style={styles.errorText}>{pushError}</ThemedText> : null}
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <ThemedText type="subtitle">Your reminders</ThemedText>
-            <ThemedText style={styles.sectionCaption}>Upcoming contributions that need attention</ThemedText>
+            </View>
           </View>
 
-          <View style={styles.card}>
+          <View style={[styles.section, layout.isTablet ? styles.tabletSectionColumn : null]}>
+            <View style={styles.sectionHeader}>
+              <ThemedText type="subtitle">Your reminders</ThemedText>
+              <ThemedText style={styles.sectionCaption}>Upcoming contributions that need attention</ThemedText>
+            </View>
+
+            <View style={styles.card}>
             {remindersLoading ? (
               <View style={styles.loadingRow}>
                 <ActivityIndicator />
                 <ThemedText style={styles.supportText}>Loading reminder feed...</ThemedText>
               </View>
             ) : remindersError ? (
-              <ThemedText style={styles.errorText}>{remindersError}</ThemedText>
+              remindersError.trim().toLowerCase() === "not found" ? null : (
+                <ThemedText style={styles.errorText}>{remindersError}</ThemedText>
+              )
             ) : reminders.length === 0 ? (
-              <View style={styles.emptyState}>
-                <ThemedText style={styles.emptyTitle}>Nothing urgent right now</ThemedText>
-                <ThemedText style={styles.supportText}>
-                  You are fully caught up. This area will surface the next contribution windows automatically.
-                </ThemedText>
-              </View>
+              <ThemedText style={styles.supportText}>{t("No reminder")}</ThemedText>
             ) : (
               reminders.slice(0, 5).map((reminder, index) => (
                 <View
@@ -579,6 +604,7 @@ export default function Dashboard() {
                 </View>
               ))
             )}
+            </View>
           </View>
         </View>
 
@@ -783,6 +809,7 @@ export default function Dashboard() {
             </View>
           </View>
         ) : null}
+        </View>
       </ScrollView>
     </ThemedView>
   );
@@ -794,16 +821,20 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 18,
-    paddingBottom: 120,
-    gap: 18,
+    paddingBottom: 128,
+    alignItems: "center",
+  },
+  page: {
+    width: "100%",
+    gap: 22,
   },
   hero: {
     position: "relative",
     overflow: "hidden",
-    borderRadius: 32,
-    backgroundColor: BrandColors.blueDeep,
-    padding: 22,
-    gap: 18,
+    borderRadius: 34,
+    backgroundColor: BrandColors.blueNight,
+    padding: 24,
+    gap: 20,
     ...BrandShadow,
   },
   heroGlowTop: {
@@ -842,14 +873,15 @@ const styles = StyleSheet.create({
   },
   heroTitle: {
     color: "#FFFFFF",
-    fontSize: 32,
-    lineHeight: 36,
+    fontSize: 35,
+    lineHeight: 39,
     fontWeight: "800",
+    letterSpacing: -0.8,
   },
   heroSubtitle: {
-    color: "#E6EEFF",
+    color: "#DBE8FF",
     fontSize: 15,
-    lineHeight: 22,
+    lineHeight: 23,
   },
   heroPills: {
     flexDirection: "row",
@@ -894,11 +926,11 @@ const styles = StyleSheet.create({
   heroStatCard: {
     minWidth: 100,
     flexGrow: 1,
-    borderRadius: 18,
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    borderRadius: 20,
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.12)",
-    padding: 14,
+    borderColor: "rgba(255, 255, 255, 0.16)",
+    padding: 15,
     gap: 6,
   },
   heroStatValue: {
@@ -913,28 +945,40 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   section: {
-    gap: 12,
+    gap: 14,
+  },
+  tabletSectionGrid: {
+    width: "100%",
+    gap: 16,
+  },
+  tabletSectionGridOn: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+  },
+  tabletSectionColumn: {
+    flex: 1,
   },
   sectionHeader: {
-    gap: 4,
-    paddingHorizontal: 2,
+    gap: 5,
+    paddingHorizontal: 4,
   },
   sectionCaption: {
     color: BrandColors.muted,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 13,
+    lineHeight: 19,
+    letterSpacing: 0.1,
   },
   card: {
-    borderRadius: 28,
+    borderRadius: 30,
     backgroundColor: BrandColors.surface,
     borderWidth: 1,
     borderColor: BrandColors.border,
-    padding: 18,
-    gap: 14,
+    padding: 20,
+    gap: 16,
     ...BrandShadow,
   },
   adminCard: {
-    backgroundColor: "rgba(255,255,255,0.8)",
+    backgroundColor: "rgba(255,255,255,0.86)",
   },
   cardTopRow: {
     flexDirection: "row",
@@ -949,13 +993,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     textTransform: "uppercase",
     letterSpacing: 0.6,
-  },
-  apiText: {
-    marginTop: 4,
-    color: BrandColors.ink,
-    fontSize: 15,
-    lineHeight: 22,
-    fontWeight: "700",
   },
   supportText: {
     color: BrandColors.muted,
@@ -995,10 +1032,10 @@ const styles = StyleSheet.create({
   },
   actionButtonPrimary: {
     alignSelf: "flex-start",
-    borderRadius: 16,
+    borderRadius: 18,
     backgroundColor: BrandColors.blueDeep,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
     ...BrandShadow,
   },
   actionButtonPrimaryText: {
@@ -1008,12 +1045,12 @@ const styles = StyleSheet.create({
   },
   actionButtonGhost: {
     alignSelf: "flex-start",
-    borderRadius: 16,
-    backgroundColor: BrandColors.surfaceStrong,
+    borderRadius: 18,
+    backgroundColor: BrandColors.surfaceMuted,
     borderWidth: 1,
     borderColor: BrandColors.borderStrong,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
   },
   actionButtonGhostText: {
     color: BrandColors.inkSoft,
@@ -1035,15 +1072,15 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   reminderCard: {
-    borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.72)",
+    borderRadius: 22,
+    backgroundColor: "rgba(255,255,255,0.8)",
     borderWidth: 1,
     borderColor: BrandColors.border,
-    padding: 14,
-    gap: 6,
+    padding: 15,
+    gap: 7,
   },
   reminderCardPriority: {
-    backgroundColor: "rgba(46,207,227,0.08)",
+    backgroundColor: "rgba(46,207,227,0.12)",
     borderColor: BrandColors.borderStrong,
   },
   reminderMetaRow: {
@@ -1079,11 +1116,11 @@ const styles = StyleSheet.create({
   metricPanel: {
     minWidth: 110,
     flexGrow: 1,
-    borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.88)",
+    borderRadius: 22,
+    backgroundColor: "rgba(255,255,255,0.92)",
     borderWidth: 1,
     borderColor: BrandColors.border,
-    padding: 14,
+    padding: 15,
     gap: 5,
   },
   metricValue: {

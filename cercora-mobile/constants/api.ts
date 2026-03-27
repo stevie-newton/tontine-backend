@@ -1,6 +1,23 @@
 import Constants from "expo-constants";
 import { Platform } from "react-native";
 
+function normalizeConfiguredApiUrl(value: string | undefined): string | undefined {
+  const raw = value?.trim();
+  if (!raw) return undefined;
+  if (/^https?:\/\//i.test(raw)) return raw;
+
+  // Be forgiving when env values omit the scheme.
+  // Local/private addresses default to http; hosted domains default to https.
+  const isLocalHost =
+    raw.startsWith("localhost") ||
+    raw.startsWith("127.") ||
+    raw.startsWith("10.") ||
+    raw.startsWith("192.168.") ||
+    /^172\.(1[6-9]|2\d|3[0-1])\./.test(raw);
+
+  return `${isLocalHost ? "http" : "https"}://${raw}`;
+}
+
 function getExpoDevHost(): string | null {
   // Usually "<ip-or-hostname>:<port>" (e.g. "192.168.1.10:8081")
   const hostUri =
@@ -37,4 +54,5 @@ function getDefaultDevApiUrl(): string {
 }
 
 export const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? (__DEV__ ? getDefaultDevApiUrl() : "http://127.0.0.1:8000");
+  normalizeConfiguredApiUrl(process.env.EXPO_PUBLIC_API_URL) ??
+  (__DEV__ ? getDefaultDevApiUrl() : "http://127.0.0.1:8000");

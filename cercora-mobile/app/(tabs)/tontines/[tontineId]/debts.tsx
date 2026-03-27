@@ -3,6 +3,8 @@ import { Stack, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -232,19 +234,35 @@ export default function DebtsScreen() {
   }
 
   return (
-    <ThemedView style={styles.container} lightColor={BrandColors.canvas}>
-      <BrandBackdrop />
-      <Stack.Screen options={{ title: t("Debts") }} />
+    <KeyboardAvoidingView
+      style={styles.keyboard}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 24 : 0}
+    >
+      <ThemedView style={styles.container} lightColor={BrandColors.canvas}>
+        <BrandBackdrop />
+        <Stack.Screen options={{ title: t("Debts") }} />
 
-      {isLoading ? (
-        <View style={styles.center}>
-          <ActivityIndicator />
-        </View>
-      ) : (
-        <ScrollView
-          contentContainerStyle={styles.content}
-          refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />}
-        >
+        {isLoading ? (
+          <View style={styles.center}>
+            <ActivityIndicator />
+          </View>
+        ) : (
+          <ScrollView
+            contentContainerStyle={styles.content}
+            refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
+            showsVerticalScrollIndicator={false}
+          >
+          <View style={styles.pageHeader}>
+            <ThemedText style={styles.pageTitle}>Debt ledger</ThemedText>
+            <ThemedText style={styles.pageSubtitle}>
+              A mobile version of the web debt flow, with coverage creation, open balances, and repayment history in one place.
+            </ThemedText>
+          </View>
+
           <View style={styles.hero}>
             <View style={styles.heroGlowTop} />
             <View style={styles.heroGlowBottom} />
@@ -425,10 +443,7 @@ export default function DebtsScreen() {
 
             {openDebts.length === 0 ? (
               <View style={styles.emptyState}>
-                <ThemedText style={styles.emptyTitle}>No open debts</ThemedText>
-                <ThemedText style={styles.supportText}>
-                  When a member covers someone else, unresolved debts will show up here.
-                </ThemedText>
+                <ThemedText style={styles.emptyTitle}>{t("No dept")}</ThemedText>
               </View>
             ) : (
               openDebts.map((item) => {
@@ -520,13 +535,17 @@ export default function DebtsScreen() {
               })
             )}
           </View>
-        </ScrollView>
-      )}
-    </ThemedView>
+          </ScrollView>
+        )}
+      </ThemedView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  keyboard: {
+    flex: 1,
+  },
   container: {
     flex: 1,
   },
@@ -536,9 +555,24 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   content: {
+    flexGrow: 1,
     padding: 18,
     paddingBottom: 120,
     gap: 18,
+  },
+  pageHeader: {
+    gap: 6,
+  },
+  pageTitle: {
+    color: BrandColors.ink,
+    fontSize: 28,
+    lineHeight: 32,
+    fontWeight: "800",
+  },
+  pageSubtitle: {
+    color: BrandColors.muted,
+    fontSize: 14,
+    lineHeight: 20,
   },
   hero: {
     position: "relative",

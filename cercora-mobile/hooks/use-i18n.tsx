@@ -59,6 +59,22 @@ const frTranslations: Record<string, string> = {
   "Phone number": "Numéro de téléphone",
   "Use international format (e.g. +237670000000)":
     "Utilisez le format international (par ex. +237670000000)",
+  "Local phone number": "Numéro local",
+  "Choose country code": "Choisissez l'indicatif pays",
+  "Search countries or code": "Rechercher un pays ou un indicatif",
+  "No matching country": "Aucun pays correspondant",
+  "Try a country name, dial code, or ISO code.":
+    "Essayez un nom de pays, un indicatif ou un code ISO.",
+  Show: "Afficher",
+  Hide: "Masquer",
+  "Password strength": "Niveau du mot de passe",
+  "Create a password you will remember": "Créez un mot de passe que vous retiendrez",
+  "8+ characters": "8+ caractères",
+  "Strong password": "Mot de passe fort",
+  "Getting stronger": "En bonne voie",
+  "Add a little more security": "Ajoutez un peu plus de sécurité",
+  "Enter the full {{count}}-digit code": "Entrez le code complet à {{count}} chiffres",
+  "{{count}} of {{total}} digits entered": "{{count}} sur {{total}} chiffres saisis",
   "Enter your password": "Entrez votre mot de passe",
   "Sign in": "Se connecter",
   "Need help getting in?": "Besoin d'aide pour vous connecter ?",
@@ -77,6 +93,13 @@ const frTranslations: Record<string, string> = {
     "Nous enverrons un code de vérification à usage unique sur votre téléphone après l'inscription.",
   "Full name": "Nom complet",
   "Your name": "Votre nom",
+  "Your full name": "Votre nom complet",
+  "This will appear on your Cercora profile.":
+    "Ce nom apparaîtra sur votre profil Cercora.",
+  "Enter at least 2 characters.": "Entrez au moins 2 caractères.",
+  "You can keep going with one name, but full names are easier for groups to recognize.":
+    "Vous pouvez continuer avec un seul nom, mais les noms complets sont plus faciles à reconnaître dans les groupes.",
+  "Looks good": "C'est bon",
   "Create a password": "Créer un mot de passe",
   Continue: "Continuer",
   "Already have an account? Sign in": "Vous avez déjà un compte ? Connectez-vous",
@@ -112,11 +135,20 @@ const frTranslations: Record<string, string> = {
   "Reset code": "Code de réinitialisation",
   "Create a new password": "Créer un nouveau mot de passe",
   "Reset password": "Réinitialiser le mot de passe",
+  "Enter your phone number first.": "Entrez d'abord votre numéro de téléphone.",
+  "A new reset code was sent if that phone number exists.":
+    "Un nouveau code de réinitialisation a été envoyé si ce numéro existe.",
+  "Enter a tontine name.": "Entrez un nom de tontine.",
+  "Use at least 3 characters for the tontine name.":
+    "Utilisez au moins 3 caractères pour le nom de la tontine.",
+  "Enter a valid contribution amount.": "Entrez un montant de contribution valide.",
+  "Enter a valid total cycle count.": "Entrez un nombre total de cycles valide.",
 
   "Cercora dashboard": "Tableau de bord Cercora",
   "System pulse": "État du système",
   "Live health and delivery controls": "Santé en direct et contrôles de diffusion",
   "Your reminders": "Vos rappels",
+  "No reminder": "Aucun rappel",
   "Upcoming contributions that need attention": "Contributions à venir qui demandent votre attention",
   "Admin command": "Commande admin",
   "Operational visibility for the whole platform": "Visibilité opérationnelle sur toute la plateforme",
@@ -161,6 +193,7 @@ const frTranslations: Record<string, string> = {
   "You are clear for now. No upcoming reminders.": "Vous êtes tranquille pour l'instant. Aucun rappel à venir.",
   "1 reminder waiting across your groups.": "1 rappel vous attend dans vos groupes.",
   "{{count}} reminders waiting across your groups.": "{{count}} rappels vous attendent dans vos groupes.",
+  "Backend status": "Statut du backend",
   "API endpoint": "Point d'accès API",
   Checking: "Vérification",
   Connected: "Connecté",
@@ -169,9 +202,20 @@ const frTranslations: Record<string, string> = {
     "Les services principaux sont prêts pour l'authentification, le suivi des paiements, les rappels et la supervision admin.",
   "Push notifications": "Notifications push",
   "Available on secure web only.": "Disponible uniquement sur le web sécurisé.",
+  "Native mobile delivery": "Diffusion mobile native",
+  "Notification permission not granted.": "Autorisation de notification non accordée.",
+  "Native push requires a physical device.": "Les notifications push natives nécessitent un appareil physique.",
+  "Missing EAS project ID for push registration.": "ID de projet EAS manquant pour l'enregistrement des notifications push.",
+  "Native push is not supported on this platform.": "Les notifications push natives ne sont pas prises en charge sur cette plateforme.",
+  "This APK does not support native push yet.": "Cette APK ne prend pas encore en charge les notifications push natives.",
+  "Web push works on the Cercora web app. Native mobile push is not wired yet for the APK.":
+    "Le web push fonctionne sur l'application web Cercora. Les notifications push mobiles natives ne sont pas encore connectées pour cette APK.",
+  "Use the web app if you want push notifications today.":
+    "Utilisez l'application web si vous souhaitez des notifications push dès aujourd'hui.",
   Disable: "Désactiver",
   Enable: "Activer",
   "Send test push": "Envoyer une notification test",
+  "Native soon": "Mobile bientôt",
   "Fill in the payment details below.": "Remplissez les détails du paiement ci-dessous.",
   "Nothing urgent right now": "Rien d'urgent pour l'instant",
   "You are fully caught up. This area will surface the next contribution windows automatically.":
@@ -297,6 +341,10 @@ const frTranslations: Record<string, string> = {
   "Lower pressure cadence": "Rythme moins contraignant",
   "Total cycles": "Nombre total de cycles",
   "Create tontine": "Créer la tontine",
+  "Cycle setup happens after creation":
+    "La configuration des cycles se fait après la création",
+  "Just like the web page, this creates the tontine as a draft first. You can invite members and shape the cycle flow from the tontine workspace afterward.":
+    "Comme sur la page web, cette action crée d'abord la tontine en brouillon. Vous pourrez ensuite inviter des membres et organiser le déroulement des cycles depuis l'espace tontine.",
   "What happens next": "Ce qui se passe ensuite",
   "After creation, you can invite members, generate cycles, and start collecting contributions from the tontine workspace.":
     "Après la création, vous pourrez inviter des membres, générer des cycles et commencer à collecter les contributions depuis l'espace tontine.",
@@ -305,6 +353,60 @@ const frTranslations: Record<string, string> = {
   "{{count}} cycles": "{{count}} cycles",
 
   "Tontine workspace": "Espace tontine",
+  "Invalid tontine id.": "ID de tontine invalide.",
+  "A mobile workspace built from the web tontine page: overview, reliability, members, cycles, and debts in one place.":
+    "Un espace mobile inspiré de la page web de tontine : aperçu, fiabilité, membres, cycles et dettes au même endroit.",
+  "Current cycle: {{current}}/{{total}}": "Cycle actuel : {{current}}/{{total}}",
+  "You can remove this tontine only when no financial activity has been recorded yet.":
+    "Vous pouvez supprimer cette tontine uniquement lorsqu'aucune activité financière n'a encore été enregistrée.",
+  "Generate cycles to activate this tontine flow.":
+    "Générez des cycles pour activer le fonctionnement de cette tontine.",
+  "Activate tontine": "Activer la tontine",
+  "Repair cycle plan": "Réparer le plan des cycles",
+  "Generate cycles first": "Générez d'abord les cycles",
+  "Debt flags": "Alertes dette",
+  "Open debt": "Dette ouverte",
+  "No dept": "Aucune dette",
+  "No cycles created yet.": "Aucun cycle créé pour le moment.",
+  "Cycle #{{number}}": "Cycle #{{number}}",
+  "No debts recorded for this tontine.": "Aucune dette enregistrée pour cette tontine.",
+  "Cycle {{cycle}}: {{name}}": "Cycle {{cycle}} : {{name}}",
+  "Covered by {{name}} - {{amount}}": "Couvert par {{name}} - {{amount}}",
+  "Payout member: {{name}}": "Bénéficiaire : {{name}}",
+  "{{status}} - {{start}} to {{end}}": "{{status}} - {{start}} à {{end}}",
+  "Your tontines": "Vos tontines",
+  "Manage invites, track your reliability, and open every savings group from one place.":
+    "Gérez les invitations, suivez votre fiabilité et ouvrez chaque groupe d'épargne depuis un seul endroit.",
+  "Keep your groups and invites in sync":
+    "Gardez vos groupes et vos invitations synchronisés",
+  "This mobile view now follows the same structure as the web page, with your score, pending invites, create action, and group list in one flow.":
+    "Cette vue mobile suit désormais la même structure que la page web, avec votre score, les invitations en attente, l'action de création et la liste des groupes dans un seul flux.",
+  Groups: "Groupes",
+  "Reliability profile": "Profil de fiabilité",
+  "The same score summary from the web tontines page, adapted for mobile.":
+    "Le même résumé de score que sur la page web des tontines, adapté au mobile.",
+  Score: "Score",
+  "Late payments": "Paiements en retard",
+  "Pending invites": "Invitations en attente",
+  "Accept or reject invitations without leaving the tontines home screen.":
+    "Acceptez ou refusez les invitations sans quitter l'écran d'accueil des tontines.",
+  "Tontine ID #{{id}}": "ID tontine #{{id}}",
+  "Create a new tontine": "Créer une nouvelle tontine",
+  "Start a new savings group, then invite members and generate cycles from its workspace.":
+    "Démarrez un nouveau groupe d'épargne, puis invitez des membres et générez les cycles depuis son espace de travail.",
+  "Go to create form": "Aller au formulaire de création",
+  "Your groups": "Vos groupes",
+  "Loading your tontines...": "Chargement de vos tontines...",
+  "No tontines yet": "Aucune tontine pour le moment",
+  "Create your first savings group to invite members and start building your rotation.":
+    "Créez votre premier groupe d'épargne pour inviter des membres et commencer à construire votre rotation.",
+  "Custom contribution cadence": "Cadence de contribution personnalisée",
+  "{{frequency}} contribution cadence": "Cadence de contribution {{frequency}}",
+  "Contribution: {{amount}}": "Contribution : {{amount}}",
+  "Cycle: {{current}}/{{total}}": "Cycle : {{current}}/{{total}}",
+  "Open group": "Ouvrir le groupe",
+  "Invite accepted.": "Invitation acceptée.",
+  "Invite rejected.": "Invitation refusée.",
   "Track progress, invite members, and manage the full savings cycle from one place.":
     "Suivez la progression, invitez des membres et gérez le cycle complet d'épargne depuis un seul endroit.",
   "Cercora member": "Membre Cercora",

@@ -45,6 +45,12 @@ type Cycle = {
   payout_member_phone?: string | null;
 };
 
+type Member = {
+  membership_id: number;
+  id: number;
+  membership_status: "active" | "pending" | string;
+};
+
 function formatShortDate(value: string) {
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return value;
@@ -63,6 +69,7 @@ export default function TontineCyclesScreen() {
 
   const [tontine, setTontine] = useState<Tontine | null>(null);
   const [cycles, setCycles] = useState<Cycle[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -71,12 +78,14 @@ export default function TontineCyclesScreen() {
   const load = useCallback(async () => {
     setError(null);
     try {
-      const [tontineRes, cyclesRes] = await Promise.all([
+      const [tontineRes, cyclesRes, membersRes] = await Promise.all([
         api.get<Tontine>(`/tontines/${id}`),
         api.get<Cycle[]>(`/tontine-cycles/tontine/${id}`),
+        api.get<Member[]>(`/tontine-memberships/tontine/${id}/members`),
       ]);
       setTontine(tontineRes.data);
       setCycles(cyclesRes.data ?? []);
+      setMembers(membersRes.data ?? []);
     } catch (e) {
       setError(getErrorMessage(e));
     } finally {
@@ -102,9 +111,22 @@ export default function TontineCyclesScreen() {
   }
 
   const isOwner = !!tontine && !!user && tontine.owner_id === user.id;
+  const myMembership = user ? members.find((member) => member.id === user.id) ?? null : null;
+  const isActiveMember = !!myMembership && myMembership.membership_status === "active";
   const openCycles = cycles.filter((cycle) => !cycle.is_closed);
   const closedCycles = cycles.filter((cycle) => cycle.is_closed);
   const nextCycle = cycles.find((cycle) => cycle.cycle_number === tontine?.current_cycle) ?? null;
+
+  function canContributeToCycle(cycle: Cycle) {
+    return (
+      !!user &&
+      !!tontine &&
+      isActiveMember &&
+      !cycle.is_closed &&
+      cycle.cycle_number === tontine.current_cycle &&
+      cycle.payout_member_id !== user.id
+    );
+  }
 
   async function onGenerateCycles() {
     setError(null);
@@ -230,15 +252,7 @@ export default function TontineCyclesScreen() {
               </View>
             ) : (
               cycles.map((item) => (
-                <Link
-                  key={item.id}
-                  href={{
-                    pathname: "/(tabs)/tontines/[tontineId]/cycles/[cycleId]",
-                    params: { tontineId: String(id), cycleId: String(item.id) },
-                  }}
-                  asChild
-                >
-                  <Pressable style={styles.cycleCard}>
+                  <View key={item.id} style={styles.cycleCard}>
                     <View style={styles.cycleHeader}>
                       <View style={styles.cycleHeading}>
                         <ThemedText style={styles.cycleTitle}>Cycle {item.cycle_number}</ThemedText>
@@ -280,8 +294,35 @@ export default function TontineCyclesScreen() {
                         <ThemedText style={styles.metricLabel}>Closed at</ThemedText>
                       </View>
                     </View>
-                  </Pressable>
-                </Link>
+
+                    <View style={styles.cycleActions}>
+                      <Link
+                        href={{
+                          pathname: "/(tabs)/tontines/[tontineId]/cycles/[cycleId]",
+                          params: { tontineId: String(id), cycleId: String(item.id) },
+                        }}
+                        asChild
+                      >
+                        <Pressable style={styles.inlineAction}>
+                          <ThemedText style={styles.inlineActionText}>Open</ThemedText>
+                        </Pressable>
+                      </Link>
+
+                      {canContributeToCycle(item) ? (
+                        <Link
+                          href={{
+                            pathname: "/(tabs)/tontines/[tontineId]/cycles/[cycleId]/contribute",
+                            params: { tontineId: String(id), cycleId: String(item.id) },
+                          }}
+                          asChild
+                        >
+                          <Pressable style={styles.inlinePrimaryAction}>
+                            <ThemedText style={styles.inlinePrimaryActionText}>Contribute</ThemedText>
+                          </Pressable>
+                        </Link>
+                      ) : null}
+                    </View>
+                  </View>
               ))
             )}
           </View>
@@ -506,6 +547,11 @@ const styles = StyleSheet.create({
     padding: 14,
     gap: 10,
   },
+  cycleActions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
   cycleHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -520,6 +566,36 @@ const styles = StyleSheet.create({
     color: BrandColors.ink,
     fontSize: 16,
     lineHeight: 22,
+    fontWeight: "800",
+  },
+  inlineAction: {
+    minWidth: 92,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: BrandColors.borderStrong,
+    backgroundColor: BrandColors.surfaceStrong,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    alignItems: "center",
+  },
+  inlineActionText: {
+    color: BrandColors.inkSoft,
+    fontSize: 13,
+    lineHeight: 16,
+    fontWeight: "800",
+  },
+  inlinePrimaryAction: {
+    minWidth: 120,
+    borderRadius: 14,
+    backgroundColor: BrandColors.blueDeep,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    alignItems: "center",
+  },
+  inlinePrimaryActionText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    lineHeight: 16,
     fontWeight: "800",
   },
   statusBadge: {

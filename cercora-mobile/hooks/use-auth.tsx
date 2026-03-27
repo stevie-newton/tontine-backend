@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter, useSegments } from "expo-router";
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 
+import { subscribeToSessionExpired } from "@/hooks/auth-session";
 import { api, setApiAccessToken } from "@/hooks/api-client";
 import { getErrorMessage } from "@/hooks/error-utils";
 
@@ -91,6 +92,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    return subscribeToSessionExpired(async () => {
+      setApiAccessToken(null);
+      await Promise.all([
+        AsyncStorage.removeItem(ACCESS_TOKEN_KEY),
+        AsyncStorage.removeItem(USER_KEY),
+      ]);
+      setState({ isLoading: false, accessToken: null, user: null });
+      router.replace("/(auth)/login");
+    });
+  }, [router]);
 
   useEffect(() => {
     if (state.isLoading) return;

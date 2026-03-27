@@ -1,8 +1,10 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 
 import { AuthScreenShell, authStyles } from "@/components/auth-shell";
+import { OtpInput } from "@/components/otp-input";
+import { PhoneInput } from "@/components/phone-input";
 import { ThemedText } from "@/components/themed-text";
 import { useAuth } from "@/hooks/use-auth";
 import { getErrorMessage } from "@/hooks/error-utils";
@@ -54,13 +56,13 @@ export default function VerifyPhoneScreen() {
     <>
       <Stack.Screen options={{ title: t("Verify Phone") }} />
       <AuthScreenShell
-        eyebrow="Verification"
-        title="Confirm your phone number"
-        subtitle="Enter the six-digit code we sent you. If it did not arrive, you can resend it from here."
+        eyebrow={t("Verification")}
+        title={t("Confirm your phone number")}
+        subtitle={t("Enter the six-digit code we sent you. If it did not arrive, you can resend it from here.")}
         tone="plum"
         stats={[
-          { label: "Phone", value: phone.trim() ? "Ready" : "Needed" },
-          { label: "Code", value: code.trim() ? "Entered" : "Needed" },
+          { label: t("Phone"), value: phone.trim() ? t("Ready") : t("Needed") },
+          { label: t("Code"), value: code.trim() ? t("Entered") : t("Needed") },
         ]}
       >
         <ThemedText type="subtitle">Verification code</ThemedText>
@@ -70,28 +72,17 @@ export default function VerifyPhoneScreen() {
 
         <View style={styles.form}>
           <ThemedText style={authStyles.label}>Phone number</ThemedText>
-          <TextInput
+          <PhoneInput
             value={phone}
             onChangeText={setPhone}
-            placeholder={t("Phone number")}
-            placeholderTextColor="#98A2B3"
-            keyboardType="phone-pad"
-            autoCapitalize="none"
-            style={authStyles.input}
+            placeholder={t("Local phone number")}
           />
-          <ThemedText style={authStyles.sectionText}>
-            Use international format (e.g. +237670000000)
-          </ThemedText>
 
           <ThemedText style={authStyles.label}>Verification code</ThemedText>
-          <TextInput
+          <OtpInput
             value={code}
             onChangeText={setCode}
             placeholder={t("Verification code")}
-            placeholderTextColor="#98A2B3"
-            keyboardType="number-pad"
-            autoCapitalize="none"
-            style={authStyles.input}
           />
 
           {message ? <ThemedText style={authStyles.message}>{message}</ThemedText> : null}

@@ -2,7 +2,8 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { Tabs } from "expo-router";
 
 import { HapticTab } from "@/components/haptic-tab";
-import { BrandColors } from "@/constants/brand";
+import { BrandColors, BrandShadow } from "@/constants/brand";
+import { Fonts } from "@/constants/theme";
 import { useI18n } from "@/hooks/use-i18n";
 
 export default function TabLayout() {
@@ -16,24 +17,33 @@ export default function TabLayout() {
         tabBarInactiveTintColor: BrandColors.muted,
         tabBarButton: HapticTab,
         headerStyle: {
-          backgroundColor: BrandColors.surfaceStrong,
+          backgroundColor: "rgba(255,255,255,0.9)",
         },
         headerShadowVisible: false,
         headerTintColor: BrandColors.ink,
         headerTitleStyle: {
-          fontWeight: "700",
+          fontWeight: "800",
+          fontFamily: Fonts.rounded,
+          fontSize: 18,
+          letterSpacing: -0.3,
         },
         tabBarStyle: {
-          backgroundColor: "rgba(255,255,255,0.92)",
-          borderTopColor: BrandColors.border,
-          height: 72,
+          backgroundColor: "rgba(255,255,255,0.96)",
+          borderTopColor: "rgba(255,255,255,0.2)",
+          borderTopWidth: 0,
+          height: 78,
           paddingTop: 8,
-          paddingBottom: 10,
+          paddingBottom: 12,
+          marginHorizontal: 14,
+          marginBottom: 14,
+          borderRadius: 26,
           position: "absolute",
+          ...BrandShadow,
         },
         tabBarLabelStyle: {
           fontSize: 11,
-          fontWeight: "700",
+          fontWeight: "800",
+          fontFamily: Fonts.sans,
         },
       }}
     >

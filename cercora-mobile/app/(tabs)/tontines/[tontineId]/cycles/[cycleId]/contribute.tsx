@@ -87,7 +87,7 @@ export default function ContributeScreen() {
     setError(null);
     setIsSubmitting(true);
     try {
-      await api.post("/contributions", {
+      await api.post("/contributions/", {
         cycle_id: cycleNum,
         amount: amount.trim(),
         transaction_reference: transactionReference.trim(),
@@ -104,7 +104,8 @@ export default function ContributeScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.keyboard}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 24 : 0}
     >
       <ThemedView style={styles.container} lightColor="#F4F7FB">
         <Stack.Screen options={{ title: t("Contribute") }} />
@@ -114,7 +115,13 @@ export default function ContributeScreen() {
             <ActivityIndicator />
           </View>
         ) : (
-          <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          <ScrollView
+            contentContainerStyle={styles.content}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
+            showsVerticalScrollIndicator={false}
+          >
             <View style={styles.hero}>
               <View style={styles.heroGlowTop} />
               <View style={styles.heroGlowBottom} />
@@ -183,7 +190,7 @@ export default function ContributeScreen() {
               <View style={styles.helperCard}>
                 <ThemedText style={styles.helperTitle}>Before you submit</ThemedText>
                 <ThemedText style={styles.supportText}>
-                  Make sure the amount matches your cycle contribution and the reference is the one used for the transfer.
+                  Make sure the amount matches your cycle contribution and the reference matches the transfer. Add screenshot proof if you have it for beneficiary review.
                 </ThemedText>
               </View>
 
@@ -191,7 +198,7 @@ export default function ContributeScreen() {
 
               <Pressable
                 style={styles.primaryButton}
-                disabled={isSubmitting}
+                disabled={isSubmitting || !transactionReference.trim()}
                 onPress={() => void onSubmit()}
               >
                 <ThemedText style={styles.primaryButtonText}>
@@ -219,8 +226,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   content: {
+    flexGrow: 1,
     padding: 18,
-    paddingBottom: 28,
+    paddingBottom: 56,
     gap: 18,
   },
   hero: {

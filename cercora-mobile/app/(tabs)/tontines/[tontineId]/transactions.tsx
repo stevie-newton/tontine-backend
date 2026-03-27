@@ -1,10 +1,14 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { Stack, useLocalSearchParams } from "expo-router";
+import * as FileSystem from "expo-file-system/legacy";
 import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Platform,
+  Pressable,
   RefreshControl,
   ScrollView,
+  Share,
   StyleSheet,
   View,
 } from "react-native";
@@ -15,6 +19,7 @@ import { ThemedView } from "@/components/themed-view";
 import { BrandColors, BrandShadow } from "@/constants/brand";
 import { api } from "@/hooks/api-client";
 import { getErrorMessage } from "@/hooks/error-utils";
+import { useAuth } from "@/hooks/use-auth";
 import { getCurrentLocale, useI18n } from "@/hooks/use-i18n";
 
 type Transaction = {
@@ -40,6 +45,11 @@ type TransactionSummary = {
   balance: string | number;
   transaction_count: number;
   last_transaction_date: string | null;
+};
+
+type Tontine = {
+  id: number;
+  owner_id: number;
 };
 
 function formatAmount(value: string | number) {
@@ -105,22 +115,27 @@ export default function TransactionsScreen() {
   const { tontineId } = useLocalSearchParams<{ tontineId: string }>();
   const id = useMemo(() => Number(tontineId), [tontineId]);
   const { t } = useI18n();
+  const { user } = useAuth();
 
   const [items, setItems] = useState<Transaction[]>([]);
   const [summary, setSummary] = useState<TransactionSummary | null>(null);
+  const [tontine, setTontine] = useState<Tontine | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
     try {
-      const [listRes, sumRes] = await Promise.all([
+      const [listRes, sumRes, tontineRes] = await Promise.all([
         api.get<Transaction[]>(`/transactions/tontine/${id}`),
         api.get<TransactionSummary>(`/transactions/tontine/${id}/summary`),
+        api.get<Tontine>(`/tontines/${id}`),
       ]);
       setItems(listRes.data ?? []);
       setSummary(sumRes.data ?? null);
+      setTontine(tontineRes.data ?? null);
     } catch (e) {
       setError(getErrorMessage(e));
     } finally {
@@ -145,9 +160,35 @@ export default function TransactionsScreen() {
     await load();
   }
 
+  async function onExportCsv() {
+    setError(null);
+    setIsExporting(true);
+    try {
+      const response = await api.get<string>(`/transactions/tontine/${id}/export/csv`, {
+        responseType: "text",
+      });
+      const fileUri = `${FileSystem.cacheDirectory}tontine_${id}_ledger.csv`;
+      await FileSystem.writeAsStringAsync(fileUri, response.data, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
+      const shareUri =
+        Platform.OS === "android" ? await FileSystem.getContentUriAsync(fileUri) : fileUri;
+      await Share.share({
+        url: shareUri,
+        title: `tontine_${id}_ledger.csv`,
+        message: `tontine_${id}_ledger.csv`,
+      });
+    } catch (e) {
+      setError(getErrorMessage(e));
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
   const contributionTotal = Number(summary?.total_contributions ?? 0);
   const payoutTotal = Number(summary?.total_payouts ?? 0);
   const balanceTone = Number(summary?.balance ?? 0) >= 0 ? styles.balanceGood : styles.balanceWarn;
+  const isOwner = !!user && !!tontine && user.id === tontine.owner_id;
 
   return (
     <ThemedView style={styles.container} lightColor={BrandColors.canvas}>
@@ -163,6 +204,13 @@ export default function TransactionsScreen() {
           contentContainerStyle={styles.content}
           refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />}
         >
+          <View style={styles.pageHeader}>
+            <ThemedText style={styles.pageTitle}>Transaction ledger</ThemedText>
+            <ThemedText style={styles.pageSubtitle}>
+              This view stays linked to the backend ledger routes while matching the newer tontine workspace structure.
+            </ThemedText>
+          </View>
+
           <View style={styles.hero}>
             <View style={styles.heroGlowTop} />
             <View style={styles.heroGlowBottom} />
@@ -216,12 +264,45 @@ export default function TransactionsScreen() {
                 <ThemedText style={styles.metricLabel}>Last entry</ThemedText>
               </View>
             </View>
+            <View style={styles.metricGrid}>
+              <View style={styles.metricTileCompact}>
+                <ThemedText style={styles.metricValueCompact}>
+                  {formatAmount(summary?.total_contributions ?? 0)}
+                </ThemedText>
+                <ThemedText style={styles.metricLabel}>Contribution volume</ThemedText>
+              </View>
+              <View style={styles.metricTileCompact}>
+                <ThemedText style={styles.metricValueCompact}>
+                  {formatAmount(summary?.total_payouts ?? 0)}
+                </ThemedText>
+                <ThemedText style={styles.metricLabel}>Payout volume</ThemedText>
+              </View>
+              <View style={styles.metricTileCompact}>
+                <ThemedText style={styles.metricValueCompact}>
+                  {formatAmount(summary?.total_fees ?? 0)}
+                </ThemedText>
+                <ThemedText style={styles.metricLabel}>Fees</ThemedText>
+              </View>
+            </View>
           </View>
 
           <View style={styles.card}>
             <View style={styles.cardHeader}>
               <ThemedText type="subtitle">History</ThemedText>
-              <ThemedText style={styles.supportText}>{items.length} transactions</ThemedText>
+              <View style={styles.headerActions}>
+                {isOwner ? (
+                  <Pressable
+                    style={styles.exportButton}
+                    disabled={isExporting}
+                    onPress={() => void onExportCsv()}
+                  >
+                    <ThemedText style={styles.exportButtonText}>
+                      {isExporting ? "Exporting..." : "Export CSV"}
+                    </ThemedText>
+                  </Pressable>
+                ) : null}
+                <ThemedText style={styles.supportText}>{items.length} transactions</ThemedText>
+              </View>
             </View>
 
             {items.length === 0 ? (
@@ -301,6 +382,20 @@ const styles = StyleSheet.create({
     padding: 18,
     paddingBottom: 120,
     gap: 18,
+  },
+  pageHeader: {
+    gap: 6,
+  },
+  pageTitle: {
+    color: BrandColors.ink,
+    fontSize: 28,
+    lineHeight: 32,
+    fontWeight: "800",
+  },
+  pageSubtitle: {
+    color: BrandColors.muted,
+    fontSize: 14,
+    lineHeight: 20,
   },
   hero: {
     position: "relative",
@@ -414,6 +509,23 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     gap: 12,
+  },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  exportButton: {
+    borderRadius: 999,
+    backgroundColor: "rgba(46,207,227,0.1)",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  exportButtonText: {
+    color: BrandColors.inkSoft,
+    fontSize: 13,
+    lineHeight: 16,
+    fontWeight: "800",
   },
   metricGrid: {
     flexDirection: "row",

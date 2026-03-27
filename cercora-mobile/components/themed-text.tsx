@@ -1,7 +1,8 @@
 import React from "react";
 import { StyleSheet, Text, type TextProps } from "react-native";
 
-import { translateText } from "@/hooks/use-i18n";
+import { Fonts } from "@/constants/theme";
+import { translateText, useI18n } from "@/hooks/use-i18n";
 import { useThemeColor } from "@/hooks/use-theme-color";
 
 export type ThemedTextProps = TextProps & {
@@ -25,7 +26,9 @@ export function ThemedText({
   type = "default",
   ...rest
 }: ThemedTextProps) {
+  const { locale } = useI18n();
   const color = useThemeColor({ light: lightColor, dark: darkColor }, "text");
+  void locale;
 
   return (
     <Text
@@ -49,24 +52,38 @@ const styles = StyleSheet.create({
   default: {
     fontSize: 16,
     lineHeight: 24,
+    fontFamily: Fonts.sans,
+    flexShrink: 1,
   },
   defaultSemiBold: {
     fontSize: 16,
     lineHeight: 24,
-    fontWeight: "600",
+    fontWeight: "700",
+    fontFamily: Fonts.sans,
+    flexShrink: 1,
   },
   title: {
-    fontSize: 32,
-    fontWeight: "bold",
-    lineHeight: 32,
+    fontSize: 34,
+    fontWeight: "800",
+    lineHeight: 38,
+    letterSpacing: -0.8,
+    fontFamily: Fonts.rounded,
+    flexShrink: 1,
   },
   subtitle: {
-    fontSize: 20,
-    fontWeight: "bold",
+    fontSize: 21,
+    lineHeight: 26,
+    fontWeight: "800",
+    letterSpacing: -0.3,
+    fontFamily: Fonts.rounded,
+    flexShrink: 1,
   },
   link: {
-    lineHeight: 30,
-    fontSize: 16,
+    lineHeight: 24,
+    fontSize: 15,
     color: "#0a7ea4",
+    fontWeight: "700",
+    fontFamily: Fonts.sans,
+    flexShrink: 1,
   },
 });

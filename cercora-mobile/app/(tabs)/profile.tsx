@@ -16,6 +16,7 @@ import { BrandColors, BrandShadow } from "@/constants/brand";
 import { api } from "@/hooks/api-client";
 import { useAuth } from "@/hooks/use-auth";
 import { getErrorMessage } from "@/hooks/error-utils";
+import { useResponsiveLayout } from "@/hooks/use-responsive-layout";
 import { useI18n } from "@/hooks/use-i18n";
 
 type PendingInvite = {
@@ -91,6 +92,7 @@ function getScoreTone(score: number | null) {
 export default function ProfileScreen() {
   const { isLoading, user, signOut } = useAuth();
   const { locale, setLocale, t } = useI18n();
+  const layout = useResponsiveLayout();
   const [reliability, setReliability] = useState<Reliability | null>(null);
   const [reliabilityLoading, setReliabilityLoading] = useState(true);
   const [reliabilityError, setReliabilityError] = useState<string | null>(null);
@@ -191,6 +193,12 @@ export default function ProfileScreen() {
     <ThemedView style={styles.container} lightColor={BrandColors.canvas}>
       <BrandBackdrop />
       <ScrollView contentContainerStyle={styles.content}>
+        <View
+          style={[
+            styles.page,
+            layout.maxWidth ? { maxWidth: layout.maxWidth } : null,
+          ]}
+        >
         <View style={styles.hero}>
           <View style={styles.heroGlowTop} />
           <View style={styles.heroGlowBottom} />
@@ -241,15 +249,16 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <ThemedText type="subtitle">Reliability</ThemedText>
-            <ThemedText style={styles.sectionCaption}>
-              Your current contribution and repayment posture
-            </ThemedText>
-          </View>
+        <View style={[styles.sectionGrid, layout.isTablet ? styles.sectionGridTablet : null]}>
+          <View style={[styles.section, layout.isTablet ? styles.sectionColumn : null]}>
+            <View style={styles.sectionHeader}>
+              <ThemedText type="subtitle">Reliability</ThemedText>
+              <ThemedText style={styles.sectionCaption}>
+                Your current contribution and repayment posture
+              </ThemedText>
+            </View>
 
-          <View style={styles.card}>
+            <View style={styles.card}>
             {reliabilityLoading ? (
               <View style={styles.loadingRow}>
                 <ActivityIndicator />
@@ -315,18 +324,18 @@ export default function ProfileScreen() {
             ) : (
               <ThemedText style={styles.supportText}>No score available yet.</ThemedText>
             )}
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <ThemedText type="subtitle">Invites</ThemedText>
-            <ThemedText style={styles.sectionCaption}>
-              Join new circles directly from your profile
-            </ThemedText>
+            </View>
           </View>
 
-          <View style={styles.card}>
+          <View style={[styles.section, layout.isTablet ? styles.sectionColumn : null]}>
+            <View style={styles.sectionHeader}>
+              <ThemedText type="subtitle">Invites</ThemedText>
+              <ThemedText style={styles.sectionCaption}>
+                Join new circles directly from your profile
+              </ThemedText>
+            </View>
+
+            <View style={styles.card}>
             {invitesLoading ? (
               <View style={styles.loadingRow}>
                 <ActivityIndicator />
@@ -365,18 +374,20 @@ export default function ProfileScreen() {
                 </View>
               ))
             )}
+            </View>
           </View>
         </View>
 
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <ThemedText type="subtitle">Language</ThemedText>
-            <ThemedText style={styles.sectionCaption}>
-              {t("The app will immediately switch between English and French.")}
-            </ThemedText>
-          </View>
+        <View style={[styles.sectionGrid, layout.isTablet ? styles.sectionGridTablet : null]}>
+          <View style={[styles.section, layout.isTablet ? styles.sectionColumn : null]}>
+            <View style={styles.sectionHeader}>
+              <ThemedText type="subtitle">Language</ThemedText>
+              <ThemedText style={styles.sectionCaption}>
+                {t("The app will immediately switch between English and French.")}
+              </ThemedText>
+            </View>
 
-          <View style={styles.card}>
+            <View style={styles.card}>
             <ThemedText style={styles.accountTitle}>{t("Choose your app language")}</ThemedText>
             <View style={styles.inviteActions}>
               <Pressable
@@ -412,18 +423,18 @@ export default function ProfileScreen() {
                 </ThemedText>
               </Pressable>
             </View>
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <ThemedText type="subtitle">Account</ThemedText>
-            <ThemedText style={styles.sectionCaption}>
-              Manage session access and irreversible account actions
-            </ThemedText>
+            </View>
           </View>
 
-          <View style={styles.card}>
+          <View style={[styles.section, layout.isTablet ? styles.sectionColumn : null]}>
+            <View style={styles.sectionHeader}>
+              <ThemedText type="subtitle">Account</ThemedText>
+              <ThemedText style={styles.sectionCaption}>
+                Manage session access and irreversible account actions
+              </ThemedText>
+            </View>
+
+            <View style={styles.card}>
             <View style={styles.accountPanel}>
               <ThemedText style={styles.accountTitle}>Delete account</ThemedText>
               <ThemedText style={styles.supportText}>
@@ -439,7 +450,7 @@ export default function ProfileScreen() {
                 onPress={() => void confirmDeleteAccount()}
               >
                 {deleteBusy ? (
-                  <ActivityIndicator color="#FFFFFF" />
+                  <ActivityIndicator color={BrandColors.dangerText} />
                 ) : (
                   <ThemedText style={styles.deleteButtonText}>Delete account</ThemedText>
                 )}
@@ -449,7 +460,9 @@ export default function ProfileScreen() {
             <Pressable style={styles.signOutButton} onPress={() => void signOut()}>
               <ThemedText style={styles.signOutButtonText}>Sign out</ThemedText>
             </Pressable>
+            </View>
           </View>
+        </View>
         </View>
       </ScrollView>
     </ThemedView>
@@ -462,15 +475,19 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 18,
-    paddingBottom: 120,
-    gap: 18,
+    paddingBottom: 128,
+    alignItems: "center",
+  },
+  page: {
+    width: "100%",
+    gap: 22,
   },
   hero: {
     position: "relative",
     overflow: "hidden",
-    borderRadius: 32,
-    backgroundColor: BrandColors.blueDeep,
-    padding: 22,
+    borderRadius: 34,
+    backgroundColor: BrandColors.blueNight,
+    padding: 24,
     ...BrandShadow,
   },
   heroGlowTop: {
@@ -528,9 +545,10 @@ const styles = StyleSheet.create({
   },
   heroTitle: {
     color: "#FFFFFF",
-    fontSize: 28,
-    lineHeight: 32,
+    fontSize: 31,
+    lineHeight: 35,
     fontWeight: "800",
+    letterSpacing: -0.7,
   },
   heroSubtitle: {
     color: "#E6EEFF",
@@ -576,7 +594,18 @@ const styles = StyleSheet.create({
     color: "#F0D9FF",
   },
   section: {
-    gap: 12,
+    gap: 14,
+  },
+  sectionGrid: {
+    width: "100%",
+    gap: 16,
+  },
+  sectionGridTablet: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+  },
+  sectionColumn: {
+    flex: 1,
   },
   sectionHeader: {
     gap: 4,
@@ -588,12 +617,12 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   card: {
-    borderRadius: 28,
+    borderRadius: 30,
     backgroundColor: BrandColors.surface,
     borderWidth: 1,
     borderColor: BrandColors.border,
-    padding: 18,
-    gap: 14,
+    padding: 20,
+    gap: 16,
     ...BrandShadow,
   },
   loadingRow: {
@@ -618,8 +647,8 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   scoreRing: {
-    width: 104,
-    height: 104,
+    width: 110,
+    height: 110,
     borderRadius: 999,
     borderWidth: 7,
     alignItems: "center",
@@ -656,11 +685,11 @@ const styles = StyleSheet.create({
   metricTile: {
     minWidth: 110,
     flexGrow: 1,
-    borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.72)",
+    borderRadius: 22,
+    backgroundColor: "rgba(255,255,255,0.86)",
     borderWidth: 1,
     borderColor: BrandColors.border,
-    padding: 14,
+    padding: 15,
     gap: 4,
   },
   metricValue: {
@@ -684,11 +713,11 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   inviteCard: {
-    borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.76)",
+    borderRadius: 22,
+    backgroundColor: "rgba(255,255,255,0.84)",
     borderWidth: 1,
     borderColor: BrandColors.border,
-    padding: 14,
+    padding: 15,
     gap: 12,
   },
   inviteInfo: {
@@ -706,9 +735,9 @@ const styles = StyleSheet.create({
   },
   acceptButton: {
     flex: 1,
-    borderRadius: 16,
+    borderRadius: 18,
     backgroundColor: BrandColors.blueDeep,
-    paddingVertical: 12,
+    paddingVertical: 13,
     alignItems: "center",
     ...BrandShadow,
   },
@@ -718,11 +747,11 @@ const styles = StyleSheet.create({
   },
   rejectButton: {
     flex: 1,
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: BrandColors.borderStrong,
-    backgroundColor: BrandColors.surfaceStrong,
-    paddingVertical: 12,
+    backgroundColor: BrandColors.surfaceMuted,
+    paddingVertical: 13,
     alignItems: "center",
   },
   rejectButtonText: {
@@ -739,23 +768,28 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
   deleteButton: {
-    borderRadius: 18,
-    backgroundColor: BrandColors.dangerText,
-    paddingVertical: 14,
+    alignSelf: "flex-start",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(180, 35, 24, 0.18)",
+    backgroundColor: "rgba(180, 35, 24, 0.06)",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     alignItems: "center",
     marginTop: 6,
   },
   deleteButtonPressed: {
-    opacity: 0.92,
+    opacity: 0.82,
   },
   deleteButtonText: {
-    color: "#FFFFFF",
-    fontWeight: "800",
+    color: BrandColors.dangerText,
+    fontWeight: "700",
+    fontSize: 14,
   },
   signOutButton: {
-    borderRadius: 18,
+    borderRadius: 20,
     backgroundColor: BrandColors.blueDeep,
-    paddingVertical: 14,
+    paddingVertical: 15,
     alignItems: "center",
     ...BrandShadow,
   },

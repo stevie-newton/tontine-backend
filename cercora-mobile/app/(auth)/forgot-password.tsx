@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from "react-native";
 
 import { AuthScreenShell, authStyles } from "@/components/auth-shell";
+import { PhoneInput } from "@/components/phone-input";
 import { ThemedText } from "@/components/themed-text";
 import { useAuth } from "@/hooks/use-auth";
 import { getErrorMessage } from "@/hooks/error-utils";
@@ -38,11 +39,11 @@ export default function ForgotPasswordScreen() {
     <>
       <Stack.Screen options={{ title: t("Forgot Password") }} />
       <AuthScreenShell
-        eyebrow="Account recovery"
-        title="Reset your password"
-        subtitle="We will send a reset code to your phone so you can securely set a new password."
+        eyebrow={t("Account recovery")}
+        title={t("Reset your password")}
+        subtitle={t("We will send a reset code to your phone so you can securely set a new password.")}
         tone="forest"
-        stats={[{ label: "Phone", value: phone.trim() ? "Ready" : "Needed" }]}
+        stats={[{ label: t("Phone"), value: phone.trim() ? t("Ready") : t("Needed") }]}
       >
         <ThemedText type="subtitle">Recovery details</ThemedText>
         <ThemedText style={authStyles.sectionText}>
@@ -51,18 +52,11 @@ export default function ForgotPasswordScreen() {
 
         <View style={styles.form}>
           <ThemedText style={authStyles.label}>Phone number</ThemedText>
-          <TextInput
+          <PhoneInput
             value={phone}
             onChangeText={setPhone}
-            placeholder={t("Phone number")}
-            placeholderTextColor="#98A2B3"
-            keyboardType="phone-pad"
-            autoCapitalize="none"
-            style={authStyles.input}
+            placeholder={t("Local phone number")}
           />
-          <ThemedText style={authStyles.sectionText}>
-            Use international format (e.g. +237670000000)
-          </ThemedText>
 
           {message ? <ThemedText style={authStyles.message}>{message}</ThemedText> : null}
           {error ? <ThemedText style={authStyles.error}>{error}</ThemedText> : null}
