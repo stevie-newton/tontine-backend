@@ -1,8 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from typing import List
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
@@ -10,25 +9,21 @@ from app.models.user import User
 from app.models.tontine import Tontine, TontineStatus
 from app.models.tontine_membership import TontineMembership
 from app.models.tontine_cycle import TontineCycle
-from app.models.debt import Debt
+from app.models.tontine_membership import TontineMembership
 from app.schemas.tontine_cycle import (
     TontineCycleCreate,
     TontineCycleResponse,
     TontineCycleUpdate,
     TontineCycleWithMember
 )
+from app.schemas.payout import PayoutResponse
 from app.services.tontine_service import TontineService
 
 router = APIRouter(prefix="/tontine-cycles", tags=["tontine-cycles"])
 
 
-class CycleDeadlineUpdate(BaseModel):
-    contribution_deadline: datetime
-    grace_period_hours: int = Field(0, ge=0)
-
-
 # -------------------------
-# Create cycles for a tontine (automatically on tontine creation)
+# Create cycles for a tontine
 # -------------------------
 @router.post("/generate/{tontine_id}", response_model=List[TontineCycleResponse])
 def generate_cycles(
@@ -38,8 +33,72 @@ def generate_cycles(
 ):
     """
     Generate all cycles for a tontine based on its configuration.
+    - Only the owner can generate cycles
+    - Cycles are generated with proper start/end dates based on frequency
     """
-    return TontineService.generate_cycles(db, tontine_id, current_user)
+    # Check if tontine exists and user has permission
+    tontine = db.query(Tontine).filter(Tontine.id == tontine_id).first()
+    if not tontine:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Tontine not found"
+        )
+    
+    # Only owner can generate cycles
+    if tontine.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the owner can generate cycles"
+        )
+    
+    # Check if cycles already exist
+    existing_cycles = db.query(TontineCycle).filter(
+        TontineCycle.tontine_id == tontine_id
+    ).first()
+    
+    if existing_cycles:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cycles already generated for this tontine"
+        )
+
+    TontineService.sync_draft_payout_order(db, tontine)
+    TontineService.sync_draft_total_cycles(db, tontine)
+    
+    # Calculate cycle duration based on frequency
+    if tontine.frequency == "weekly":
+        cycle_duration = timedelta(days=7)
+    elif tontine.frequency == "monthly":
+        cycle_duration = timedelta(days=30)
+    else:
+        cycle_duration = timedelta(days=7)  # Default
+    
+    # Generate cycles
+    cycles = []
+    start_date = tontine.created_at.replace(hour=0, minute=0, second=0, microsecond=0)
+    
+    for i in range(1, tontine.total_cycles + 1):
+        cycle_end = start_date + cycle_duration
+        
+        cycle = TontineCycle(
+            tontine_id=tontine_id,
+            cycle_number=i,
+            start_date=start_date,
+            end_date=cycle_end,
+            is_closed=False
+        )
+        
+        cycles.append(cycle)
+        start_date = cycle_end
+    
+    db.add_all(cycles)
+    db.commit()
+    
+    # Refresh to get IDs
+    for cycle in cycles:
+        db.refresh(cycle)
+    
+    return cycles
 
 
 # -------------------------
@@ -53,6 +112,8 @@ def get_tontine_cycles(
 ):
     """
     Get all cycles for a specific tontine.
+    - Accessible by owner and members
+    - Includes payout member details if assigned
     """
     # Check if tontine exists
     tontine = db.query(Tontine).filter(Tontine.id == tontine_id).first()
@@ -66,8 +127,7 @@ def get_tontine_cycles(
     if tontine.owner_id != current_user.id:
         membership = db.query(TontineMembership).filter(
             TontineMembership.user_id == current_user.id,
-            TontineMembership.tontine_id == tontine_id,
-            TontineMembership.is_active.is_(True),
+            TontineMembership.tontine_id == tontine_id
         ).first()
         
         if not membership:
@@ -75,6 +135,10 @@ def get_tontine_cycles(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You don't have access to this tontine"
             )
+
+    if TontineService.sync_cycle_rows_to_active_members_if_safe(db, tontine):
+        db.commit()
+        db.refresh(tontine)
     
     # Get cycles with member info
     cycles = db.query(TontineCycle).filter(
@@ -84,13 +148,24 @@ def get_tontine_cycles(
     # Add member names
     result = []
     for cycle in cycles:
-        cycle_data = cycle.__dict__.copy()
-        cycle_data["contribution_amount"] = str(tontine.contribution_amount)
+        cycle_data = {
+            "id": cycle.id,
+            "tontine_id": cycle.tontine_id,
+            "cycle_number": cycle.cycle_number,
+            "start_date": cycle.start_date,
+            "end_date": cycle.end_date,
+            "is_closed": cycle.is_closed,
+            "closed_at": cycle.closed_at,
+            "created_at": cycle.created_at,
+            "payout_member_id": cycle.payout_member_id
+        }
+        
         if cycle.payout_member_id:
             member = db.query(User).filter(User.id == cycle.payout_member_id).first()
             if member:
                 cycle_data["payout_member_name"] = member.name
                 cycle_data["payout_member_phone"] = member.phone
+        
         result.append(cycle_data)
     
     return result
@@ -107,6 +182,7 @@ def get_cycle(
 ):
     """
     Get a specific cycle by ID.
+    - Accessible by owner and members
     """
     cycle = db.query(TontineCycle).filter(TontineCycle.id == cycle_id).first()
     
@@ -121,8 +197,7 @@ def get_cycle(
     if tontine.owner_id != current_user.id:
         membership = db.query(TontineMembership).filter(
             TontineMembership.user_id == current_user.id,
-            TontineMembership.tontine_id == cycle.tontine_id,
-            TontineMembership.is_active.is_(True),
+            TontineMembership.tontine_id == cycle.tontine_id
         ).first()
         
         if not membership:
@@ -130,10 +205,24 @@ def get_cycle(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You don't have access to this cycle"
             )
+
+    if TontineService.sync_cycle_rows_to_active_members_if_safe(db, tontine):
+        db.commit()
+        cycle = db.query(TontineCycle).filter(TontineCycle.id == cycle_id).first()
     
-    # Add member info
-    cycle_data = cycle.__dict__.copy()
-    cycle_data["contribution_amount"] = str(tontine.contribution_amount)
+    # Build response
+    cycle_data = {
+        "id": cycle.id,
+        "tontine_id": cycle.tontine_id,
+        "cycle_number": cycle.cycle_number,
+        "start_date": cycle.start_date,
+        "end_date": cycle.end_date,
+        "is_closed": cycle.is_closed,
+        "closed_at": cycle.closed_at,
+        "created_at": cycle.created_at,
+        "payout_member_id": cycle.payout_member_id
+    }
+    
     if cycle.payout_member_id:
         member = db.query(User).filter(User.id == cycle.payout_member_id).first()
         if member:
@@ -155,6 +244,7 @@ def assign_payout_member(
 ):
     """
     Assign a member to receive payout for this cycle.
+    - Only owner or admin can assign
     """
     cycle = db.query(TontineCycle).filter(TontineCycle.id == cycle_id).first()
     
@@ -171,8 +261,7 @@ def assign_payout_member(
         admin_membership = db.query(TontineMembership).filter(
             TontineMembership.user_id == current_user.id,
             TontineMembership.tontine_id == cycle.tontine_id,
-            TontineMembership.role == "admin",
-            TontineMembership.is_active.is_(True),
+            TontineMembership.role == "admin"
         ).first()
         
         if not admin_membership:
@@ -184,29 +273,13 @@ def assign_payout_member(
     # Check if member exists and is part of tontine
     member = db.query(TontineMembership).filter(
         TontineMembership.user_id == member_id,
-        TontineMembership.tontine_id == cycle.tontine_id,
-        TontineMembership.is_active.is_(True),
+        TontineMembership.tontine_id == cycle.tontine_id
     ).first()
     
     if not member:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Member not found in this tontine"
-        )
-    has_open_debt = (
-        db.query(Debt.id)
-        .filter(
-            Debt.tontine_id == tontine.id,
-            Debt.debtor_membership_id == member.id,
-            Debt.is_repaid.is_(False),
-        )
-        .first()
-        is not None
-    )
-    if has_open_debt:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Member with open debt cannot be selected as beneficiary",
         )
     
     # Update cycle
@@ -220,65 +293,66 @@ def assign_payout_member(
 # -------------------------
 # Close a cycle
 # -------------------------
-@router.put("/{cycle_id}/close", response_model=TontineCycleResponse)
+@router.put("/{cycle_id}/close", response_model=PayoutResponse)
 def close_cycle(
     cycle_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Close a cycle with full funding checks."""
-    TontineService.close_cycle(db, cycle_id, current_user)
-    cycle = db.query(TontineCycle).filter(TontineCycle.id == cycle_id).first()
-    if not cycle:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Cycle not found"
-        )
-    return cycle
+    """
+    Close a cycle and process payout.
+    Business rules:
+    - All members must have contributed
+    - Payout member must be assigned
+    - Creates a payout record
+    - Advances tontine to next cycle
+    """
+    payout = TontineService.close_cycle(db, cycle_id, current_user)
+    return payout
 
 
-@router.put("/{cycle_id}/deadline", response_model=TontineCycleResponse)
-def update_cycle_deadline(
-    cycle_id: int,
-    payload: CycleDeadlineUpdate,
+# -------------------------
+# Get cycle status summary
+# -------------------------
+@router.get("/tontine/{tontine_id}/status")
+def get_cycle_status(
+    tontine_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    cycle = db.query(TontineCycle).filter(TontineCycle.id == cycle_id).first()
-    if not cycle:
+    """
+    Get status of all cycles for a tontine.
+    Shows:
+    - Which cycles are closed
+    - Contribution counts
+    - Payout status
+    """
+    # Check access
+    tontine = db.query(Tontine).filter(Tontine.id == tontine_id).first()
+    if not tontine:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Cycle not found"
+            detail="Tontine not found"
         )
-
-    tontine = db.query(Tontine).filter(Tontine.id == cycle.tontine_id).first()
-    if not tontine:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tontine not found")
-
+    
     if tontine.owner_id != current_user.id:
-        admin_membership = db.query(TontineMembership).filter(
+        membership = db.query(TontineMembership).filter(
             TontineMembership.user_id == current_user.id,
-            TontineMembership.tontine_id == cycle.tontine_id,
-            TontineMembership.role == "admin",
-            TontineMembership.is_active.is_(True),
+            TontineMembership.tontine_id == tontine_id
         ).first()
-        if not admin_membership:
+        
+        if not membership:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only owner or admin can update cycle deadline"
+                detail="You don't have access to this tontine"
             )
 
-    if cycle.is_closed:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot update deadline for closed cycle",
-        )
-
-    cycle.contribution_deadline = payload.contribution_deadline
-    cycle.grace_period_hours = payload.grace_period_hours
-    db.commit()
-    db.refresh(cycle)
-    return cycle
+    if TontineService.sync_cycle_rows_to_active_members_if_safe(db, tontine):
+        db.commit()
+        db.refresh(tontine)
+    
+    status_data = TontineService.get_cycle_status(db, tontine_id)
+    return status_data
 
 
 # -------------------------
@@ -305,8 +379,7 @@ def get_current_cycle(
     if tontine.owner_id != current_user.id:
         membership = db.query(TontineMembership).filter(
             TontineMembership.user_id == current_user.id,
-            TontineMembership.tontine_id == tontine_id,
-            TontineMembership.is_active.is_(True),
+            TontineMembership.tontine_id == tontine_id
         ).first()
         
         if not membership:
@@ -314,6 +387,10 @@ def get_current_cycle(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You don't have access to this tontine"
             )
+
+    if TontineService.sync_cycle_rows_to_active_members_if_safe(db, tontine):
+        db.commit()
+        db.refresh(tontine)
     
     # Get current cycle
     cycle = db.query(TontineCycle).filter(

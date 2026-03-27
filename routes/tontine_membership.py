@@ -17,6 +17,8 @@ from app.models.payment import Payment
 from app.models.payout import Payout
 from app.models.debt import Debt
 from app.services.sms_service import SMSService
+from app.services.tontine_service import TontineService
+from app.services.web_push_event_service import send_web_push_to_user
 from app.schemas.tontine_membership import (
     InviteAckResponse,
     PendingInviteResponse,
@@ -72,19 +74,7 @@ def _next_payout_position(db: Session, tontine_id: int) -> int:
 def _sync_total_cycles_to_active_members(db: Session, tontine: Tontine) -> None:
     if not tontine:
         return
-    status_value = tontine.status.value if hasattr(tontine.status, "value") else str(tontine.status)
-    # Keep proportionality in draft lifecycle; avoid mutating historical schedule after start.
-    if status_value != TontineStatus.DRAFT.value:
-        return
-    active_count = (
-        db.query(TontineMembership)
-        .filter(
-            TontineMembership.tontine_id == tontine.id,
-            TontineMembership.is_active.is_(True),
-        )
-        .count()
-    )
-    tontine.total_cycles = max(1, active_count, tontine.current_cycle)
+    TontineService.sync_cycle_rows_to_active_members_if_safe(db, tontine)
 
 
 def _normalize_phone(phone: str) -> str:
@@ -204,23 +194,32 @@ def add_member(
             detail="User is already a member of this tontine"
         )
     
-    payout_position = membership_data.payout_position
-    if payout_position is None and not has_started:
-        # FIFO: each new member added before start is appended to the end.
-        payout_position = _next_payout_position(db, membership_data.tontine_id)
-
     # Create pending membership (invite)
     membership = TontineMembership(
         user_id=user.id,
         tontine_id=membership_data.tontine_id,
         role=membership_data.role or "member",
         is_active=False,
-        payout_position=payout_position
+        payout_position=None
     )
     
     db.add(membership)
+    TontineService.sync_draft_payout_order(db, tontine)
     db.commit()
     db.refresh(membership)
+
+    try:
+        send_web_push_to_user(
+            db,
+            user_id=user.id,
+            title="Tontine invite",
+            body=f"{current_user.name} invited you to join {tontine.name}.",
+            url=f"{settings.FRONTEND_URL.rstrip('/')}/profile",
+            tag=f"invite_membership_{membership.id}",
+            data={"tontine_id": tontine.id, "membership_id": membership.id},
+        )
+    except Exception:
+        pass
     
     return membership
 
@@ -255,11 +254,6 @@ def invite_member(
                 detail="Cannot set payout_position after tontine has started",
             )
 
-    payout_position = membership_data.payout_position
-    if payout_position is None and not has_started:
-        # FIFO: each new member added before start is appended to the end.
-        payout_position = _next_payout_position(db, membership_data.tontine_id)
-
     if membership_data.phone:
         normalized_phone = _normalize_phone(membership_data.phone)
         user = db.query(User).filter(User.phone == normalized_phone).first()
@@ -276,10 +270,24 @@ def invite_member(
                     tontine_id=membership_data.tontine_id,
                     role=membership_data.role or "member",
                     is_active=False,
-                    payout_position=payout_position
+                    payout_position=None
                 )
                 db.add(membership)
+                TontineService.sync_draft_payout_order(db, tontine)
                 db.commit()
+                db.refresh(membership)
+                try:
+                    send_web_push_to_user(
+                        db,
+                        user_id=user.id,
+                        title="Tontine invite",
+                        body=f"{current_user.name} invited you to join {tontine.name}.",
+                        url=f"{settings.FRONTEND_URL.rstrip('/')}/profile",
+                        tag=f"invite_membership_{membership.id}",
+                        data={"tontine_id": tontine.id, "membership_id": membership.id},
+                    )
+                except Exception:
+                    pass
         else:
             _send_registration_invite_sms(
                 phone=normalized_phone,
@@ -357,6 +365,7 @@ def accept_invite(
 
     membership.is_active = True
     tontine = db.query(Tontine).filter(Tontine.id == membership.tontine_id).first()
+    TontineService.sync_draft_payout_order(db, tontine)
     _sync_total_cycles_to_active_members(db, tontine)
     db.commit()
     db.refresh(membership)
@@ -518,8 +527,9 @@ def update_membership(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Cannot change payout_position after tontine has started",
             )
-        membership.payout_position = update_data.payout_position
-    
+
+    TontineService.sync_draft_payout_order(db, tontine)
+    _sync_total_cycles_to_active_members(db, tontine)
     db.commit()
     db.refresh(membership)
     
@@ -614,6 +624,7 @@ def remove_member(
     tontine_id = membership.tontine_id
     db.delete(membership)
     tontine = db.query(Tontine).filter(Tontine.id == tontine_id).first()
+    TontineService.sync_draft_payout_order(db, tontine)
     _sync_total_cycles_to_active_members(db, tontine)
     db.commit()
     
