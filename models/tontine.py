@@ -41,3 +41,4 @@ class Tontine(Base):
     # Relationships
     owner = relationship("User", back_populates="tontines")
     memberships = relationship("TontineMembership", back_populates="tontine", cascade="all, delete-orphan")
+    payouts = relationship("Payout", back_populates="tontine", cascade="all, delete-orphan")

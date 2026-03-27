@@ -24,3 +24,4 @@ class TontineCycle(Base):
     tontine = relationship("Tontine")
     payout_member = relationship("User")
     contributions = relationship("Contribution", back_populates="cycle", cascade="all, delete-orphan")
+    payout = relationship("Payout", back_populates="cycle", uselist=False, cascade="all, delete-orphan")
