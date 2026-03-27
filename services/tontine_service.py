@@ -17,7 +17,15 @@ from app.models.debt import Debt
 from app.models.transaction_ledger import TransactionLedger
 from app.models.user import User
 from app.services.transaction_ledger_service import TransactionLedgerService
-from app.services.web_push_event_service import send_web_push_to_user, send_web_push_to_users
+
+try:
+    from app.services.web_push_event_service import send_web_push_to_user, send_web_push_to_users
+except ImportError:  # pragma: no cover - optional push helper not deployed everywhere yet
+    def send_web_push_to_user(*args, **kwargs):
+        return None
+
+    def send_web_push_to_users(*args, **kwargs):
+        return None
 
 
 class TontineService:

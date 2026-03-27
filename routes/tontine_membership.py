@@ -18,7 +18,12 @@ from app.models.payout import Payout
 from app.models.debt import Debt
 from app.services.sms_service import SMSService
 from app.services.tontine_service import TontineService
-from app.services.web_push_event_service import send_web_push_to_user
+
+try:
+    from app.services.web_push_event_service import send_web_push_to_user
+except ImportError:  # pragma: no cover - optional push helper not deployed everywhere yet
+    def send_web_push_to_user(*args, **kwargs):
+        return None
 from app.schemas.tontine_membership import (
     InviteAckResponse,
     PendingInviteResponse,
