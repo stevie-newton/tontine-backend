@@ -3,9 +3,6 @@ import sys
 import types
 from contextlib import asynccontextmanager
 from pathlib import Path
-
-from alembic import command
-from alembic.config import Config
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -23,6 +20,7 @@ if "app" not in sys.modules:
 from app.core.config import settings
 from app.core.database import SessionLocal
 from app.core.i18n import get_locale_from_request, translate_detail
+from app.core.migrations import run_startup_migrations
 from app.routes import (
     admin_stats,
     auth,
@@ -45,16 +43,6 @@ from app.services.web_push_reminder_service import send_pre_deadline_web_push_re
 
 # Import models so Alembic/autogenerate sees the full metadata
 import app.models  # noqa: F401
-
-
-def run_startup_migrations() -> None:
-    alembic_ini_path = Path(__file__).resolve().with_name("alembic.ini")
-    alembic_cfg = Config(str(alembic_ini_path))
-    alembic_cfg.set_main_option("script_location", str(alembic_ini_path.with_name("alembic")))
-    alembic_cfg.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
-    command.upgrade(alembic_cfg, "head")
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     reminder_task: asyncio.Task | None = None
