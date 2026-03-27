@@ -14,6 +14,8 @@ from app.models.tontine_cycle import TontineCycle
 from app.models.tontine import Tontine
 from app.models.tontine_membership import TontineMembership
 from app.models.user import User
+from app.services.transaction_ledger_service import TransactionLedgerService
+from app.services.web_push_event_service import send_web_push_to_user
 
 
 class ContributionService:
@@ -31,6 +33,8 @@ class ContributionService:
         cycle_id: int,
         current_user: User,
         amount: Decimal,  # ✅ Decimal (matches Numeric(12,2))
+        transaction_reference: str,
+        proof_screenshot_url: Optional[str] = None,
     ) -> Contribution:
         """
         Create a new contribution for a cycle.
@@ -92,6 +96,12 @@ class ContributionService:
                     detail="You are not an active member of this tontine",
                 )
 
+            if cycle.payout_member_id == current_user.id:
+                raise HTTPException(
+                    status_code=403,
+                    detail="The beneficiary for this cycle cannot contribute",
+                )
+
             provided_amount = ContributionService._q(Decimal(str(amount)))
             expected_amount = ContributionService._q(Decimal(str(tontine.contribution_amount)))
 
@@ -102,11 +112,16 @@ class ContributionService:
                 )
 
             # ✅ Don’t do a pre-check query; rely on unique constraint + IntegrityError
+            ref = (transaction_reference or "").strip()
+            if not ref:
+                ref = str(uuid.uuid4())
+
             contribution = Contribution(
                 membership_id=membership.id,
                 cycle_id=cycle.id,
                 amount=provided_amount,
-                transaction_reference=str(uuid.uuid4()),
+                transaction_reference=ref,
+                proof_screenshot_url=(proof_screenshot_url.strip() if proof_screenshot_url else None),
                 beneficiary_decision="pending",
                 is_confirmed=False,
                 ledger_entry_created=False,
@@ -116,6 +131,25 @@ class ContributionService:
 
             db.commit()
             db.refresh(contribution)
+
+            if cycle.payout_member_id:
+                try:
+                    send_web_push_to_user(
+                        db,
+                        user_id=cycle.payout_member_id,
+                        title="Contribution submitted",
+                        body=f"{current_user.name} submitted a contribution for cycle {cycle.cycle_number}.",
+                        url=f"/tontines/{tontine.id}/cycles/{cycle.id}",
+                        tag=f"contribution_pending_{contribution.id}",
+                        data={
+                            "tontine_id": tontine.id,
+                            "cycle_id": cycle.id,
+                            "contribution_id": contribution.id,
+                        },
+                    )
+                except Exception:
+                    pass
+
             return contribution
 
         except IntegrityError:
@@ -177,11 +211,16 @@ class ContributionService:
                 "id": c.id,
                 "membership_id": c.membership_id,
                 "cycle_id": c.cycle_id,
+                "user_id": c.membership.user_id,
+                "user_name": name,
+                "user_phone": phone,
                 "amount": c.amount,
+                "transaction_reference": c.transaction_reference,
+                "proof_screenshot_url": c.proof_screenshot_url,
+                "beneficiary_decision": c.beneficiary_decision,
                 "is_confirmed": c.is_confirmed,
+                "ledger_entry_created": c.ledger_entry_created,
                 "paid_at": c.paid_at,
-                "member_name": name,
-                "member_phone": phone,
             }
             for (c, name, phone) in rows
         ]
@@ -235,6 +274,7 @@ class ContributionService:
         confirm: bool = True,
     ) -> Contribution:
         """Confirm or reject a contribution (owner/admin)."""
+        now = datetime.now(timezone.utc)
         contribution = db.query(Contribution).filter(Contribution.id == contribution_id).first()
         if not contribution:
             raise HTTPException(status_code=404, detail="Contribution not found")
@@ -259,8 +299,99 @@ class ContributionService:
                 raise HTTPException(status_code=403, detail="Only owner or admin can confirm contributions")
 
         contribution.is_confirmed = confirm
+        contribution.beneficiary_decision = "confirmed" if confirm else "rejected"
+        contribution.confirmed_by_user_id = current_user.id
+        contribution.confirmed_at = now
         db.commit()
         db.refresh(contribution)
+        return contribution
+
+    @staticmethod
+    def beneficiary_confirm_contribution(
+        db: Session,
+        contribution_id: int,
+        current_user: User,
+        decision: str,
+    ) -> Contribution:
+        """Beneficiary confirms or rejects a submitted contribution."""
+        normalized_decision = (decision or "").strip().lower()
+        if normalized_decision not in {"confirm", "reject"}:
+            raise HTTPException(status_code=400, detail="Decision must be 'confirm' or 'reject'")
+
+        now = datetime.now(timezone.utc)
+        contribution = db.query(Contribution).filter(Contribution.id == contribution_id).first()
+        if not contribution:
+            raise HTTPException(status_code=404, detail="Contribution not found")
+
+        cycle = db.query(TontineCycle).filter(TontineCycle.id == contribution.cycle_id).first()
+        if not cycle:
+            raise HTTPException(status_code=404, detail="Cycle not found")
+
+        tontine = db.query(Tontine).filter(Tontine.id == cycle.tontine_id).first()
+        if not tontine:
+            raise HTTPException(status_code=404, detail="Tontine not found")
+
+        membership = db.query(TontineMembership).filter(TontineMembership.id == contribution.membership_id).first()
+        if not membership:
+            raise HTTPException(status_code=404, detail="Membership not found")
+
+        if not cycle.payout_member_id:
+            raise HTTPException(status_code=400, detail="This cycle has no beneficiary assigned yet")
+
+        if cycle.payout_member_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Only the cycle beneficiary can confirm this contribution")
+
+        if contribution.is_confirmed and normalized_decision == "confirm":
+            return contribution
+
+        if contribution.beneficiary_decision == "rejected" and normalized_decision == "reject":
+            return contribution
+
+        if contribution.ledger_entry_created and normalized_decision == "reject":
+            raise HTTPException(status_code=409, detail="Confirmed contributions cannot be rejected after ledger entry creation")
+
+        contribution.beneficiary_decision = "confirmed" if normalized_decision == "confirm" else "rejected"
+        contribution.is_confirmed = normalized_decision == "confirm"
+        contribution.confirmed_by_user_id = current_user.id
+        contribution.confirmed_at = now
+
+        if normalized_decision == "confirm" and not contribution.ledger_entry_created:
+            TransactionLedgerService.log_contribution(
+                db=db,
+                tontine_id=tontine.id,
+                cycle_id=cycle.id,
+                user_id=membership.user_id,
+                amount=Decimal(str(contribution.amount)),
+                description=f"Confirmed contribution for cycle {cycle.cycle_number}",
+                contribution_id=contribution.id,
+            )
+            contribution.ledger_entry_created = True
+
+        db.commit()
+        db.refresh(contribution)
+
+        try:
+            send_web_push_to_user(
+                db,
+                user_id=membership.user_id,
+                title="Contribution review update",
+                body=(
+                    f"Your contribution for cycle {cycle.cycle_number} was confirmed."
+                    if normalized_decision == "confirm"
+                    else f"Your contribution for cycle {cycle.cycle_number} was rejected."
+                ),
+                url=f"/tontines/{tontine.id}/cycles/{cycle.id}",
+                tag=f"contribution_review_{contribution.id}",
+                data={
+                    "tontine_id": tontine.id,
+                    "cycle_id": cycle.id,
+                    "contribution_id": contribution.id,
+                    "decision": normalized_decision,
+                },
+            )
+        except Exception:
+            pass
+
         return contribution
 
     @staticmethod

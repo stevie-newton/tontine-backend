@@ -23,8 +23,25 @@ if "app" not in sys.modules:
 from app.core.config import settings
 from app.core.database import SessionLocal
 from app.core.i18n import get_locale_from_request, translate_detail
-from app.routes import admin_stats, auth, contribution, cycles, debt, payments, support, tontine, tontine_cycle, tontine_membership, user_profile
+from app.routes import (
+    admin_stats,
+    auth,
+    contribution,
+    cycles,
+    debt,
+    payments,
+    payout,
+    push,
+    reminders,
+    support,
+    tontine,
+    tontine_cycle,
+    tontine_membership,
+    transaction_ledger,
+    user_profile,
+)
 from app.services.reminder_service import send_pre_deadline_sms_reminders
+from app.services.web_push_reminder_service import send_pre_deadline_web_push_reminders
 
 # Import models so Alembic/autogenerate sees the full metadata
 import app.models  # noqa: F401
@@ -41,6 +58,7 @@ def run_startup_migrations() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     reminder_task: asyncio.Task | None = None
+    web_push_task: asyncio.Task | None = None
 
     async def _auto_reminder_loop():
         interval_seconds = max(60, int(settings.AUTO_REMINDER_INTERVAL_SECONDS))
@@ -52,6 +70,20 @@ async def lifespan(app: FastAPI):
                     print(f"Auto reminders: {stats}")
             except Exception as exc:
                 print(f"Auto reminder loop failed: {exc}")
+            finally:
+                db.close()
+            await asyncio.sleep(interval_seconds)
+
+    async def _auto_web_push_loop():
+        interval_seconds = max(60, int(settings.AUTO_WEB_PUSH_REMINDER_INTERVAL_SECONDS))
+        while True:
+            db = SessionLocal()
+            try:
+                stats = send_pre_deadline_web_push_reminders(db)
+                if stats["cycles_checked"] > 0:
+                    print(f"Auto web push reminders: {stats}")
+            except Exception as exc:
+                print(f"Auto web push reminder loop failed: {exc}")
             finally:
                 db.close()
             await asyncio.sleep(interval_seconds)
@@ -72,6 +104,12 @@ async def lifespan(app: FastAPI):
         print("Auto reminder loop: enabled")
     else:
         print("Auto reminder loop: disabled")
+
+    if settings.AUTO_WEB_PUSH_REMINDER_ENABLED:
+        web_push_task = asyncio.create_task(_auto_web_push_loop())
+        print("Auto web push reminder loop: enabled")
+    else:
+        print("Auto web push reminder loop: disabled")
     print("=" * 50)
     try:
         yield
@@ -80,6 +118,12 @@ async def lifespan(app: FastAPI):
             reminder_task.cancel()
             try:
                 await reminder_task
+            except asyncio.CancelledError:
+                pass
+        if web_push_task:
+            web_push_task.cancel()
+            try:
+                await web_push_task
             except asyncio.CancelledError:
                 pass
 
@@ -121,11 +165,15 @@ app.include_router(tontine_membership.router)
 app.include_router(contribution.router)
 app.include_router(debt.router)
 app.include_router(payments.router)
+app.include_router(payout.router)
 app.include_router(cycles.router)
 app.include_router(tontine_cycle.router)
+app.include_router(transaction_ledger.router)
 app.include_router(user_profile.router)
 app.include_router(admin_stats.router)
 app.include_router(support.router)
+app.include_router(reminders.router)
+app.include_router(push.router)
 
 
 # Root endpoint

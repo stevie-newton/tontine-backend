@@ -106,6 +106,53 @@ def _send_registration_otp_sms(phone: str, code: str) -> None:
         return
 
 
+def _resolve_delivery_phone(*phones: str | None) -> str:
+    normalized_candidates = [normalize_phone(phone or "") for phone in phones]
+    for phone in normalized_candidates:
+        if phone.startswith("+"):
+            return phone
+
+    for phone in phones:
+        value = (phone or "").strip()
+        if value:
+            return value
+
+    return ""
+
+
+def _send_password_reset_sms(requested_phone: str, stored_phone: str, code: str) -> str | None:
+    destination_phone = _resolve_delivery_phone(requested_phone, stored_phone)
+    if not destination_phone:
+        raise HTTPException(status_code=400, detail="A valid phone number is required")
+
+    message = (
+        f"Your password reset code is {code}. "
+        f"It expires in {settings.PASSWORD_RESET_CODE_EXPIRE_MINUTES} minutes."
+    )
+
+    if SMSService.is_configured():
+        try:
+            SMSService.send_sms(destination_phone, message)
+            return None
+        except Exception as exc:
+            raise HTTPException(
+                status_code=500,
+                detail=(
+                    "Unable to send reset code SMS. Check the Twilio sender setup and, "
+                    "if you are using a Twilio trial account, make sure the destination number is verified. "
+                    f"SMS error: {exc}"
+                ),
+            )
+
+    if settings.DEBUG:
+        return f"Reset code generated (debug): {code}"
+
+    raise HTTPException(
+        status_code=500,
+        detail="Password reset SMS is not configured on the server",
+    )
+
+
 @router.post("/resend-otp", response_model=MessageResponse)
 def resend_registration_otp(payload: RegistrationOTPRequest, db: Session = Depends(get_db)):
     normalized_phone = normalize_phone(payload.phone)
@@ -294,16 +341,9 @@ def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db
     db.add(user)
     db.commit()
 
-    try:
-        SMSService.send_sms(
-            user.phone,
-            (
-                f"Your password reset code is {code}. "
-                f"It expires in {settings.PASSWORD_RESET_CODE_EXPIRE_MINUTES} minutes."
-            ),
-        )
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Unable to send reset code: {exc}")
+    debug_message = _send_password_reset_sms(payload.phone, user.phone, code)
+    if debug_message:
+        return {"message": debug_message}
 
     return {"message": generic_message}
 

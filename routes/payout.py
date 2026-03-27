@@ -11,6 +11,7 @@ from app.models.tontine import Tontine
 from app.models.tontine_membership import TontineMembership
 from app.models.tontine_cycle import TontineCycle
 from app.models.payout import Payout
+from app.services.web_push_event_service import send_web_push_to_user
 from app.schemas.payout import (
     PayoutCreate,
     PayoutResponse,
@@ -104,6 +105,19 @@ def create_payout(
     db.add(payout)
     db.commit()
     db.refresh(payout)
+
+    try:
+        send_web_push_to_user(
+            db,
+            user_id=membership.user_id,
+            title="Payout received",
+            body=f"You received a payout from {tontine.name}.",
+            url=f"/tontines/{tontine.id}/cycles/{cycle.id}",
+            tag=f"payout_{payout.id}",
+            data={"tontine_id": tontine.id, "cycle_id": cycle.id, "payout_id": payout.id},
+        )
+    except Exception:
+        pass
     
     return payout
 

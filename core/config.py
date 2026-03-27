@@ -91,5 +91,16 @@ class Settings:
     AUTO_REMINDER_INTERVAL_SECONDS: int = int(os.getenv("AUTO_REMINDER_INTERVAL_SECONDS", "3600"))
     AUTO_REMINDER_LOOKAHEAD_HOURS: int = int(os.getenv("AUTO_REMINDER_LOOKAHEAD_HOURS", "24"))
 
+    # Web Push (browser push notifications via Service Worker + VAPID)
+    WEB_PUSH_VAPID_PUBLIC_KEY: str = os.getenv("WEB_PUSH_VAPID_PUBLIC_KEY", "").strip()
+    WEB_PUSH_VAPID_PRIVATE_KEY: str = os.getenv("WEB_PUSH_VAPID_PRIVATE_KEY", "").strip()
+    WEB_PUSH_VAPID_SUBJECT: str = os.getenv("WEB_PUSH_VAPID_SUBJECT", "mailto:admin@example.com").strip()
+
+    AUTO_WEB_PUSH_REMINDER_ENABLED: bool = _as_bool.__func__(
+        os.getenv("AUTO_WEB_PUSH_REMINDER_ENABLED", "false"),
+        default=False,
+    )
+    AUTO_WEB_PUSH_REMINDER_INTERVAL_SECONDS: int = int(os.getenv("AUTO_WEB_PUSH_REMINDER_INTERVAL_SECONDS", "600"))
+
 
 settings = Settings()

@@ -60,8 +60,9 @@ class ContributionResponse(BaseModel):
 
 
 class ContributionWithDetails(ContributionResponse):
-    member_name: Optional[str] = None
-    member_phone: Optional[str] = None
+    user_id: Optional[int] = None
+    user_name: Optional[str] = None
+    user_phone: Optional[str] = None
     cycle_number: Optional[int] = None
     tontine_name: Optional[str] = None
 

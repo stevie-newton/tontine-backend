@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
+import io
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
@@ -46,7 +48,7 @@ def get_tontine_transactions(
     current_user: User = Depends(get_current_user),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
-    event_type: Optional[str] = None,
+    entry_type: Optional[str] = None,
     cycle_id: Optional[int] = None,
     user_id: Optional[int] = None
 ):
@@ -59,7 +61,7 @@ def get_tontine_transactions(
         current_user=current_user,
         skip=skip,
         limit=limit,
-        event_type=event_type,
+        entry_type=entry_type,
         cycle_id=cycle_id,
         user_id=user_id
     )
@@ -84,6 +86,31 @@ def get_tontine_transaction_summary(
         current_user=current_user
     )
     return summary
+
+
+# -------------------------
+# Export transaction ledger CSV for a tontine (owner only)
+# -------------------------
+@router.get("/tontine/{tontine_id}/export/csv")
+def export_tontine_transactions_csv(
+    tontine_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    csv_text = TransactionLedgerService.export_tontine_transactions_csv(
+        db=db,
+        tontine_id=tontine_id,
+        current_user=current_user,
+    )
+
+    file_like = io.BytesIO(csv_text.encode("utf-8"))
+    return StreamingResponse(
+        file_like,
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="tontine_{tontine_id}_ledger.csv"',
+        },
+    )
 
 
 # -------------------------
