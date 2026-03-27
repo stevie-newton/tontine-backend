@@ -25,8 +25,8 @@ def close_cycle(
         "cycle_id": payout.cycle_id,
         "membership_id": payout.membership_id,
         "amount": payout.amount,
-        "is_paid": payout.is_paid,
-        "paid_at": payout.paid_at,
+        "is_processed": payout.is_processed,
+        "processed_at": payout.processed_at,
         "created_at": payout.created_at,
     }
 

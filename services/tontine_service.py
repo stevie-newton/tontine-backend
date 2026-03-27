@@ -584,3 +584,70 @@ class TontineService:
 
         position = (cycle_number - 1) % len(all_members)
         return all_members[position]
+
+    @staticmethod
+    def get_cycle_status(db: Session, tontine_id: int) -> dict:
+        """
+        Summary view of every cycle in a tontine for legacy `/cycles/status/{tontine_id}`
+        consumers on the web app.
+        """
+        tontine = db.query(Tontine).filter(Tontine.id == tontine_id).first()
+        if not tontine:
+            raise HTTPException(status_code=404, detail="Tontine not found")
+
+        TontineService.sync_cycle_rows_to_active_members_if_safe(db, tontine)
+
+        active_memberships = (
+            db.query(TontineMembership.id)
+            .filter(
+                TontineMembership.tontine_id == tontine_id,
+                TontineMembership.is_active.is_(True),
+            )
+            .all()
+        )
+        active_membership_ids = [membership_id for (membership_id,) in active_memberships]
+        expected_contributions = len(active_membership_ids)
+
+        cycles = (
+            db.query(TontineCycle)
+            .filter(TontineCycle.tontine_id == tontine_id)
+            .order_by(TontineCycle.cycle_number.asc())
+            .all()
+        )
+
+        cycle_rows: list[dict] = []
+        for cycle in cycles:
+            contribution_query = db.query(Contribution).filter(Contribution.cycle_id == cycle.id)
+            contributions = contribution_query.all()
+            contribution_count = len(contributions)
+            total_amount = sum((Decimal(str(item.amount)) for item in contributions), Decimal("0.00"))
+            total_amount = total_amount.quantize(TontineService.MONEY_Q, rounding=ROUND_HALF_UP)
+
+            payout = db.query(Payout).filter(Payout.cycle_id == cycle.id).first()
+            payout_member_name = None
+            if cycle.payout_member_id:
+                payout_member = db.query(User).filter(User.id == cycle.payout_member_id).first()
+                if payout_member:
+                    payout_member_name = payout_member.name
+
+            cycle_rows.append(
+                {
+                    "cycle_id": cycle.id,
+                    "cycle_number": cycle.cycle_number,
+                    "is_closed": bool(cycle.is_closed),
+                    "closed_at": cycle.closed_at,
+                    "contributions_count": contribution_count,
+                    "expected_contributions": expected_contributions,
+                    "all_paid": contribution_count >= expected_contributions if expected_contributions > 0 else False,
+                    "total_amount": total_amount,
+                    "payout_processed": bool(payout.is_processed) if payout else False,
+                    "payout_amount": payout.amount if payout else None,
+                    "payout_member_name": payout_member_name,
+                }
+            )
+
+        return {
+            "tontine_id": tontine_id,
+            "total_cycles": tontine.total_cycles,
+            "cycles": cycle_rows,
+        }
