@@ -648,7 +648,22 @@ export default function TontineDetailScreen() {
           </View>
           </View>
 
-          
+          <View style={[styles.cardShell, layout.isTablet ? styles.cardShellTablet : null]}>
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <ThemedText style={styles.cardTitle}>{t("Cycles")}</ThemedText>
+              <Link
+                href={{
+                  pathname: "/(tabs)/tontines/[tontineId]/cycles",
+                  params: { tontineId: String(tontine.id) },
+                }}
+                asChild
+              >
+                <Pressable style={styles.linkButton}>
+                  <ThemedText style={styles.linkText}>{t("Open")}</ThemedText>
+                </Pressable>
+              </Link>
+            </View>
 
             {recentCycles.length === 0 ? (
               <ThemedText style={styles.supportText}>{t("No cycles created yet.")}</ThemedText>
@@ -680,6 +695,9 @@ export default function TontineDetailScreen() {
                 </View>
               ))
             )}
+          </View>
+          </View>
+
           <View style={[styles.cardShell, layout.isTablet ? styles.cardShellTablet : null]}>
           <View style={styles.card}>
             <View style={styles.cardHeader}>
