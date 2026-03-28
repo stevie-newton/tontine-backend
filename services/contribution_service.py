@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Optional, List, Dict, Any
 import uuid
@@ -26,6 +26,53 @@ class ContributionService:
     @staticmethod
     def _q(amount: Decimal) -> Decimal:
         return Decimal(amount).quantize(ContributionService.MONEY_Q, rounding=ROUND_HALF_UP)
+
+    @staticmethod
+    def _require_tontine_access(db: Session, tontine_id: int, current_user: User) -> TontineMembership | None:
+        tontine = db.query(Tontine).filter(Tontine.id == tontine_id).first()
+        if not tontine:
+            raise HTTPException(status_code=404, detail="Tontine not found")
+
+        if tontine.owner_id == current_user.id:
+            return None
+
+        membership = (
+            db.query(TontineMembership)
+            .filter(
+                TontineMembership.user_id == current_user.id,
+                TontineMembership.tontine_id == tontine_id,
+                TontineMembership.is_active.is_(True),
+            )
+            .first()
+        )
+        if not membership:
+            raise HTTPException(status_code=403, detail="You don't have access to this tontine")
+
+        return membership
+
+    @staticmethod
+    def _require_owner_or_admin(db: Session, tontine_id: int, current_user: User) -> TontineMembership | None:
+        tontine = db.query(Tontine).filter(Tontine.id == tontine_id).first()
+        if not tontine:
+            raise HTTPException(status_code=404, detail="Tontine not found")
+
+        if tontine.owner_id == current_user.id:
+            return None
+
+        admin_membership = (
+            db.query(TontineMembership)
+            .filter(
+                TontineMembership.user_id == current_user.id,
+                TontineMembership.tontine_id == tontine_id,
+                TontineMembership.role == "admin",
+                TontineMembership.is_active.is_(True),
+            )
+            .first()
+        )
+        if not admin_membership:
+            raise HTTPException(status_code=403, detail="Only owner or admin can manage contributions")
+
+        return admin_membership
 
     @staticmethod
     def create_contribution(
@@ -228,18 +275,20 @@ class ContributionService:
     @staticmethod
     def get_member_contributions(
         db: Session,
-        tontine_id: int,
+        membership_id: int,
         current_user: User,
     ) -> List[Dict[str, Any]]:
-        """Get all contributions for the current user in a specific tontine."""
-        membership = db.query(TontineMembership).filter(
-            TontineMembership.user_id == current_user.id,
-            TontineMembership.tontine_id == tontine_id,
-            TontineMembership.is_active.is_(True),
-        ).first()
-
+        """Get all contributions for one membership row."""
+        membership = (
+            db.query(TontineMembership)
+            .filter(TontineMembership.id == membership_id)
+            .first()
+        )
         if not membership:
-            raise HTTPException(status_code=404, detail="You are not a member of this tontine")
+            raise HTTPException(status_code=404, detail="Membership not found")
+
+        if membership.user_id != current_user.id:
+            ContributionService._require_owner_or_admin(db, membership.tontine_id, current_user)
 
         rows = (
             db.query(
@@ -265,6 +314,32 @@ class ContributionService:
             }
             for (c, cycle_number, cycle_closed) in rows
         ]
+
+    @staticmethod
+    def get_member_contributions_by_tontine(
+        db: Session,
+        tontine_id: int,
+        current_user: User,
+    ) -> List[Dict[str, Any]]:
+        """Get all contributions for the current user in a specific tontine."""
+        membership = (
+            db.query(TontineMembership)
+            .filter(
+                TontineMembership.user_id == current_user.id,
+                TontineMembership.tontine_id == tontine_id,
+                TontineMembership.is_active.is_(True),
+            )
+            .first()
+        )
+
+        if not membership:
+            raise HTTPException(status_code=404, detail="You are not a member of this tontine")
+
+        return ContributionService.get_member_contributions(
+            db=db,
+            membership_id=membership.id,
+            current_user=current_user,
+        )
 
     @staticmethod
     def confirm_contribution(
@@ -395,15 +470,107 @@ class ContributionService:
         return contribution
 
     @staticmethod
+    def get_contribution_by_id(
+        db: Session,
+        contribution_id: int,
+        current_user: User,
+    ) -> Dict[str, Any]:
+        contribution = db.query(Contribution).filter(Contribution.id == contribution_id).first()
+        if not contribution:
+            raise HTTPException(status_code=404, detail="Contribution not found")
+
+        membership = db.query(TontineMembership).filter(TontineMembership.id == contribution.membership_id).first()
+        if not membership:
+            raise HTTPException(status_code=404, detail="Membership not found")
+
+        cycle = db.query(TontineCycle).filter(TontineCycle.id == contribution.cycle_id).first()
+        if not cycle:
+            raise HTTPException(status_code=404, detail="Cycle not found")
+
+        if membership.user_id != current_user.id:
+            ContributionService._require_tontine_access(db, membership.tontine_id, current_user)
+
+        member = db.query(User).filter(User.id == membership.user_id).first()
+        tontine = db.query(Tontine).filter(Tontine.id == membership.tontine_id).first()
+
+        return {
+            "id": contribution.id,
+            "membership_id": contribution.membership_id,
+            "cycle_id": contribution.cycle_id,
+            "amount": contribution.amount,
+            "transaction_reference": contribution.transaction_reference,
+            "proof_screenshot_url": contribution.proof_screenshot_url,
+            "beneficiary_decision": contribution.beneficiary_decision,
+            "is_confirmed": contribution.is_confirmed,
+            "ledger_entry_created": contribution.ledger_entry_created,
+            "paid_at": contribution.paid_at,
+            "user_id": membership.user_id,
+            "user_name": member.name if member else None,
+            "user_phone": member.phone if member else None,
+            "cycle_number": cycle.cycle_number,
+            "tontine_name": tontine.name if tontine else None,
+        }
+
+    @staticmethod
+    def update_contribution(
+        db: Session,
+        contribution_id: int,
+        update_data,
+        current_user: User,
+    ) -> Contribution:
+        contribution = db.query(Contribution).filter(Contribution.id == contribution_id).first()
+        if not contribution:
+            raise HTTPException(status_code=404, detail="Contribution not found")
+
+        membership = db.query(TontineMembership).filter(TontineMembership.id == contribution.membership_id).first()
+        if not membership:
+            raise HTTPException(status_code=404, detail="Membership not found")
+
+        ContributionService._require_owner_or_admin(db, membership.tontine_id, current_user)
+
+        if update_data.amount is not None:
+            contribution.amount = ContributionService._q(Decimal(str(update_data.amount)))
+        if update_data.is_confirmed is not None:
+            contribution.is_confirmed = bool(update_data.is_confirmed)
+            contribution.beneficiary_decision = "confirmed" if contribution.is_confirmed else "rejected"
+
+        db.commit()
+        db.refresh(contribution)
+        return contribution
+
+    @staticmethod
+    def delete_contribution(
+        db: Session,
+        contribution_id: int,
+        current_user: User,
+    ) -> None:
+        contribution = db.query(Contribution).filter(Contribution.id == contribution_id).first()
+        if not contribution:
+            raise HTTPException(status_code=404, detail="Contribution not found")
+
+        membership = db.query(TontineMembership).filter(TontineMembership.id == contribution.membership_id).first()
+        if not membership:
+            raise HTTPException(status_code=404, detail="Membership not found")
+
+        ContributionService._require_owner_or_admin(db, membership.tontine_id, current_user)
+
+        db.delete(contribution)
+        db.commit()
+
+    @staticmethod
     def get_contribution_summary(
         db: Session,
         tontine_id: int,
         cycle_id: Optional[int] = None,
+        current_user: Optional[User] = None,
     ) -> Dict[str, Any]:
         """
         Summary statistics for contributions.
         NOTE: Uses Decimal-safe totals; no integer division.
         """
+        if current_user is not None:
+            ContributionService._require_tontine_access(db, tontine_id, current_user)
+
         membership_ids = [
             m_id
             for (m_id,) in db.query(TontineMembership.id).filter(
@@ -460,4 +627,132 @@ class ContributionService:
             "total_amount": total_amount,
             "cycle_info": cycle_info,
             "average_per_member": average,
+        }
+
+    @staticmethod
+    def get_cycle_contribution_status(
+        db: Session,
+        cycle_id: int,
+        current_user: User,
+    ) -> Dict[str, Any]:
+        cycle = db.query(TontineCycle).filter(TontineCycle.id == cycle_id).first()
+        if not cycle:
+            raise HTTPException(status_code=404, detail="Cycle not found")
+
+        tontine = db.query(Tontine).filter(Tontine.id == cycle.tontine_id).first()
+        if not tontine:
+            raise HTTPException(status_code=404, detail="Tontine not found")
+
+        ContributionService._require_tontine_access(db, tontine.id, current_user)
+
+        active_memberships = (
+            db.query(TontineMembership)
+            .join(User, User.id == TontineMembership.user_id)
+            .filter(
+                TontineMembership.tontine_id == tontine.id,
+                TontineMembership.is_active.is_(True),
+            )
+            .order_by(User.name.asc())
+            .all()
+        )
+        expected_memberships = [
+            membership
+            for membership in active_memberships
+            if membership.user_id != cycle.payout_member_id
+        ]
+
+        contributions = (
+            db.query(Contribution)
+            .filter(Contribution.cycle_id == cycle_id)
+            .all()
+        )
+        confirmed_by_membership = {
+            contribution.membership_id: contribution
+            for contribution in contributions
+            if contribution.is_confirmed
+        }
+
+        paid_members = []
+        missing_members = []
+        member_statuses = []
+        total_received = Decimal("0.00")
+        paid_count = 0
+        on_time_count = 0
+        late_count = 0
+
+        deadline = cycle.contribution_deadline or cycle.end_date
+        deadline_with_grace = None
+        if deadline and cycle.grace_period_hours:
+            deadline_with_grace = deadline + timedelta(hours=cycle.grace_period_hours)
+
+        for membership in expected_memberships:
+            contribution = confirmed_by_membership.get(membership.id)
+            if contribution:
+                paid_count += 1
+                total_received += Decimal(str(contribution.amount))
+                is_late = bool(deadline_with_grace and contribution.paid_at and contribution.paid_at > deadline_with_grace)
+                status_value = "late" if is_late else "on_time"
+                if is_late:
+                    late_count += 1
+                else:
+                    on_time_count += 1
+                paid_members.append(
+                    {
+                        "membership_id": membership.id,
+                        "user_id": membership.user_id,
+                        "name": membership.user.name,
+                    }
+                )
+                member_statuses.append(
+                    {
+                        "membership_id": membership.id,
+                        "user_id": membership.user_id,
+                        "name": membership.user.name,
+                        "phone": membership.user.phone,
+                        "status": status_value,
+                        "paid_at": contribution.paid_at,
+                        "amount": contribution.amount,
+                    }
+                )
+            else:
+                missing_members.append(
+                    {
+                        "membership_id": membership.id,
+                        "user_id": membership.user_id,
+                        "name": membership.user.name,
+                    }
+                )
+                member_statuses.append(
+                    {
+                        "membership_id": membership.id,
+                        "user_id": membership.user_id,
+                        "name": membership.user.name,
+                        "phone": membership.user.phone,
+                        "status": "missing",
+                        "paid_at": None,
+                        "amount": None,
+                    }
+                )
+
+        expected_total = ContributionService._q(
+            Decimal(str(tontine.contribution_amount)) * Decimal(len(expected_memberships))
+        )
+
+        return {
+            "cycle_id": cycle.id,
+            "tontine_id": tontine.id,
+            "deadline": deadline,
+            "deadline_with_grace": deadline_with_grace,
+            "grace_period_hours": cycle.grace_period_hours,
+            "expected_members": len(expected_memberships),
+            "paid_count": paid_count,
+            "on_time_count": on_time_count,
+            "late_count": late_count,
+            "missing_count": len(expected_memberships) - paid_count,
+            "total_received": ContributionService._q(total_received),
+            "expected_total": expected_total,
+            "is_fully_funded": paid_count == len(expected_memberships),
+            "paid_members": paid_members,
+            "missing_members": missing_members,
+            "member_statuses": member_statuses,
         }

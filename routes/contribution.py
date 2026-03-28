@@ -10,6 +10,7 @@ from app.models.tontine import Tontine
 from app.models.tontine_membership import TontineMembership
 from app.schemas.contribution import (
     ContributionCreate,
+    ContributionListResponse,
     ContributionResponse,
     ContributionUpdate,
     ContributionWithDetails,
@@ -60,7 +61,7 @@ def create_contribution(
 # -------------------------
 # Get contributions for a cycle
 # -------------------------
-@router.get("/cycle/{cycle_id}", response_model=List[ContributionWithDetails])
+@router.get("/cycle/{cycle_id}", response_model=ContributionListResponse)
 def get_cycle_contributions(
     cycle_id: int,
     db: Session = Depends(get_db),
@@ -76,7 +77,11 @@ def get_cycle_contributions(
         current_user=current_user
     )
     
-    return contributions
+    return {
+        "cycle_id": cycle_id,
+        "count": len(contributions),
+        "contributions": contributions,
+    }
 
 
 # -------------------------

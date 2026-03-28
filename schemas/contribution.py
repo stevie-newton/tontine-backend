@@ -69,6 +69,12 @@ class ContributionWithDetails(ContributionResponse):
     model_config = ConfigDict(from_attributes=True)
 
 
+class ContributionListResponse(BaseModel):
+    cycle_id: int
+    count: int
+    contributions: list[ContributionWithDetails]
+
+
 class ContributionSummary(BaseModel):
     tontine_id: int
     cycle_id: Optional[int] = None
