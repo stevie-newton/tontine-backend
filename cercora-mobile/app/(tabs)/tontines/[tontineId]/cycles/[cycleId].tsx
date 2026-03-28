@@ -159,8 +159,6 @@ export default function CycleDetailScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [selectedPayoutUserId, setSelectedPayoutUserId] = useState<number | null>(null);
-  const [isAssigning, setIsAssigning] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [approvingContributionId, setApprovingContributionId] = useState<number | null>(null);
 
@@ -184,7 +182,6 @@ export default function CycleDetailScreen() {
       setTontine(tontineRes.data);
       setMembers(membersRes.data);
       setDebts(debtRes.data.debts.filter((item) => item.cycle_id === cycleRes.data.id));
-      setSelectedPayoutUserId((prev) => prev ?? (cycleRes.data.payout_member_id ?? null));
     } catch (e) {
       setError(getErrorMessage(e));
     } finally {
@@ -207,24 +204,6 @@ export default function CycleDetailScreen() {
   async function onRefresh() {
     setIsRefreshing(true);
     await load();
-  }
-
-  async function onAssignPayout() {
-    if (!selectedPayoutUserId) return;
-    setError(null);
-    setMessage(null);
-    setIsAssigning(true);
-    try {
-      await api.put(`/tontine-cycles/${cycleNum}/assign-payout`, null, {
-        params: { member_id: selectedPayoutUserId },
-      });
-      setMessage("Payout member assigned.");
-      await load();
-    } catch (e) {
-      setError(getErrorMessage(e));
-    } finally {
-      setIsAssigning(false);
-    }
   }
 
   async function onCloseCycle() {
@@ -393,30 +372,9 @@ export default function CycleDetailScreen() {
             <View style={styles.card}>
               <ThemedText style={styles.cardTitle}>Manage cycle</ThemedText>
               <ThemedText style={styles.supportText}>
-                Assign the payout member, then close the cycle once every active member is funded.
+                Rotation is automatic. Close the cycle once every non-beneficiary active member is funded.
               </ThemedText>
-              <ThemedText style={styles.sectionLabel}>Assign payout member</ThemedText>
-              <View style={styles.pillsRow}>
-                {members.filter((m) => m.membership_status === "active").map((member) => (
-                  <Pressable
-                    key={member.id}
-                    style={[styles.pill, selectedPayoutUserId === member.id ? styles.pillActive : null]}
-                    onPress={() => setSelectedPayoutUserId(member.id)}
-                  >
-                    <ThemedText style={[styles.pillText, selectedPayoutUserId === member.id ? styles.pillTextActive : null]}>
-                      {member.name}
-                    </ThemedText>
-                  </Pressable>
-                ))}
-              </View>
               <View style={styles.actionsRow}>
-                <Pressable
-                  style={styles.secondaryButton}
-                  disabled={isAssigning || !selectedPayoutUserId || cycle.is_closed}
-                  onPress={() => void onAssignPayout()}
-                >
-                  <ThemedText style={styles.secondaryButtonText}>{isAssigning ? "Assigning..." : "Assign payout"}</ThemedText>
-                </Pressable>
                 <Pressable style={styles.primaryButton} disabled={isClosing || !canClose} onPress={() => void onCloseCycle()}>
                   <ThemedText style={styles.primaryButtonText}>{isClosing ? "Closing..." : "Close cycle"}</ThemedText>
                 </Pressable>

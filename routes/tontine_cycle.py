@@ -79,10 +79,12 @@ def generate_cycles(
     
     for i in range(1, tontine.total_cycles + 1):
         cycle_end = start_date + cycle_duration
+        payout_member = TontineService._determine_payout_member(db, tontine_id, i)
         
         cycle = TontineCycle(
             tontine_id=tontine_id,
             cycle_number=i,
+            payout_member_id=payout_member.user_id if payout_member else None,
             start_date=start_date,
             end_date=cycle_end,
             is_closed=False

@@ -304,7 +304,67 @@ class TontineService:
                 start_date = end_date
                 changed = True
 
+        if TontineService.ensure_cycle_payout_assignments(db, tontine):
+            changed = True
+
         return changed
+
+    @staticmethod
+    def ensure_cycle_payout_assignments(db: Session, tontine: Tontine) -> bool:
+        """Assign payout members automatically from the frozen rotation when missing."""
+        if not tontine:
+            return False
+
+        cycles = (
+            db.query(TontineCycle)
+            .filter(TontineCycle.tontine_id == tontine.id)
+            .order_by(TontineCycle.cycle_number.asc())
+            .all()
+        )
+        if not cycles:
+            return False
+
+        changed = False
+        active_user_ids = {
+            user_id
+            for (user_id,) in (
+                db.query(TontineMembership.user_id)
+                .filter(
+                    TontineMembership.tontine_id == tontine.id,
+                    TontineMembership.is_active.is_(True),
+                )
+                .all()
+            )
+        }
+
+        for cycle in cycles:
+            payout_missing = cycle.payout_member_id is None
+            payout_inactive = cycle.payout_member_id is not None and cycle.payout_member_id not in active_user_ids
+            if not payout_missing and not payout_inactive:
+                continue
+
+            payout_member = TontineService._determine_payout_member(db, tontine.id, cycle.cycle_number)
+            if payout_member and cycle.payout_member_id != payout_member.user_id:
+                cycle.payout_member_id = payout_member.user_id
+                changed = True
+
+        return changed
+
+    @staticmethod
+    def _expected_contributor_memberships(
+        db: Session,
+        tontine_id: int,
+        payout_member_id: Optional[int],
+    ) -> list[TontineMembership]:
+        members = (
+            db.query(TontineMembership)
+            .filter(
+                TontineMembership.tontine_id == tontine_id,
+                TontineMembership.is_active.is_(True),
+            )
+            .all()
+        )
+        return [member for member in members if member.user_id != payout_member_id]
 
     @staticmethod
     def close_cycle(db: Session, cycle_id: int, current_user: User) -> Payout:
@@ -358,16 +418,21 @@ class TontineService:
                     detail=f"Only current cycle can be closed (current: {tontine.current_cycle})",
                 )
 
-            # Active members count
-            active_members_count: int = (
-                db.query(func.count(TontineMembership.id))
-                .filter(
-                    TontineMembership.tontine_id == tontine.id,
-                    TontineMembership.is_active.is_(True),
-                )
-                .scalar()
-                or 0
+            if not cycle.payout_member_id:
+                payout_member = TontineService._determine_payout_member(db, tontine.id, cycle.cycle_number)
+                if not payout_member:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Payout member could not be determined automatically",
+                    )
+                cycle.payout_member_id = payout_member.user_id
+
+            expected_memberships = TontineService._expected_contributor_memberships(
+                db=db,
+                tontine_id=tontine.id,
+                payout_member_id=cycle.payout_member_id,
             )
+            active_members_count = len(expected_memberships)
             active_user_ids = [
                 user_id
                 for (user_id,) in (
@@ -381,7 +446,7 @@ class TontineService:
             ]
 
             if active_members_count == 0:
-                raise HTTPException(status_code=400, detail="No active members in this tontine")
+                raise HTTPException(status_code=400, detail="No eligible contributors in this tontine")
 
             # Distinct confirmed members count (dual-confirmation workflow)
             confirmed_members_count: int = (
@@ -389,6 +454,7 @@ class TontineService:
                 .filter(
                     Contribution.cycle_id == cycle.id,
                     Contribution.is_confirmed.is_(True),
+                    Contribution.membership_id.in_([membership.id for membership in expected_memberships]),
                 )
                 .scalar()
                 or 0
@@ -410,6 +476,7 @@ class TontineService:
                     .filter(
                         TontineMembership.tontine_id == tontine.id,
                         TontineMembership.is_active.is_(True),
+                        TontineMembership.user_id != cycle.payout_member_id,
                         Contribution.id.is_(None),
                     )
                     .all()
@@ -427,6 +494,7 @@ class TontineService:
                 .filter(
                     Contribution.cycle_id == cycle.id,
                     Contribution.is_confirmed.is_(True),
+                    Contribution.membership_id.in_([membership.id for membership in expected_memberships]),
                 )
                 .scalar()
                 or Decimal("0.00")
@@ -445,16 +513,6 @@ class TontineService:
                     status_code=400,
                     detail=f"Cycle not fully funded. Expected: {expected_total}, Received: {total_contributions}",
                 )
-
-            # Ensure payout member is assigned (or determine automatically)
-            if not cycle.payout_member_id:
-                payout_member = TontineService._determine_payout_member(db, tontine.id, cycle.cycle_number)
-                if not payout_member:
-                    raise HTTPException(
-                        status_code=400,
-                        detail="Payout member not assigned and could not be determined automatically",
-                    )
-                cycle.payout_member_id = payout_member.user_id
 
             # Fetch payout membership (for ledger user_id)
             payout_membership: Optional[TontineMembership] = (
@@ -596,17 +654,7 @@ class TontineService:
             raise HTTPException(status_code=404, detail="Tontine not found")
 
         TontineService.sync_cycle_rows_to_active_members_if_safe(db, tontine)
-
-        active_memberships = (
-            db.query(TontineMembership.id)
-            .filter(
-                TontineMembership.tontine_id == tontine_id,
-                TontineMembership.is_active.is_(True),
-            )
-            .all()
-        )
-        active_membership_ids = [membership_id for (membership_id,) in active_memberships]
-        expected_contributions = len(active_membership_ids)
+        TontineService.ensure_cycle_payout_assignments(db, tontine)
 
         cycles = (
             db.query(TontineCycle)
@@ -617,7 +665,22 @@ class TontineService:
 
         cycle_rows: list[dict] = []
         for cycle in cycles:
-            contribution_query = db.query(Contribution).filter(Contribution.cycle_id == cycle.id)
+            expected_memberships = TontineService._expected_contributor_memberships(
+                db=db,
+                tontine_id=tontine_id,
+                payout_member_id=cycle.payout_member_id,
+            )
+            expected_contributions = len(expected_memberships)
+            expected_membership_ids = [membership.id for membership in expected_memberships]
+
+            contribution_query = db.query(Contribution).filter(
+                Contribution.cycle_id == cycle.id,
+                Contribution.is_confirmed.is_(True),
+            )
+            if expected_membership_ids:
+                contribution_query = contribution_query.filter(
+                    Contribution.membership_id.in_(expected_membership_ids)
+                )
             contributions = contribution_query.all()
             contribution_count = len(contributions)
             total_amount = sum((Decimal(str(item.amount)) for item in contributions), Decimal("0.00"))
