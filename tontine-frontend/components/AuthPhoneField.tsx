@@ -31,8 +31,10 @@ export default function AuthPhoneField({
 }: AuthPhoneFieldProps) {
   const { t } = useI18n();
   const parsedPhone = useMemo(() => parsePhoneValue(value), [value]);
+  const [pendingCountry, setPendingCountry] = useState<PhoneCountry | null>(null);
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
+  const selectedCountry = value.trim() ? parsedPhone.country : pendingCountry ?? parsedPhone.country;
 
   const filteredCountries = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -47,6 +49,7 @@ export default function AuthPhoneField({
   }
 
   function handleCountrySelect(country: PhoneCountry) {
+    setPendingCountry(country);
     setIsOpen(false);
     setQuery("");
     updateNumber(country, parsedPhone.localNumber);
@@ -54,7 +57,7 @@ export default function AuthPhoneField({
 
   function handleLocalNumberChange(nextValue: string) {
     const normalized = normalizeLocalPhoneNumber(nextValue);
-    updateNumber(parsedPhone.country, normalized);
+    updateNumber(selectedCountry, normalized);
   }
 
   return (
@@ -67,12 +70,12 @@ export default function AuthPhoneField({
             className="flex w-full items-center justify-between rounded-2xl border border-[rgba(79,107,194,0.18)] bg-white/90 px-4 py-3 text-left text-[color:var(--brand-ink)] shadow-[0_10px_28px_rgba(44,102,215,0.08)] outline-none transition hover:border-[rgba(44,102,215,0.3)] focus:border-[rgba(44,102,215,0.42)] focus:ring-4 focus:ring-[rgba(46,207,227,0.16)]"
             onClick={() => setIsOpen((open) => !open)}
           >
-            <span className="min-w-0">
+              <span className="min-w-0">
               <span className="block text-xs uppercase tracking-[0.22em] text-[color:var(--brand-muted)]">
-                {parsedPhone.country.code}
+                {selectedCountry.code}
               </span>
               <span className="block truncate text-sm font-medium">
-                {parsedPhone.country.dialCode}
+                {selectedCountry.dialCode}
               </span>
             </span>
             <span className="ml-3 text-xs text-[color:var(--brand-muted)]">
