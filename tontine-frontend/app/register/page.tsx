@@ -142,6 +142,13 @@ export default function RegisterPage() {
               {loading ? t("register.creating") : t("register.create_account")}
             </button>
 
+            <div className="text-center text-sm text-[color:var(--brand-muted)]">
+              {t("register.already_registered")}{" "}
+              <a href="/login" className="font-medium text-[color:var(--brand-blue)] hover:underline">
+                {t("register.sign_in")}
+              </a>
+            </div>
+
             <div className="space-y-2 text-center text-xs text-[color:var(--brand-muted)]">
               <div>{t("register.terms")}</div>
               <div>
