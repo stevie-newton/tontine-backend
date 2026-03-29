@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 
@@ -10,17 +10,28 @@ import { I18nProvider, useI18n } from "@/hooks/use-i18n";
 
 void SplashScreen.preventAutoHideAsync();
 
+const MIN_SPLASH_MS = 1200;
+
 function RootNavigator() {
   const { isLoading } = useAuth();
   const { t } = useI18n();
+  const [minSplashElapsed, setMinSplashElapsed] = useState(false);
 
   useEffect(() => {
-    if (!isLoading) {
+    const timer = setTimeout(() => {
+      setMinSplashElapsed(true);
+    }, MIN_SPLASH_MS);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!isLoading && minSplashElapsed) {
       void SplashScreen.hideAsync();
     }
-  }, [isLoading]);
+  }, [isLoading, minSplashElapsed]);
 
-  if (isLoading) {
+  if (isLoading || !minSplashElapsed) {
     return null;
   }
 

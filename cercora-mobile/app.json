@@ -49,7 +49,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/cercora-splash.png",
+          "image": "./public/cercora-splash.png",
           "imageWidth": 220,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",
