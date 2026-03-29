@@ -307,19 +307,6 @@ export default function RemindersScreen() {
     }
   }
 
-  async function sendTestPush() {
-    if (!nativePushSupported && !webPushSupported) return;
-    setPushBusy(true);
-    setPushError(null);
-    try {
-      await api.post("/push/test");
-    } catch (e) {
-      setPushError(getErrorMessage(e));
-    } finally {
-      setPushBusy(false);
-    }
-  }
-
   async function sendAdminReminders() {
     setAdminActionBusy(true);
     setAdminError(null);
@@ -402,7 +389,7 @@ export default function RemindersScreen() {
             <ThemedText type="subtitle">Push notifications</ThemedText>
             <ThemedText style={styles.supportText}>
               {nativePushSupported
-                ? t("Native mobile delivery")
+                ? ""
                 : webPushSupported
                   ? "Secure web delivery"
                   : "Available on secure web only"}
@@ -416,12 +403,6 @@ export default function RemindersScreen() {
               </ThemedText>
               <ThemedText style={styles.metricLabel}>Permission</ThemedText>
             </View>
-            <View style={styles.metricTile}>
-              <ThemedText style={styles.metricValue}>
-                {nativePushSupported ? (pushSubscribed ? "Subscribed" : "Idle") : pushSubscribed ? "Subscribed" : "Idle"}
-              </ThemedText>
-              <ThemedText style={styles.metricLabel}>Delivery state</ThemedText>
-            </View>
           </View>
 
           <View style={styles.actionsRow}>
@@ -434,19 +415,6 @@ export default function RemindersScreen() {
                 {pushBusy ? "Working..." : pushSubscribed ? "Disable push" : "Enable push"}
               </ThemedText>
             </Pressable>
-
-            {(nativePushSupported && pushSubscribed) ||
-            (webPushSupported && permission === "granted" && pushSubscribed) ? (
-              <Pressable
-                style={styles.primaryButton}
-                disabled={pushBusy}
-                onPress={() => void sendTestPush()}
-              >
-                <ThemedText style={styles.primaryButtonText}>
-                  {pushBusy ? "Sending..." : "Send test push"}
-                </ThemedText>
-              </Pressable>
-            ) : null}
           </View>
 
           {pushError ? <ThemedText style={styles.errorText}>{pushError}</ThemedText> : null}

@@ -103,7 +103,7 @@ export default function CreateTontineScreen() {
           <View style={styles.pageHeader}>
             <ThemedText style={styles.pageTitle}>Create a tontine</ThemedText>
             <ThemedText style={styles.pageSubtitle}>
-              A mobile version of the web create page: simple inputs, clean setup, and draft creation first.
+              Configure your group with a streamlined setup, then refine membership and cycle planning from the tontine workspace.
             </ThemedText>
           </View>
 
@@ -163,17 +163,6 @@ export default function CreateTontineScreen() {
                   </ThemedText>
                 </Pressable>
               </View>
-            </View>
-
-            <View style={styles.hintCard}>
-              <ThemedText style={styles.hintTitle}>
-                {t("Cycle setup happens after creation")}
-              </ThemedText>
-              <ThemedText style={styles.hintText}>
-                {t(
-                  "Just like the web page, this creates the tontine as a draft first. You can invite members and shape the cycle flow from the tontine workspace afterward."
-                )}
-              </ThemedText>
             </View>
 
             {error ? <ThemedText style={styles.error}>{error}</ThemedText> : null}
@@ -298,25 +287,6 @@ const styles = StyleSheet.create({
   },
   frequencyHintActive: {
     color: "#D9E5FA",
-  },
-  hintCard: {
-    borderRadius: 18,
-    backgroundColor: "#EFF6FF",
-    borderWidth: 1,
-    borderColor: "#BFDBFE",
-    padding: 16,
-    gap: 6,
-  },
-  hintTitle: {
-    color: "#1D4ED8",
-    fontSize: 15,
-    lineHeight: 18,
-    fontWeight: "800",
-  },
-  hintText: {
-    color: "#1E3A8A",
-    fontSize: 13,
-    lineHeight: 19,
   },
   error: {
     color: BrandColors.dangerText,

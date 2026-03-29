@@ -249,6 +249,33 @@ class TontineService:
         return True
 
     @staticmethod
+    def sync_generated_status_if_ready(db: Session, tontine: Tontine) -> bool:
+        """
+        Promote a tontine from draft to active once cycles have been generated.
+
+        This keeps older draft-with-cycles records from continuing to display
+        as draft after the rotation is already live.
+        """
+        if not tontine:
+            return False
+
+        status_value = tontine.status.value if hasattr(tontine.status, "value") else str(tontine.status)
+        if status_value != TontineStatus.DRAFT.value:
+            return False
+
+        has_cycles = (
+            db.query(TontineCycle.id)
+            .filter(TontineCycle.tontine_id == tontine.id)
+            .first()
+            is not None
+        )
+        if not has_cycles:
+            return False
+
+        tontine.status = TontineStatus.ACTIVE.value
+        return True
+
+    @staticmethod
     def sync_cycle_rows_to_active_members_if_safe(db: Session, tontine: Tontine) -> bool:
         """
         Keep generated cycle rows aligned with total_cycles when it is still safe.
@@ -271,6 +298,8 @@ class TontineService:
         )
         if not cycles:
             return changed
+
+        changed = TontineService.sync_generated_status_if_ready(db, tontine) or changed
 
         desired_total = tontine.total_cycles
         cycle_duration = TontineService.cycle_duration_for_frequency(tontine.frequency)

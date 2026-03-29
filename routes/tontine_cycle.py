@@ -94,6 +94,7 @@ def generate_cycles(
         start_date = cycle_end
     
     db.add_all(cycles)
+    tontine.status = TontineStatus.ACTIVE.value
     db.commit()
     
     # Refresh to get IDs

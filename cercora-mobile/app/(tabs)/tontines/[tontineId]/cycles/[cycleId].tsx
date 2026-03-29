@@ -271,7 +271,7 @@ export default function CycleDetailScreen() {
           <View style={styles.pageHeader}>
             <ThemedText style={styles.pageTitle}>Cycle {cycle.cycle_number}</ThemedText>
             <ThemedText style={styles.pageSubtitle}>
-              The mobile cycle workspace now follows the web view more closely, with funding status, roster visibility, review controls, and debt context in one place.
+              Monitor funding progress, member activity, review actions, and debt context from one consolidated cycle workspace.
             </ThemedText>
           </View>
 

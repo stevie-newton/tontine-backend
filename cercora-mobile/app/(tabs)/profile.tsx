@@ -382,9 +382,6 @@ export default function ProfileScreen() {
           <View style={[styles.section, layout.isTablet ? styles.sectionColumn : null]}>
             <View style={styles.sectionHeader}>
               <ThemedText type="subtitle">Language</ThemedText>
-              <ThemedText style={styles.sectionCaption}>
-                {t("The app will immediately switch between English and French.")}
-              </ThemedText>
             </View>
 
             <View style={styles.card}>
