@@ -354,8 +354,8 @@ const frTranslations: Record<string, string> = {
 
   "Tontine workspace": "Espace tontine",
   "Invalid tontine id.": "ID de tontine invalide.",
-  "A mobile workspace built from the web tontine page: overview, reliability, members, cycles, and debts in one place.":
-    "Un espace mobile inspiré de la page web de tontine : aperçu, fiabilité, membres, cycles et dettes au même endroit.",
+  "Review group performance, member activity, cycle progress, and debt status from one integrated workspace.":
+    "Consultez la performance du groupe, l'activité des membres, l'avancement des cycles et l'état des dettes depuis un espace de travail intégré.",
   "Current cycle: {{current}}/{{total}}": "Cycle actuel : {{current}}/{{total}}",
   "You can remove this tontine only when no financial activity has been recorded yet.":
     "Vous pouvez supprimer cette tontine uniquement lorsqu'aucune activité financière n'a encore été enregistrée.",
@@ -379,8 +379,8 @@ const frTranslations: Record<string, string> = {
     "Gérez les invitations, suivez votre fiabilité et ouvrez chaque groupe d'épargne depuis un seul endroit.",
   "Keep your groups and invites in sync":
     "Gardez vos groupes et vos invitations synchronisés",
-  "This mobile view now follows the same structure as the web page, with your score, pending invites, create action, and group list in one flow.":
-    "Cette vue mobile suit désormais la même structure que la page web, avec votre score, les invitations en attente, l'action de création et la liste des groupes dans un seul flux.",
+  "Access your reliability profile, pending invites, creation tools, and active groups from one streamlined workspace.":
+    "Accédez à votre profil de fiabilité, à vos invitations en attente, aux outils de création et à vos groupes actifs depuis un espace de travail unifié.",
   Groups: "Groupes",
   "Reliability profile": "Profil de fiabilité",
   "The same score summary from the web tontines page, adapted for mobile.":
@@ -533,6 +533,8 @@ const frTranslations: Record<string, string> = {
   "{{tontine}} debt flow": "Flux des dettes de {{tontine}}",
   "Track when someone covers a missed payment and follow repayment back to resolution.":
     "Suivez lorsqu'une personne couvre un paiement manqué et le remboursement jusqu'à sa résolution.",
+  "Manage debt coverage, open balances, and repayment history from one dedicated workspace.":
+    "Gérez la couverture des dettes, les soldes ouverts et l'historique des remboursements depuis un espace de travail dédié.",
   repaid: "remboursé",
   "Total debts": "Total des dettes",
   "Tracked amount": "Montant suivi",

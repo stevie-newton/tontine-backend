@@ -326,11 +326,11 @@ export default function TontineDetailScreen() {
           >
           <View style={styles.pageHeader}>
             <ThemedText style={styles.pageTitle}>{tontine.name}</ThemedText>
-            <ThemedText style={styles.pageSubtitle}>
-              {t(
-                "A mobile workspace built from the web tontine page: overview, reliability, members, cycles, and debts in one place."
-              )}
-            </ThemedText>
+              <ThemedText style={styles.pageSubtitle}>
+                {t(
+                  "Review group performance, member activity, cycle progress, and debt status from one integrated workspace."
+                )}
+              </ThemedText>
           </View>
 
           <View style={styles.hero}>

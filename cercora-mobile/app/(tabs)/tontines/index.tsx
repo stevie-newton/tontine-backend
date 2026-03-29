@@ -193,7 +193,7 @@ export default function TontinesListScreen() {
               <ThemedText style={styles.eyebrow}>{t("Tontine workspace")}</ThemedText>
               <ThemedText style={styles.overviewTitle}>{t("Keep your groups and invites in sync")}</ThemedText>
               <ThemedText style={styles.overviewSubtitle}>
-                {t("This mobile view now follows the same structure as the web page, with your score, pending invites, create action, and group list in one flow.")}
+                {t("Access your reliability profile, pending invites, creation tools, and active groups from one streamlined workspace.")}
               </ThemedText>
 
               <View style={styles.summaryGrid}>

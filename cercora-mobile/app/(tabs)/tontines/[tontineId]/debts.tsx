@@ -259,7 +259,7 @@ export default function DebtsScreen() {
           <View style={styles.pageHeader}>
             <ThemedText style={styles.pageTitle}>Debt ledger</ThemedText>
             <ThemedText style={styles.pageSubtitle}>
-              A mobile version of the web debt flow, with coverage creation, open balances, and repayment history in one place.
+              {t("Manage debt coverage, open balances, and repayment history from one dedicated workspace.")}
             </ThemedText>
           </View>
 
