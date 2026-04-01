@@ -142,7 +142,7 @@ export default function DebtsScreen() {
     useCallback(() => {
       if (!Number.isFinite(tontineNum)) {
         setIsLoading(false);
-        setError("Invalid tontine id.");
+        setError(t("Invalid tontine id."));
         return;
       }
       void load();
@@ -185,15 +185,15 @@ export default function DebtsScreen() {
   async function submitCoverPayment() {
     if (!tontine) return;
     if (!selectedCycleId) {
-      setActionError("Select a cycle.");
+      setActionError(t("Select a cycle."));
       return;
     }
     if (!debtorMembershipId || !covererMembershipId) {
-      setActionError("Select debtor and coverer.");
+      setActionError(t("Select debtor and coverer."));
       return;
     }
     if (debtorMembershipId === covererMembershipId) {
-      setActionError("Debtor and coverer must be different.");
+      setActionError(t("Debtor and coverer must be different."));
       return;
     }
 
@@ -208,7 +208,7 @@ export default function DebtsScreen() {
         amount: String(tontine.contribution_amount),
         notes: notes.trim() ? notes.trim() : null,
       });
-      setActionMessage("Cover payment recorded. Debt created.");
+      setActionMessage(t("Cover payment recorded. Debt created."));
       setNotes("");
       await load();
     } catch (e) {
@@ -224,7 +224,7 @@ export default function DebtsScreen() {
     setActionMessage(null);
     try {
       await api.post(`/debts/${debtId}/repay`);
-      setActionMessage("Debt marked as repaid.");
+      setActionMessage(t("Debt marked as repaid."));
       await load();
     } catch (e) {
       setActionError(getErrorMessage(e));
@@ -257,7 +257,7 @@ export default function DebtsScreen() {
             showsVerticalScrollIndicator={false}
           >
           <View style={styles.pageHeader}>
-            <ThemedText style={styles.pageTitle}>Debt ledger</ThemedText>
+            <ThemedText style={styles.pageTitle}>{t("Debt ledger")}</ThemedText>
             <ThemedText style={styles.pageSubtitle}>
               {t("Manage debt coverage, open balances, and repayment history from one dedicated workspace.")}
             </ThemedText>
@@ -267,25 +267,25 @@ export default function DebtsScreen() {
             <View style={styles.heroGlowTop} />
             <View style={styles.heroGlowBottom} />
 
-            <ThemedText style={styles.eyebrow}>Coverage ledger</ThemedText>
+            <ThemedText style={styles.eyebrow}>{t("Coverage ledger")}</ThemedText>
             <ThemedText style={styles.heroTitle}>
-              {tontine?.name ?? "Tontine"} debt flow
+              {t("{{tontine}} debt flow", { tontine: tontine?.name ?? t("Tontine") })}
             </ThemedText>
             <ThemedText style={styles.heroSubtitle}>
-              Track when someone covers a missed payment and follow repayment back to resolution.
+              {t("Track when someone covers a missed payment and follow repayment back to resolution.")}
             </ThemedText>
 
             <View style={styles.heroBadges}>
               <View style={styles.heroBadgeWarm}>
-                <ThemedText style={styles.heroBadgeWarmText}>{summary.open} open</ThemedText>
+                <ThemedText style={styles.heroBadgeWarmText}>{summary.open} {t("open")}</ThemedText>
               </View>
               <View style={styles.heroBadgeCool}>
-                <ThemedText style={styles.heroBadgeCoolText}>{summary.repaid} repaid</ThemedText>
+                <ThemedText style={styles.heroBadgeCoolText}>{summary.repaid} {t("repaid")}</ThemedText>
               </View>
               {canManage ? (
                 <View style={styles.heroBadgeNeutral}>
                   <ThemedText style={styles.heroBadgeNeutralText}>
-                    {isOwner ? "Owner controls" : "Admin controls"}
+                    {isOwner ? t("Owner controls") : t("Admin controls")}
                   </ThemedText>
                 </View>
               ) : null}
@@ -294,17 +294,17 @@ export default function DebtsScreen() {
             <View style={styles.heroStats}>
               <View style={styles.heroStat}>
                 <ThemedText style={styles.heroStatValue}>{summary.total}</ThemedText>
-                <ThemedText style={styles.heroStatLabel}>Total debts</ThemedText>
+                <ThemedText style={styles.heroStatLabel}>{t("Total debts")}</ThemedText>
               </View>
               <View style={styles.heroStat}>
                 <ThemedText style={styles.heroStatValue}>{formatAmount(summary.totalAmount)}</ThemedText>
-                <ThemedText style={styles.heroStatLabel}>Tracked amount</ThemedText>
+                <ThemedText style={styles.heroStatLabel}>{t("Tracked amount")}</ThemedText>
               </View>
               <View style={styles.heroStat}>
                 <ThemedText style={styles.heroStatValue}>
                   {tontine ? formatAmount(tontine.contribution_amount) : "-"}
                 </ThemedText>
-                <ThemedText style={styles.heroStatLabel}>Standard contribution</ThemedText>
+                <ThemedText style={styles.heroStatLabel}>{t("Standard contribution")}</ThemedText>
               </View>
             </View>
           </View>
@@ -313,19 +313,19 @@ export default function DebtsScreen() {
 
           {canManage ? (
             <View style={styles.card}>
-              <ThemedText type="subtitle">Record cover payment</ThemedText>
+              <ThemedText type="subtitle">{t("Record cover payment")}</ThemedText>
               <ThemedText style={styles.supportText}>
-                This creates a confirmed contribution for the missed cycle and opens a debt for repayment.
+                {t("This creates a confirmed contribution for the missed cycle and opens a debt for repayment.")}
               </ThemedText>
 
               {actionError ? <ThemedText style={styles.errorInline}>{actionError}</ThemedText> : null}
               {actionMessage ? <ThemedText style={styles.ok}>{actionMessage}</ThemedText> : null}
 
-              <ThemedText style={styles.sectionLabel}>Open cycle</ThemedText>
+              <ThemedText style={styles.sectionLabel}>{t("Open cycle")}</ThemedText>
               <View style={styles.pillsRow}>
                 {openCycles.length === 0 ? (
                   <View style={styles.infoBanner}>
-                    <ThemedText style={styles.infoBannerText}>No open cycles available.</ThemedText>
+                    <ThemedText style={styles.infoBannerText}>{t("No open cycles available.")}</ThemedText>
                   </View>
                 ) : (
                   openCycles.map((cycle) => (
@@ -343,14 +343,14 @@ export default function DebtsScreen() {
                           selectedCycleId === cycle.id ? styles.pillTextActive : null,
                         ]}
                       >
-                        Cycle {cycle.cycle_number}
+                        {t("Cycle {{number}}", { number: cycle.cycle_number })}
                       </ThemedText>
                     </Pressable>
                   ))
                 )}
               </View>
 
-              <ThemedText style={styles.sectionLabel}>Debtor</ThemedText>
+              <ThemedText style={styles.sectionLabel}>{t("Debtor")}</ThemedText>
               <View style={styles.pillsRow}>
                 {activeMembers.map((member) => (
                   <Pressable
@@ -373,7 +373,7 @@ export default function DebtsScreen() {
                 ))}
               </View>
 
-              <ThemedText style={styles.sectionLabel}>Coverer</ThemedText>
+              <ThemedText style={styles.sectionLabel}>{t("Coverer")}</ThemedText>
               <View style={styles.pillsRow}>
                 {activeMembers
                   .filter((member) => member.membership_id !== debtorMembershipId)
@@ -401,19 +401,23 @@ export default function DebtsScreen() {
               <View style={styles.metricGrid}>
                 <View style={styles.metricTile}>
                   <ThemedText style={styles.metricValue}>
-                    {selectedCycleId ? `Cycle ${cycleNumberById.get(selectedCycleId) ?? selectedCycleId}` : "None"}
+                    {selectedCycleId
+                      ? t("Cycle {{number}}", {
+                          number: cycleNumberById.get(selectedCycleId) ?? selectedCycleId,
+                        })
+                      : t("None")}
                   </ThemedText>
-                  <ThemedText style={styles.metricLabel}>Selected cycle</ThemedText>
+                  <ThemedText style={styles.metricLabel}>{t("Selected cycle")}</ThemedText>
                 </View>
                 <View style={styles.metricTile}>
                   <ThemedText style={styles.metricValue}>
                     {tontine ? formatAmount(tontine.contribution_amount) : "-"}
                   </ThemedText>
-                  <ThemedText style={styles.metricLabel}>Debt amount</ThemedText>
+                  <ThemedText style={styles.metricLabel}>{t("Debt amount")}</ThemedText>
                 </View>
               </View>
 
-              <ThemedText style={styles.sectionLabel}>Notes</ThemedText>
+              <ThemedText style={styles.sectionLabel}>{t("Notes")}</ThemedText>
               <TextInput
                 value={notes}
                 onChangeText={setNotes}
@@ -429,7 +433,7 @@ export default function DebtsScreen() {
                 onPress={() => void submitCoverPayment()}
               >
                 <ThemedText style={styles.primaryButtonText}>
-                  {isSubmittingCover ? "Saving..." : "Record cover payment"}
+                  {isSubmittingCover ? t("Saving...") : t("Record cover payment")}
                 </ThemedText>
               </Pressable>
             </View>
@@ -437,8 +441,8 @@ export default function DebtsScreen() {
 
           <View style={styles.card}>
             <View style={styles.cardHeader}>
-              <ThemedText type="subtitle">Open debts</ThemedText>
-              <ThemedText style={styles.supportText}>{openDebts.length} active</ThemedText>
+              <ThemedText type="subtitle">{t("Open debts")}</ThemedText>
+              <ThemedText style={styles.supportText}>{openDebts.length} {t("active")}</ThemedText>
             </View>
 
             {openDebts.length === 0 ? (
@@ -454,28 +458,31 @@ export default function DebtsScreen() {
                     <View style={styles.debtHeader}>
                       <View style={styles.debtHeading}>
                         <ThemedText style={styles.debtTitle}>
-                          {item.debtor_name} owes {item.coverer_name}
+                          {t("{{debtor}} owes {{coverer}}", {
+                            debtor: item.debtor_name,
+                            coverer: item.coverer_name,
+                          })}
                         </ThemedText>
-                        <ThemedText style={styles.supportText}>Cycle {cycleNo}</ThemedText>
+                        <ThemedText style={styles.supportText}>{t("Cycle {{number}}", { number: cycleNo })}</ThemedText>
                       </View>
                       <View style={styles.statusBadgeWarm}>
-                        <ThemedText style={styles.statusBadgeWarmText}>open</ThemedText>
+                        <ThemedText style={styles.statusBadgeWarmText}>{t("open")}</ThemedText>
                       </View>
                     </View>
 
                     <View style={styles.metricGrid}>
                       <View style={styles.metricTileCompact}>
                         <ThemedText style={styles.metricValueCompact}>{formatAmount(item.amount)}</ThemedText>
-                        <ThemedText style={styles.metricLabel}>Amount</ThemedText>
+                        <ThemedText style={styles.metricLabel}>{t("Amount")}</ThemedText>
                       </View>
                       <View style={styles.metricTileCompact}>
                         <ThemedText style={styles.metricValueCompact}>{formatShortDate(item.created_at)}</ThemedText>
-                        <ThemedText style={styles.metricLabel}>Created</ThemedText>
+                        <ThemedText style={styles.metricLabel}>{t("Created")}</ThemedText>
                       </View>
                     </View>
 
                     {item.notes ? (
-                      <ThemedText style={styles.supportText}>Notes: {item.notes}</ThemedText>
+                      <ThemedText style={styles.supportText}>{t("Notes")}: {item.notes}</ThemedText>
                     ) : null}
 
                     {canManage ? (
@@ -485,7 +492,7 @@ export default function DebtsScreen() {
                         onPress={() => void repayDebt(item.id)}
                       >
                         <ThemedText style={styles.secondaryButtonText}>
-                          {isBusy ? "Updating..." : "Mark repaid"}
+                          {isBusy ? t("Updating...") : t("Mark repaid")}
                         </ThemedText>
                       </Pressable>
                     ) : null}
@@ -497,13 +504,13 @@ export default function DebtsScreen() {
 
           <View style={styles.card}>
             <View style={styles.cardHeader}>
-              <ThemedText type="subtitle">Repaid history</ThemedText>
-              <ThemedText style={styles.supportText}>{repaidDebts.length} resolved</ThemedText>
+              <ThemedText type="subtitle">{t("Repaid history")}</ThemedText>
+              <ThemedText style={styles.supportText}>{repaidDebts.length} {t("resolved")}</ThemedText>
             </View>
 
             {repaidDebts.length === 0 ? (
               <ThemedText style={styles.supportText}>
-                Repaid debts will appear here once they are closed out.
+                {t("Repaid debts will appear here once they are closed out.")}
               </ThemedText>
             ) : (
               repaidDebts.map((item) => {
@@ -513,22 +520,25 @@ export default function DebtsScreen() {
                     <View style={styles.debtHeader}>
                       <View style={styles.debtHeading}>
                         <ThemedText style={styles.debtTitle}>
-                          {item.debtor_name} repaid {item.coverer_name}
+                          {t("{{debtor}} repaid {{coverer}}", {
+                            debtor: item.debtor_name,
+                            coverer: item.coverer_name,
+                          })}
                         </ThemedText>
                         <ThemedText style={styles.supportText}>
-                          Cycle {cycleNo} • Repaid {formatShortDate(item.repaid_at)}
+                          {t("Cycle {{number}} - Repaid {{date}}", { number: cycleNo, date: formatShortDate(item.repaid_at) })}
                         </ThemedText>
                       </View>
                       <View style={styles.statusBadgeCool}>
-                        <ThemedText style={styles.statusBadgeCoolText}>repaid</ThemedText>
+                        <ThemedText style={styles.statusBadgeCoolText}>{t("repaid")}</ThemedText>
                       </View>
                     </View>
 
                     <ThemedText style={styles.supportText}>
-                      Amount: {formatAmount(item.amount)}
+                      {t("Amount")}: {formatAmount(item.amount)}
                     </ThemedText>
                     {item.notes ? (
-                      <ThemedText style={styles.supportText}>Notes: {item.notes}</ThemedText>
+                      <ThemedText style={styles.supportText}>{t("Notes")}: {item.notes}</ThemedText>
                     ) : null}
                   </View>
                 );
