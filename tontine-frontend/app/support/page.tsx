@@ -150,11 +150,6 @@ export default function SupportPage() {
                 </div>
               )}
 
-              {!contact?.email && !contact?.phone && !contact?.address && (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-800">
-                  {t("support.contact_unavailable")}
-                </div>
-              )}
             </div>
           </section>
 
