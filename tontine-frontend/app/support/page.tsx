@@ -35,6 +35,8 @@ export default function SupportPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [contact, setContact] = useState<SupportContactResponse | null>(null);
+  const fieldClassName =
+    "w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500 caret-slate-900 outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-200";
 
   useEffect(() => {
     if (me) {
@@ -162,7 +164,7 @@ export default function SupportPage() {
                     value={requesterName}
                     onChange={(e) => setRequesterName(e.target.value)}
                     required
-                    className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500"
+                    className={fieldClassName}
                     placeholder={t("support.name_placeholder")}
                   />
                 </div>
@@ -173,7 +175,7 @@ export default function SupportPage() {
                     value={requesterPhone}
                     onChange={(e) => setRequesterPhone(e.target.value)}
                     required
-                    className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500"
+                    className={fieldClassName}
                     placeholder={t("support.phone_placeholder")}
                   />
                 </div>
@@ -187,7 +189,7 @@ export default function SupportPage() {
                 onChange={(e) => setMessage(e.target.value)}
                 required
                 rows={6}
-                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500"
+                className={fieldClassName}
                 placeholder={t("support.message_placeholder")}
               />
             </div>
@@ -199,7 +201,7 @@ export default function SupportPage() {
                 onChange={(e) => setTontineId(e.target.value)}
                 type="number"
                 min={1}
-                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500"
+                className={fieldClassName}
                 placeholder={t("support.tontine_id_placeholder")}
               />
             </div>
@@ -210,7 +212,7 @@ export default function SupportPage() {
                 value={screenshotUrl}
                 onChange={(e) => setScreenshotUrl(e.target.value)}
                 type="url"
-                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500"
+                className={fieldClassName}
                 placeholder={t("support.screenshot_placeholder")}
               />
             </div>
