@@ -84,6 +84,12 @@ class Settings:
     SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
     SMTP_FROM_EMAIL: str = os.getenv("SMTP_FROM_EMAIL", "")
     SUPPORT_EMAIL_TO: str = os.getenv("SUPPORT_EMAIL_TO", "")
+    SUPPORT_PUBLIC_EMAIL: str = os.getenv(
+        "SUPPORT_PUBLIC_EMAIL",
+        os.getenv("SMTP_FROM_EMAIL", os.getenv("SUPPORT_EMAIL_TO", "")),
+    ).strip()
+    SUPPORT_PUBLIC_PHONE: str = os.getenv("SUPPORT_PUBLIC_PHONE", "").strip()
+    SUPPORT_PUBLIC_ADDRESS: str = os.getenv("SUPPORT_PUBLIC_ADDRESS", "").strip()
     AUTO_REMINDER_ENABLED: bool = _as_bool.__func__(
         os.getenv("AUTO_REMINDER_ENABLED", "false"),
         default=False,

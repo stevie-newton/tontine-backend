@@ -10,12 +10,13 @@ export default function AppHeader() {
   const router = useRouter();
   const { me, loading, logout } = useAuth();
   const { locale, setLocale, t } = useI18n();
+  const homeRoute = me ? "/tontines" : "/login";
 
   return (
     <header className="sticky top-0 z-50 border-b border-[rgba(79,107,194,0.16)] bg-white/78 backdrop-blur-xl">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-3 sm:px-6 lg:px-8">
         <button
-          onClick={() => router.push("/tontines")}
+          onClick={() => router.push(homeRoute)}
           className="flex items-center gap-2 rounded-2xl px-2 py-1 transition hover:bg-[rgba(46,207,227,0.08)]"
           aria-label={t("header.go_to_tontines")}
         >
@@ -78,13 +79,30 @@ export default function AppHeader() {
             {t("common.privacy_policy")}
           </Link>
 
-          <button
-            onClick={logout}
-            disabled={loading}
-            className="rounded-2xl bg-[linear-gradient(135deg,#2ecfe3_0%,#2c66d7_46%,#8a37c9_100%)] px-4 py-2 text-sm font-medium text-white shadow-[0_12px_30px_rgba(44,102,215,0.22)] transition hover:brightness-105 disabled:opacity-60"
-          >
-            {t("header.logout")}
-          </button>
+          {!loading && me ? (
+            <button
+              onClick={logout}
+              disabled={loading}
+              className="rounded-2xl bg-[linear-gradient(135deg,#2ecfe3_0%,#2c66d7_46%,#8a37c9_100%)] px-4 py-2 text-sm font-medium text-white shadow-[0_12px_30px_rgba(44,102,215,0.22)] transition hover:brightness-105 disabled:opacity-60"
+            >
+              {t("header.logout")}
+            </button>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                className="rounded-2xl border border-[rgba(79,107,194,0.24)] bg-white/85 px-3 py-2 text-xs font-semibold text-[color:var(--brand-ink)] transition hover:bg-[rgba(46,207,227,0.08)]"
+              >
+                {t("header.sign_in")}
+              </Link>
+              <Link
+                href="/register"
+                className="rounded-2xl bg-[linear-gradient(135deg,#2ecfe3_0%,#2c66d7_46%,#8a37c9_100%)] px-4 py-2 text-sm font-medium text-white shadow-[0_12px_30px_rgba(44,102,215,0.22)] transition hover:brightness-105"
+              >
+                {t("header.register")}
+              </Link>
+            </>
+          )}
         </div>
 
       </div>

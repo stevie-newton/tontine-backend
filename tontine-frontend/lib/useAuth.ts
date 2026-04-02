@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { fetchMe, Me } from "@/lib/auth";
 
-export function useAuthGuard() {
+function useAuthState(redirectOnMissing: boolean) {
   const router = useRouter();
   const [me, setMe] = useState<Me | null>(null);
   const [loading, setLoading] = useState(true);
@@ -15,7 +15,10 @@ export function useAuthGuard() {
     async function checkAuth() {
       const token = localStorage.getItem("access_token");
       if (!token) {
-        router.replace("/login");
+        if (redirectOnMissing) {
+          router.replace("/login");
+        }
+        if (alive) setLoading(false);
         return;
       }
 
@@ -23,9 +26,11 @@ export function useAuthGuard() {
         const user = await fetchMe();
         if (alive) setMe(user);
       } catch {
-        // token invalid/expired: clear and redirect
+        // token invalid/expired: clear and optionally redirect
         localStorage.removeItem("access_token");
-        router.replace("/login");
+        if (redirectOnMissing) {
+          router.replace("/login");
+        }
       } finally {
         if (alive) setLoading(false);
       }
@@ -35,7 +40,7 @@ export function useAuthGuard() {
     return () => {
       alive = false;
     };
-  }, [router]);
+  }, [redirectOnMissing, router]);
 
   function logout() {
     localStorage.removeItem("access_token");
@@ -45,5 +50,13 @@ export function useAuthGuard() {
   return { me, loading, logout };
 }
 
-// Backward-compatible alias.
-export const useAuth = useAuthGuard;
+export function useAuthGuard() {
+  return useAuthState(true);
+}
+
+export function useOptionalAuth() {
+  return useAuthState(false);
+}
+
+// Backward-compatible alias for shared UI that should not force redirects.
+export const useAuth = useOptionalAuth;

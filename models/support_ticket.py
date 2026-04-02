@@ -8,7 +8,9 @@ class SupportTicket(Base):
     __tablename__ = "support_tickets"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    requester_name = Column(String(100), nullable=True)
+    requester_phone = Column(String(20), nullable=True)
     tontine_id = Column(Integer, ForeignKey("tontines.id"), nullable=True, index=True)
     message = Column(Text, nullable=False)
     screenshot_url = Column(String(500), nullable=True)
