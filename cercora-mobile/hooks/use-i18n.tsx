@@ -351,6 +351,11 @@ const frTranslations: Record<string, string> = {
   "Family circle": "Cercle familial",
   "{{count}} cycle": "{{count}} cycle",
   "{{count}} cycles": "{{count}} cycles",
+  "Configure your group with a streamlined setup, then refine membership and cycle planning from the tontine workspace.":
+    "Configurez votre groupe avec une mise en place simplifiee, puis affinez les membres et la planification des cycles depuis l'espace tontine.",
+  "Setup details": "Details de configuration",
+  "Name the group, choose the contribution amount, and set the contribution rhythm.":
+    "Nommez le groupe, choisissez le montant de contribution et definissez le rythme des contributions.",
 
   "Tontine workspace": "Espace tontine",
   "Invalid tontine id.": "ID de tontine invalide.",
@@ -491,9 +496,24 @@ const frTranslations: Record<string, string> = {
 
   "Cycle workspace": "Espace cycle",
   "Cycle {{number}}": "Cycle {{number}}",
+  "{{name}} cycle {{number}}": "{{name}} cycle {{number}}",
   "Keep contribution approvals, payout assignment, and cycle readiness in one place.":
     "Gardez au même endroit les validations de contribution, l'attribution du paiement et l'état de préparation du cycle.",
+  "Monitor funding progress, member activity, review actions, and debt context from one consolidated cycle workspace.":
+    "Suivez le financement, l'activité des membres, les actions de validation et le contexte des dettes depuis un espace cycle unifié.",
+  "Funding progress, payout readiness, and member payment status for this cycle.":
+    "Progression du financement, préparation du paiement et statut des paiements des membres pour ce cycle.",
   "Current cycle": "Cycle actuel",
+  schedule: "calendrier",
+  Received: "Reçu",
+  "Paid members": "Membres payés",
+  "Funding status": "Statut du financement",
+  "Expected total": "Total attendu",
+  Missing: "Manquant",
+  "Cycle window": "Fenêtre du cycle",
+  "{{start}} to {{end}}": "{{start}} à {{end}}",
+  "Beneficiary for this cycle does not contribute.":
+    "Le bénéficiaire de ce cycle ne contribue pas.",
   "Expected per member": "Attendu par membre",
   "Confirmed members": "Membres confirmés",
   "Submitted volume": "Volume soumis",
@@ -509,25 +529,49 @@ const frTranslations: Record<string, string> = {
   "Manage cycle": "Gérer le cycle",
   "Choose the payout member, then close the cycle once every active member is confirmed.":
     "Choisissez le bénéficiaire, puis fermez le cycle une fois que chaque membre actif est confirmé.",
+  "Rotation is automatic. Close the cycle once every non-beneficiary active member is funded.":
+    "La rotation est automatique. Fermez le cycle une fois que chaque membre actif non bénéficiaire est financé.",
   Waiting: "En attente",
   "Close readiness": "Prêt à fermer",
   "Your access": "Votre accès",
   "Assign payout member": "Attribuer le bénéficiaire",
   "Assign payout": "Attribuer le paiement",
   "Close cycle": "Clore le cycle",
+  "Closing...": "Clôture...",
   "Only the owner can close the cycle.": "Seul le propriétaire peut clore le cycle.",
   "Only the current cycle can be closed.": "Seul le cycle en cours peut être clos.",
   "Contributions": "Contributions",
   entries: "entrées",
+  "{{count}} entries": "{{count}} entrées",
+  "Member payment status": "Statut des paiements des membres",
+  "No confirmed payment yet": "Aucun paiement confirmé pour le moment",
+  "No payment roster available yet.": "Aucune liste de paiements disponible pour le moment.",
+  "Submitted contributions": "Contributions soumises",
   "No contributions yet": "Aucune contribution pour le moment",
   "As members submit payments, they will appear here with review status and proof details.":
     "Au fur et à mesure que les membres soumettent des paiements, ils apparaîtront ici avec leur statut de validation et les détails des preuves.",
+  "As members submit payments, they will appear here with review status.":
+    "Au fur et à mesure que les membres soumettent des paiements, ils apparaîtront ici avec leur statut de validation.",
+  "Paid {{date}}": "Payé le {{date}}",
   "Amount": "Montant",
   "Ledger entry": "Écriture comptable",
+  confirmed: "confirmé",
+  rejected: "rejeté",
+  Repaid: "Remboursé",
+  "No reference": "Aucune référence",
+  "Reference: {{reference}}": "Référence : {{reference}}",
+  "Proof: {{proof}}": "Preuve : {{proof}}",
   "Reference: ": "Référence : ",
   "Proof: none attached": "Preuve : aucune pièce jointe",
+  "Beneficiary review": "Validation du bénéficiaire",
+  "Confirm submitted payments after checking the screenshot proof and transaction reference.":
+    "Confirmez les paiements soumis après avoir vérifié la preuve de capture et la référence de transaction.",
+  "No pending reviews right now.": "Aucune validation en attente pour le moment.",
+  "No proof screenshot provided.": "Aucune capture de preuve fournie.",
   Confirm: "Confirmer",
   "Working...": "Traitement...",
+  "Debt snapshot": "Aperçu des dettes",
+  "No debts linked to this cycle.": "Aucune dette liée à ce cycle.",
 
   "Coverage ledger": "Registre de couverture",
   "{{tontine}} debt flow": "Flux des dettes de {{tontine}}",
@@ -641,6 +685,10 @@ const frTranslations: Record<string, string> = {
     "La requête a expiré. Veuillez réessayer.",
   "Unable to reach the server. Check your connection and try again.":
     "Impossible de joindre le serveur. Vérifiez votre connexion et réessayez.",
+  "Invalid route params.": "Paramètres de route invalides.",
+  "Cycle closed successfully.": "Cycle clôturé avec succès.",
+  "Contribution confirmed.": "Contribution confirmée.",
+  "Contribution rejected.": "Contribution rejetée.",
   "Your session has expired. Please sign in again.":
     "Votre session a expiré. Veuillez vous reconnecter.",
   "You do not have permission to perform this action.":
@@ -649,6 +697,37 @@ const frTranslations: Record<string, string> = {
     "Le serveur a rencontré un problème. Veuillez réessayer dans un instant.",
   "Something went wrong. Please try again.":
     "Une erreur s'est produite. Veuillez réessayer.",
+  "{{name}} cycles": "Cycles de {{name}}",
+  "{{count}} open": "{{count}} ouverts",
+  "{{count}} closed": "{{count}} fermes",
+  "{{count}} total": "{{count}} total",
+  "{{count}} active": "{{count}} actifs",
+  "{{count}} pending": "{{count}} en attente",
+  "{{count}} admins": "{{count}} admins",
+  "{{count}} people": "{{count}} personnes",
+  "{{count}} active first": "{{count}} actifs d'abord",
+  "{{count}} processed": "{{count}} traites",
+  "{{count}} records": "{{count}} enregistrements",
+  "{{count}} transactions": "{{count}} transactions",
+  "Invite sent.": "Invitation envoyee.",
+  "Generating...": "Generation...",
+  "Payout ledger": "Grand livre des paiements",
+  "The mobile payout view now follows the rebuilt tontine workflow, with summary, processing state, and full payout history in one place.":
+    "La vue mobile des paiements suit desormais le flux de tontine reconstruit, avec le resume, l'etat de traitement et l'historique complet des paiements au meme endroit.",
+  "Processed entries": "Entrees traitees",
+  "Awaiting processing": "En attente de traitement",
+  "Transaction ledger": "Grand livre des transactions",
+  "This view stays linked to the backend ledger routes while matching the newer tontine workspace structure.":
+    "Cette vue reste liee aux routes du grand livre backend tout en correspondant a la nouvelle structure de l'espace tontine.",
+  "Contribution volume": "Volume des contributions",
+  "Payout volume": "Volume des paiements",
+  "Export CSV": "Exporter CSV",
+  "Exporting...": "Export en cours...",
+  "Tontine ledger export": "Export du grand livre de la tontine",
+  "Make sure the amount matches your cycle contribution and the reference matches the transfer. Add screenshot proof if you have it for beneficiary review.":
+    "Assurez-vous que le montant correspond a votre contribution de cycle et que la reference correspond au transfert. Ajoutez une capture de preuve si vous en avez une pour la validation du beneficiaire.",
+  "Submitting...": "Envoi...",
+  Admins: "Admins",
 };
 
 let currentLocale: SupportedLocale = "en";

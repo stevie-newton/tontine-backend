@@ -78,12 +78,12 @@ export default function TontineMembersScreen() {
   useFocusEffect(
     useCallback(() => {
       if (!Number.isFinite(id)) {
-        setError("Invalid tontine id.");
+        setError(t("Invalid tontine id."));
         setIsLoading(false);
         return;
       }
       void load();
-    }, [id, load])
+    }, [id, load, t])
   );
 
   async function onRefresh() {
@@ -117,38 +117,38 @@ export default function TontineMembersScreen() {
             <View style={styles.heroGlowTop} />
             <View style={styles.heroGlowBottom} />
 
-            <ThemedText style={styles.eyebrow}>Roster</ThemedText>
-            <ThemedText style={styles.heroTitle}>Members and roles</ThemedText>
+            <ThemedText style={styles.eyebrow}>{t("Roster")}</ThemedText>
+            <ThemedText style={styles.heroTitle}>{t("Members and roles")}</ThemedText>
             <ThemedText style={styles.heroSubtitle}>
-              Keep track of who is active, who is still pending, and who helps manage the tontine.
+              {t("Keep track of who is active, who is still pending, and who helps manage the tontine.")}
             </ThemedText>
 
             <View style={styles.heroBadges}>
               <View style={styles.heroBadgeCool}>
-                <ThemedText style={styles.heroBadgeCoolText}>{activeMembers.length} active</ThemedText>
+                <ThemedText style={styles.heroBadgeCoolText}>{t("{{count}} active", { count: activeMembers.length })}</ThemedText>
               </View>
               <View style={styles.heroBadgeWarm}>
-                <ThemedText style={styles.heroBadgeWarmText}>{pendingMembers.length} pending</ThemedText>
+                <ThemedText style={styles.heroBadgeWarmText}>{t("{{count}} pending", { count: pendingMembers.length })}</ThemedText>
               </View>
               <View style={styles.heroBadgeNeutral}>
-                <ThemedText style={styles.heroBadgeNeutralText}>{adminCount} admins</ThemedText>
+                <ThemedText style={styles.heroBadgeNeutralText}>{t("{{count}} admins", { count: adminCount })}</ThemedText>
               </View>
             </View>
 
             <View style={styles.heroStats}>
               <View style={styles.heroStat}>
                 <ThemedText style={styles.heroStatValue}>{items.length}</ThemedText>
-                <ThemedText style={styles.heroStatLabel}>Total members</ThemedText>
+                <ThemedText style={styles.heroStatLabel}>{t("Total members")}</ThemedText>
               </View>
               <View style={styles.heroStat}>
-                <ThemedText style={styles.heroStatValue}>{canInvite ? "Yes" : "No"}</ThemedText>
-                <ThemedText style={styles.heroStatLabel}>Can invite</ThemedText>
+                <ThemedText style={styles.heroStatValue}>{canInvite ? t("Yes") : t("No")}</ThemedText>
+                <ThemedText style={styles.heroStatLabel}>{t("Can invite")}</ThemedText>
               </View>
               <View style={styles.heroStat}>
                 <ThemedText style={styles.heroStatValue}>
-                  {user && tontine?.owner_id === user.id ? "Owner" : myMembership?.membership_role ?? "Member"}
+                  {user && tontine?.owner_id === user.id ? t("Owner") : t(myMembership?.membership_role ?? "Member")}
                 </ThemedText>
-                <ThemedText style={styles.heroStatLabel}>Your role</ThemedText>
+                <ThemedText style={styles.heroStatLabel}>{t("Your role")}</ThemedText>
               </View>
             </View>
           </View>
@@ -164,50 +164,50 @@ export default function TontineMembersScreen() {
               asChild
             >
               <Pressable style={styles.primaryAction}>
-                <ThemedText style={styles.primaryActionText}>Invite member</ThemedText>
+                <ThemedText style={styles.primaryActionText}>{t("Invite member")}</ThemedText>
               </Pressable>
             </Link>
           ) : (
             <View style={styles.infoBanner}>
               <ThemedText style={styles.infoBannerText}>
-                Only the owner or an admin can send invites for this tontine.
+                {t("Only the owner or an admin can send invites for this tontine.")}
               </ThemedText>
             </View>
           )}
 
           <View style={styles.card}>
             <View style={styles.cardHeader}>
-              <ThemedText type="subtitle">Team overview</ThemedText>
-              <ThemedText style={styles.supportText}>{items.length} people</ThemedText>
+              <ThemedText type="subtitle">{t("Team overview")}</ThemedText>
+              <ThemedText style={styles.supportText}>{t("{{count}} people", { count: items.length })}</ThemedText>
             </View>
 
             <View style={styles.metricGrid}>
               <View style={styles.metricTile}>
                 <ThemedText style={styles.metricValue}>{activeMembers.length}</ThemedText>
-                <ThemedText style={styles.metricLabel}>Active</ThemedText>
+                <ThemedText style={styles.metricLabel}>{t("Active")}</ThemedText>
               </View>
               <View style={styles.metricTile}>
                 <ThemedText style={styles.metricValue}>{pendingMembers.length}</ThemedText>
-                <ThemedText style={styles.metricLabel}>Pending</ThemedText>
+                <ThemedText style={styles.metricLabel}>{t("Pending")}</ThemedText>
               </View>
               <View style={styles.metricTile}>
                 <ThemedText style={styles.metricValue}>{adminCount}</ThemedText>
-                <ThemedText style={styles.metricLabel}>Admins</ThemedText>
+                <ThemedText style={styles.metricLabel}>{t("Admins")}</ThemedText>
               </View>
             </View>
           </View>
 
           <View style={styles.card}>
             <View style={styles.cardHeader}>
-              <ThemedText type="subtitle">Roster</ThemedText>
-              <ThemedText style={styles.supportText}>{activeMembers.length} active first</ThemedText>
+              <ThemedText type="subtitle">{t("Roster")}</ThemedText>
+              <ThemedText style={styles.supportText}>{t("{{count}} active first", { count: activeMembers.length })}</ThemedText>
             </View>
 
             {items.length === 0 ? (
               <View style={styles.emptyState}>
-                <ThemedText style={styles.emptyTitle}>No members yet</ThemedText>
+                <ThemedText style={styles.emptyTitle}>{t("No members yet")}</ThemedText>
                 <ThemedText style={styles.supportText}>
-                  Invite someone to join this tontine and start building the rotation.
+                  {t("Invite someone to join this tontine and start building the rotation.")}
                 </ThemedText>
               </View>
             ) : (
@@ -235,7 +235,7 @@ export default function TontineMembersScreen() {
                               isPending ? styles.badgePendingText : styles.badgeActiveText,
                             ]}
                           >
-                            {item.membership_status}
+                            {t(item.membership_status)}
                           </ThemedText>
                         </View>
                         <View
@@ -250,7 +250,7 @@ export default function TontineMembersScreen() {
                               isAdmin ? styles.badgeAdminText : styles.badgeNeutralText,
                             ]}
                           >
-                            {item.membership_role}
+                            {t(item.membership_role)}
                           </ThemedText>
                         </View>
                       </View>
@@ -261,19 +261,19 @@ export default function TontineMembersScreen() {
                         <ThemedText style={styles.metricValueCompact}>
                           {item.payout_position ?? "-"}
                         </ThemedText>
-                        <ThemedText style={styles.metricLabel}>Payout order</ThemedText>
+                        <ThemedText style={styles.metricLabel}>{t("Payout order")}</ThemedText>
                       </View>
                       <View style={styles.metricTileCompact}>
                         <ThemedText style={styles.metricValueCompact}>
                           {item.rotation_position ?? "-"}
                         </ThemedText>
-                        <ThemedText style={styles.metricLabel}>Rotation</ThemedText>
+                        <ThemedText style={styles.metricLabel}>{t("Rotation")}</ThemedText>
                       </View>
                       <View style={styles.metricTileCompact}>
                         <ThemedText style={styles.metricValueCompact}>
                           {formatShortDate(item.joined_at)}
                         </ThemedText>
-                        <ThemedText style={styles.metricLabel}>Joined</ThemedText>
+                        <ThemedText style={styles.metricLabel}>{t("Joined")}</ThemedText>
                       </View>
                     </View>
                   </View>

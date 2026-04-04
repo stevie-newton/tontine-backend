@@ -148,11 +148,11 @@ export default function TransactionsScreen() {
     useCallback(() => {
       if (!Number.isFinite(id)) {
         setIsLoading(false);
-        setError("Invalid tontine id.");
+        setError(t("Invalid tontine id."));
         return;
       }
       void load();
-    }, [id, load])
+    }, [id, load, t])
   );
 
   async function onRefresh() {
@@ -175,7 +175,7 @@ export default function TransactionsScreen() {
         Platform.OS === "android" ? await FileSystem.getContentUriAsync(fileUri) : fileUri;
       await Share.share({
         url: shareUri,
-        title: `tontine_${id}_ledger.csv`,
+        title: t("Tontine ledger export"),
         message: `tontine_${id}_ledger.csv`,
       });
     } catch (e) {
@@ -205,9 +205,9 @@ export default function TransactionsScreen() {
           refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />}
         >
           <View style={styles.pageHeader}>
-            <ThemedText style={styles.pageTitle}>Transaction ledger</ThemedText>
+            <ThemedText style={styles.pageTitle}>{t("Transaction ledger")}</ThemedText>
             <ThemedText style={styles.pageSubtitle}>
-              This view stays linked to the backend ledger routes while matching the newer tontine workspace structure.
+              {t("This view stays linked to the backend ledger routes while matching the newer tontine workspace structure.")}
             </ThemedText>
           </View>
 
@@ -215,14 +215,14 @@ export default function TransactionsScreen() {
             <View style={styles.heroGlowTop} />
             <View style={styles.heroGlowBottom} />
 
-            <ThemedText style={styles.eyebrow}>Ledger</ThemedText>
-            <ThemedText style={styles.heroTitle}>Transaction flow</ThemedText>
+            <ThemedText style={styles.eyebrow}>{t("Ledger")}</ThemedText>
+            <ThemedText style={styles.heroTitle}>{t("Transaction flow")}</ThemedText>
             <ThemedText style={styles.heroSubtitle}>
-              Follow every contribution, payout, fee, and adjustment moving through this tontine.
+              {t("Follow every contribution, payout, fee, and adjustment moving through this tontine.")}
             </ThemedText>
 
             <View style={styles.balanceCard}>
-              <ThemedText style={styles.balanceLabel}>Current balance</ThemedText>
+              <ThemedText style={styles.balanceLabel}>{t("Current balance")}</ThemedText>
               <ThemedText style={[styles.balanceValue, balanceTone]}>
                 {formatAmount(summary?.balance ?? 0)}
               </ThemedText>
@@ -231,15 +231,15 @@ export default function TransactionsScreen() {
             <View style={styles.heroStats}>
               <View style={styles.heroStat}>
                 <ThemedText style={styles.heroStatValue}>{summary?.transaction_count ?? 0}</ThemedText>
-                <ThemedText style={styles.heroStatLabel}>Entries</ThemedText>
+                <ThemedText style={styles.heroStatLabel}>{t("Entries")}</ThemedText>
               </View>
               <View style={styles.heroStat}>
                 <ThemedText style={styles.heroStatValue}>{formatAmount(contributionTotal)}</ThemedText>
-                <ThemedText style={styles.heroStatLabel}>Contributions</ThemedText>
+                <ThemedText style={styles.heroStatLabel}>{t("Contributions")}</ThemedText>
               </View>
               <View style={styles.heroStat}>
                 <ThemedText style={styles.heroStatValue}>{formatAmount(payoutTotal)}</ThemedText>
-                <ThemedText style={styles.heroStatLabel}>Payouts</ThemedText>
+                <ThemedText style={styles.heroStatLabel}>{t("Payouts")}</ThemedText>
               </View>
             </View>
           </View>
@@ -247,21 +247,21 @@ export default function TransactionsScreen() {
           {error ? <ThemedText style={styles.error}>{error}</ThemedText> : null}
 
           <View style={styles.card}>
-            <ThemedText type="subtitle">Ledger pulse</ThemedText>
+            <ThemedText type="subtitle">{t("Ledger pulse")}</ThemedText>
             <View style={styles.metricGrid}>
               <View style={styles.metricTile}>
                 <ThemedText style={styles.metricValue}>
                   {formatAmount(summary?.total_fees ?? 0)}
                 </ThemedText>
-                <ThemedText style={styles.metricLabel}>Fees</ThemedText>
+                <ThemedText style={styles.metricLabel}>{t("Fees")}</ThemedText>
               </View>
               <View style={styles.metricTile}>
                 <ThemedText style={styles.metricValue}>
                   {summary?.last_transaction_date
                     ? formatShortDate(summary.last_transaction_date)
-                    : "None"}
+                    : t("None")}
                 </ThemedText>
-                <ThemedText style={styles.metricLabel}>Last entry</ThemedText>
+                <ThemedText style={styles.metricLabel}>{t("Last entry")}</ThemedText>
               </View>
             </View>
             <View style={styles.metricGrid}>
@@ -269,26 +269,26 @@ export default function TransactionsScreen() {
                 <ThemedText style={styles.metricValueCompact}>
                   {formatAmount(summary?.total_contributions ?? 0)}
                 </ThemedText>
-                <ThemedText style={styles.metricLabel}>Contribution volume</ThemedText>
+                <ThemedText style={styles.metricLabel}>{t("Contribution volume")}</ThemedText>
               </View>
               <View style={styles.metricTileCompact}>
                 <ThemedText style={styles.metricValueCompact}>
                   {formatAmount(summary?.total_payouts ?? 0)}
                 </ThemedText>
-                <ThemedText style={styles.metricLabel}>Payout volume</ThemedText>
+                <ThemedText style={styles.metricLabel}>{t("Payout volume")}</ThemedText>
               </View>
               <View style={styles.metricTileCompact}>
                 <ThemedText style={styles.metricValueCompact}>
                   {formatAmount(summary?.total_fees ?? 0)}
                 </ThemedText>
-                <ThemedText style={styles.metricLabel}>Fees</ThemedText>
+                <ThemedText style={styles.metricLabel}>{t("Fees")}</ThemedText>
               </View>
             </View>
           </View>
 
           <View style={styles.card}>
             <View style={styles.cardHeader}>
-              <ThemedText type="subtitle">History</ThemedText>
+              <ThemedText type="subtitle">{t("History")}</ThemedText>
               <View style={styles.headerActions}>
                 {isOwner ? (
                   <Pressable
@@ -297,19 +297,19 @@ export default function TransactionsScreen() {
                     onPress={() => void onExportCsv()}
                   >
                     <ThemedText style={styles.exportButtonText}>
-                      {isExporting ? "Exporting..." : "Export CSV"}
+                      {isExporting ? t("Exporting...") : t("Export CSV")}
                     </ThemedText>
                   </Pressable>
                 ) : null}
-                <ThemedText style={styles.supportText}>{items.length} transactions</ThemedText>
+                <ThemedText style={styles.supportText}>{t("{{count}} transactions", { count: items.length })}</ThemedText>
               </View>
             </View>
 
             {items.length === 0 ? (
               <View style={styles.emptyState}>
-                <ThemedText style={styles.emptyTitle}>No transactions yet</ThemedText>
+                <ThemedText style={styles.emptyTitle}>{t("No transactions yet")}</ThemedText>
                 <ThemedText style={styles.supportText}>
-                  Ledger activity will appear here as contributions, payouts, and fees are recorded.
+                  {t("Ledger activity will appear here as contributions, payouts, and fees are recorded.")}
                 </ThemedText>
               </View>
             ) : (
@@ -319,9 +319,9 @@ export default function TransactionsScreen() {
                   <View key={item.id} style={styles.transactionCard}>
                     <View style={styles.transactionHeader}>
                       <View style={styles.transactionHeading}>
-                        <ThemedText style={styles.transactionTitle}>{meta.label}</ThemedText>
+                        <ThemedText style={styles.transactionTitle}>{t(meta.label)}</ThemedText>
                         <ThemedText style={styles.supportText}>
-                          {item.cycle_number ? `Cycle ${item.cycle_number}` : "General entry"}
+                          {item.cycle_number ? t("Cycle {{number}}", { number: item.cycle_number }) : t("General entry")}
                           {item.user_name ? ` • ${item.user_name}` : ""}
                         </ThemedText>
                       </View>
@@ -332,7 +332,7 @@ export default function TransactionsScreen() {
                         ]}
                       >
                         <ThemedText style={[styles.typeBadgeText, { color: meta.text }]}>
-                          {meta.label}
+                          {t(meta.label)}
                         </ThemedText>
                       </View>
                     </View>
@@ -342,13 +342,13 @@ export default function TransactionsScreen() {
                         <ThemedText style={styles.metricValueCompact}>
                           {formatAmount(item.amount)}
                         </ThemedText>
-                        <ThemedText style={styles.metricLabel}>Amount</ThemedText>
+                        <ThemedText style={styles.metricLabel}>{t("Amount")}</ThemedText>
                       </View>
                       <View style={styles.metricTileCompact}>
                         <ThemedText style={styles.metricValueCompact}>
                           {formatShortDate(item.created_at)}
                         </ThemedText>
-                        <ThemedText style={styles.metricLabel}>Posted on</ThemedText>
+                        <ThemedText style={styles.metricLabel}>{t("Posted on")}</ThemedText>
                       </View>
                     </View>
 

@@ -89,11 +89,11 @@ export default function PayoutsScreen() {
     useCallback(() => {
       if (!Number.isFinite(id)) {
         setIsLoading(false);
-        setError("Invalid tontine id.");
+        setError(t("Invalid tontine id."));
         return;
       }
       void load();
-    }, [id, load])
+    }, [id, load, t])
   );
 
   async function onRefresh() {
@@ -121,9 +121,9 @@ export default function PayoutsScreen() {
           refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />}
         >
           <View style={styles.pageHeader}>
-            <ThemedText style={styles.pageTitle}>Payout ledger</ThemedText>
+            <ThemedText style={styles.pageTitle}>{t("Payout ledger")}</ThemedText>
             <ThemedText style={styles.pageSubtitle}>
-              The mobile payout view now follows the rebuilt tontine workflow, with summary, processing state, and full payout history in one place.
+              {t("The mobile payout view now follows the rebuilt tontine workflow, with summary, processing state, and full payout history in one place.")}
             </ThemedText>
           </View>
 
@@ -131,21 +131,21 @@ export default function PayoutsScreen() {
             <View style={styles.heroGlowTop} />
             <View style={styles.heroGlowBottom} />
 
-            <ThemedText style={styles.eyebrow}>Payout history</ThemedText>
-            <ThemedText style={styles.heroTitle}>Member payouts</ThemedText>
+            <ThemedText style={styles.eyebrow}>{t("Payout history")}</ThemedText>
+            <ThemedText style={styles.heroTitle}>{t("Member payouts")}</ThemedText>
             <ThemedText style={styles.heroSubtitle}>
-              Review who received each payout, what is still pending, and how much has moved out of the tontine.
+              {t("Review who received each payout, what is still pending, and how much has moved out of the tontine.")}
             </ThemedText>
 
             <View style={styles.heroBadges}>
               <View style={styles.heroBadgeCool}>
                 <ThemedText style={styles.heroBadgeCoolText}>
-                  {summary?.processed_count ?? 0} processed
+                  {t("{{count}} processed", { count: summary?.processed_count ?? 0 })}
                 </ThemedText>
               </View>
               <View style={styles.heroBadgeWarm}>
                 <ThemedText style={styles.heroBadgeWarmText}>
-                  {summary?.pending_count ?? 0} pending
+                  {t("{{count}} pending", { count: summary?.pending_count ?? 0 })}
                 </ThemedText>
               </View>
             </View>
@@ -153,17 +153,17 @@ export default function PayoutsScreen() {
             <View style={styles.heroStats}>
               <View style={styles.heroStat}>
                 <ThemedText style={styles.heroStatValue}>{summary?.total_payouts ?? 0}</ThemedText>
-                <ThemedText style={styles.heroStatLabel}>Total payouts</ThemedText>
+                <ThemedText style={styles.heroStatLabel}>{t("Total payouts")}</ThemedText>
               </View>
               <View style={styles.heroStat}>
                 <ThemedText style={styles.heroStatValue}>
                   {formatAmount(summary?.total_amount ?? 0)}
                 </ThemedText>
-                <ThemedText style={styles.heroStatLabel}>Total value</ThemedText>
+                <ThemedText style={styles.heroStatLabel}>{t("Total value")}</ThemedText>
               </View>
               <View style={styles.heroStat}>
                 <ThemedText style={styles.heroStatValue}>{processedRate}%</ThemedText>
-                <ThemedText style={styles.heroStatLabel}>Processed rate</ThemedText>
+                <ThemedText style={styles.heroStatLabel}>{t("Processed rate")}</ThemedText>
               </View>
             </View>
           </View>
@@ -171,42 +171,42 @@ export default function PayoutsScreen() {
           {error ? <ThemedText style={styles.error}>{error}</ThemedText> : null}
 
           <View style={styles.card}>
-            <ThemedText type="subtitle">Payout pulse</ThemedText>
+            <ThemedText type="subtitle">{t("Payout pulse")}</ThemedText>
             <View style={styles.metricGrid}>
               <View style={styles.metricTile}>
                 <ThemedText style={styles.metricValue}>
-                  {summary?.last_payout_date ? formatShortDate(summary.last_payout_date) : "None"}
+                  {summary?.last_payout_date ? formatShortDate(summary.last_payout_date) : t("None")}
                 </ThemedText>
-                <ThemedText style={styles.metricLabel}>Last payout</ThemedText>
+                <ThemedText style={styles.metricLabel}>{t("Last payout")}</ThemedText>
               </View>
               <View style={styles.metricTile}>
                 <ThemedText style={styles.metricValue}>{summary?.pending_count ?? 0}</ThemedText>
-                <ThemedText style={styles.metricLabel}>Still pending</ThemedText>
+                <ThemedText style={styles.metricLabel}>{t("Still pending")}</ThemedText>
               </View>
             </View>
             <View style={styles.metricGrid}>
               <View style={styles.metricTileCompact}>
                 <ThemedText style={styles.metricValueCompact}>{summary?.processed_count ?? 0}</ThemedText>
-                <ThemedText style={styles.metricLabel}>Processed entries</ThemedText>
+                <ThemedText style={styles.metricLabel}>{t("Processed entries")}</ThemedText>
               </View>
               <View style={styles.metricTileCompact}>
                 <ThemedText style={styles.metricValueCompact}>{summary?.pending_count ?? 0}</ThemedText>
-                <ThemedText style={styles.metricLabel}>Awaiting processing</ThemedText>
+                <ThemedText style={styles.metricLabel}>{t("Awaiting processing")}</ThemedText>
               </View>
             </View>
           </View>
 
           <View style={styles.card}>
             <View style={styles.cardHeader}>
-              <ThemedText type="subtitle">History</ThemedText>
-              <ThemedText style={styles.supportText}>{items.length} records</ThemedText>
+              <ThemedText type="subtitle">{t("History")}</ThemedText>
+              <ThemedText style={styles.supportText}>{t("{{count}} records", { count: items.length })}</ThemedText>
             </View>
 
             {items.length === 0 ? (
               <View style={styles.emptyState}>
-                <ThemedText style={styles.emptyTitle}>No payouts yet</ThemedText>
+                <ThemedText style={styles.emptyTitle}>{t("No payouts yet")}</ThemedText>
                 <ThemedText style={styles.supportText}>
-                  Payout records will appear here as cycles close and beneficiaries are processed.
+                  {t("Payout records will appear here as cycles close and beneficiaries are processed.")}
                 </ThemedText>
               </View>
             ) : (
@@ -215,10 +215,10 @@ export default function PayoutsScreen() {
                   <View style={styles.payoutHeader}>
                     <View style={styles.payoutHeading}>
                       <ThemedText style={styles.payoutTitle}>
-                        {item.member_name ?? "Member"}
+                        {item.member_name ?? t("Member")}
                       </ThemedText>
                       <ThemedText style={styles.supportText}>
-                        Cycle {item.cycle_number ?? item.cycle_id}
+                        {t("Cycle {{number}}", { number: item.cycle_number ?? item.cycle_id ?? "-" })}
                       </ThemedText>
                     </View>
                     <View
@@ -235,7 +235,7 @@ export default function PayoutsScreen() {
                             : styles.statusBadgeWarmText,
                         ]}
                       >
-                        {item.is_processed ? "processed" : "pending"}
+                        {item.is_processed ? t("processed") : t("pending")}
                       </ThemedText>
                     </View>
                   </View>
@@ -245,14 +245,14 @@ export default function PayoutsScreen() {
                       <ThemedText style={styles.metricValueCompact}>
                         {formatAmount(item.amount)}
                       </ThemedText>
-                      <ThemedText style={styles.metricLabel}>Amount</ThemedText>
+                      <ThemedText style={styles.metricLabel}>{t("Amount")}</ThemedText>
                     </View>
                     <View style={styles.metricTileCompact}>
                       <ThemedText style={styles.metricValueCompact}>
                         {formatShortDate(item.is_processed ? item.processed_at : item.created_at)}
                       </ThemedText>
                       <ThemedText style={styles.metricLabel}>
-                        {item.is_processed ? "Processed on" : "Created on"}
+                        {item.is_processed ? t("Processed on") : t("Created on")}
                       </ThemedText>
                     </View>
                   </View>

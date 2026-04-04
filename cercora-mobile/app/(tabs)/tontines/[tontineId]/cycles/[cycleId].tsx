@@ -42,7 +42,7 @@ type CycleContributionStatus = {
   total_received: string;
   expected_total: string;
   is_fully_funded: boolean;
-  member_statuses?: Array<{
+  member_statuses?: {
     membership_id: number;
     user_id: number;
     name: string;
@@ -50,7 +50,7 @@ type CycleContributionStatus = {
     status: "on_time" | "late" | "missing";
     paid_at?: string | null;
     amount?: string | null;
-  }>;
+  }[];
 };
 
 type CycleContribution = {
@@ -194,11 +194,11 @@ export default function CycleDetailScreen() {
     useCallback(() => {
       if (!Number.isFinite(cycleNum) || !Number.isFinite(tontineNum)) {
         setIsLoading(false);
-        setError("Invalid route params.");
+        setError(t("Invalid route params."));
         return;
       }
       void load();
-    }, [cycleNum, load, tontineNum])
+    }, [cycleNum, load, t, tontineNum])
   );
 
   async function onRefresh() {
@@ -212,7 +212,7 @@ export default function CycleDetailScreen() {
     setIsClosing(true);
     try {
       await api.put(`/tontine-cycles/${cycleNum}/close`);
-      setMessage("Cycle closed successfully.");
+      setMessage(t("Cycle closed successfully."));
       await load();
     } catch (e) {
       setError(getErrorMessage(e));
@@ -229,7 +229,7 @@ export default function CycleDetailScreen() {
       await api.post(`/contributions/${contributionId}/beneficiary-confirmation`, {
         decision: confirm ? "confirm" : "reject",
       });
-      setMessage(confirm ? "Contribution confirmed." : "Contribution rejected.");
+      setMessage(confirm ? t("Contribution confirmed.") : t("Contribution rejected."));
       await load();
     } catch (e) {
       setError(getErrorMessage(e));
@@ -269,9 +269,9 @@ export default function CycleDetailScreen() {
           refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />}
         >
           <View style={styles.pageHeader}>
-            <ThemedText style={styles.pageTitle}>Cycle {cycle.cycle_number}</ThemedText>
+            <ThemedText style={styles.pageTitle}>{t("Cycle {{number}}", { number: cycle.cycle_number })}</ThemedText>
             <ThemedText style={styles.pageSubtitle}>
-              Monitor funding progress, member activity, review actions, and debt context from one consolidated cycle workspace.
+              {t("Monitor funding progress, member activity, review actions, and debt context from one consolidated cycle workspace.")}
             </ThemedText>
           </View>
 
@@ -281,47 +281,49 @@ export default function CycleDetailScreen() {
           <View style={styles.hero}>
             <View style={styles.heroGlowTop} />
             <View style={styles.heroGlowBottom} />
-            <ThemedText style={styles.eyebrow}>Cycle workspace</ThemedText>
-            <ThemedText style={styles.heroTitle}>{tontine.name} cycle {cycle.cycle_number}</ThemedText>
+            <ThemedText style={styles.eyebrow}>{t("Cycle workspace")}</ThemedText>
+            <ThemedText style={styles.heroTitle}>
+              {t("{{name}} cycle {{number}}", { name: tontine.name, number: cycle.cycle_number })}
+            </ThemedText>
             <ThemedText style={styles.heroSubtitle}>
-              Funding progress, payout readiness, and member payment status for this cycle.
+              {t("Funding progress, payout readiness, and member payment status for this cycle.")}
             </ThemedText>
 
             <View style={styles.heroBadges}>
               <View style={[styles.heroBadge, cycle.is_closed ? styles.heroBadgeClosed : styles.heroBadgeOpen]}>
                 <ThemedText style={[styles.heroBadgeText, cycle.is_closed ? styles.heroBadgeTextClosed : styles.heroBadgeTextOpen]}>
-                  {cycle.is_closed ? "Closed" : "Open"}
+                  {cycle.is_closed ? t("Closed") : t("Open")}
                 </ThemedText>
               </View>
               {isCurrentCycle ? (
                 <View style={styles.heroBadgeCurrent}>
-                  <ThemedText style={styles.heroBadgeCurrentText}>Current cycle</ThemedText>
+                  <ThemedText style={styles.heroBadgeCurrentText}>{t("Current cycle")}</ThemedText>
                 </View>
               ) : null}
               <View style={styles.heroBadgeNeutral}>
-                <ThemedText style={styles.heroBadgeNeutralText}>{tontine.frequency ?? "schedule"}</ThemedText>
+                <ThemedText style={styles.heroBadgeNeutralText}>{tontine.frequency ?? t("schedule")}</ThemedText>
               </View>
             </View>
 
             <View style={styles.heroStats}>
               <View style={styles.heroStat}>
                 <ThemedText style={styles.heroStatValue}>{formatCurrency(status.total_received)}</ThemedText>
-                <ThemedText style={styles.heroStatLabel}>Received</ThemedText>
+                <ThemedText style={styles.heroStatLabel}>{t("Received")}</ThemedText>
               </View>
               <View style={styles.heroStat}>
                 <ThemedText style={styles.heroStatValue}>{status.paid_count}/{status.expected_members}</ThemedText>
-                <ThemedText style={styles.heroStatLabel}>Paid members</ThemedText>
+                <ThemedText style={styles.heroStatLabel}>{t("Paid members")}</ThemedText>
               </View>
               <View style={styles.heroStat}>
                 <ThemedText style={styles.heroStatValue}>{openDebts.length}</ThemedText>
-                <ThemedText style={styles.heroStatLabel}>Open debts</ThemedText>
+                <ThemedText style={styles.heroStatLabel}>{t("Open debts")}</ThemedText>
               </View>
             </View>
           </View>
 
           <View style={styles.card}>
             <View style={styles.cardHeader}>
-              <ThemedText style={styles.cardTitle}>Funding status</ThemedText>
+              <ThemedText style={styles.cardTitle}>{t("Funding status")}</ThemedText>
               {canContribute ? (
                 <Link
                   href={{
@@ -331,7 +333,7 @@ export default function CycleDetailScreen() {
                   asChild
                 >
                   <Pressable style={styles.linkButton}>
-                    <ThemedText style={styles.linkText}>Contribute</ThemedText>
+                    <ThemedText style={styles.linkText}>{t("Contribute")}</ThemedText>
                   </Pressable>
                 </Link>
               ) : null}
@@ -340,29 +342,34 @@ export default function CycleDetailScreen() {
             <View style={styles.metricGrid}>
               <View style={styles.metricTile}>
                 <ThemedText style={styles.metricValue}>{formatCurrency(status.expected_total)}</ThemedText>
-                <ThemedText style={styles.metricLabel}>Expected total</ThemedText>
+                <ThemedText style={styles.metricLabel}>{t("Expected total")}</ThemedText>
               </View>
               <View style={styles.metricTile}>
                 <ThemedText style={styles.metricValue}>{status.missing_count}</ThemedText>
-                <ThemedText style={styles.metricLabel}>Missing</ThemedText>
+                <ThemedText style={styles.metricLabel}>{t("Missing")}</ThemedText>
               </View>
               <View style={styles.metricTile}>
-                <ThemedText style={styles.metricValue}>{cycle.payout_member_name || "Unassigned"}</ThemedText>
-                <ThemedText style={styles.metricLabel}>Payout member</ThemedText>
+                <ThemedText style={styles.metricValue}>{cycle.payout_member_name || t("Unassigned")}</ThemedText>
+                <ThemedText style={styles.metricLabel}>{t("Payout member")}</ThemedText>
               </View>
             </View>
 
             <View style={styles.rowCard}>
               <View style={styles.rowText}>
-                <ThemedText style={styles.rowTitle}>Cycle window</ThemedText>
-                <ThemedText style={styles.supportText}>{formatDate(cycle.start_date)} to {formatDate(cycle.end_date)}</ThemedText>
+                <ThemedText style={styles.rowTitle}>{t("Cycle window")}</ThemedText>
+                <ThemedText style={styles.supportText}>
+                  {t("{{start}} to {{end}}", {
+                    start: formatDate(cycle.start_date),
+                    end: formatDate(cycle.end_date),
+                  })}
+                </ThemedText>
                 {isBeneficiary ? (
-                  <ThemedText style={styles.supportText}>Beneficiary for this cycle does not contribute.</ThemedText>
+                  <ThemedText style={styles.supportText}>{t("Beneficiary for this cycle does not contribute.")}</ThemedText>
                 ) : null}
               </View>
               <View style={[styles.statusPill, status.is_fully_funded ? styles.statusPillClear : styles.statusPillOpen]}>
                 <ThemedText style={[styles.statusPillText, status.is_fully_funded ? styles.statusPillTextClear : styles.statusPillTextOpen]}>
-                  {status.is_fully_funded ? "Ready" : "Waiting"}
+                  {status.is_fully_funded ? t("Ready") : t("Waiting")}
                 </ThemedText>
               </View>
             </View>
@@ -370,20 +377,20 @@ export default function CycleDetailScreen() {
 
           {canManage ? (
             <View style={styles.card}>
-              <ThemedText style={styles.cardTitle}>Manage cycle</ThemedText>
+              <ThemedText style={styles.cardTitle}>{t("Manage cycle")}</ThemedText>
               <ThemedText style={styles.supportText}>
-                Rotation is automatic. Close the cycle once every non-beneficiary active member is funded.
+                {t("Rotation is automatic. Close the cycle once every non-beneficiary active member is funded.")}
               </ThemedText>
               <View style={styles.actionsRow}>
                 <Pressable style={styles.primaryButton} disabled={isClosing || !canClose} onPress={() => void onCloseCycle()}>
-                  <ThemedText style={styles.primaryButtonText}>{isClosing ? "Closing..." : "Close cycle"}</ThemedText>
+                  <ThemedText style={styles.primaryButtonText}>{isClosing ? t("Closing...") : t("Close cycle")}</ThemedText>
                 </Pressable>
               </View>
             </View>
           ) : null}
 
           <View style={styles.card}>
-            <ThemedText style={styles.cardTitle}>Member payment status</ThemedText>
+            <ThemedText style={styles.cardTitle}>{t("Member payment status")}</ThemedText>
             {status.member_statuses?.length ? (
               status.member_statuses.map((member) => {
                 const tone = getMemberStatusTone(member.status);
@@ -392,29 +399,39 @@ export default function CycleDetailScreen() {
                     <View style={styles.rowText}>
                       <ThemedText style={styles.rowTitle}>{member.name}</ThemedText>
                       <ThemedText style={styles.supportText}>
-                        {member.status === "missing" ? "No confirmed payment yet" : `${member.status === "on_time" ? "On time" : "Late"} · ${formatCurrency(member.amount)}`}
+                        {member.status === "missing"
+                          ? t("No confirmed payment yet")
+                          : `${member.status === "on_time" ? t("On time") : t("Late")} · ${formatCurrency(member.amount)}`}
                       </ThemedText>
                     </View>
                     <View style={[styles.statusPill, { backgroundColor: tone.bg, borderColor: tone.border }]}>
-                      <ThemedText style={[styles.statusPillText, { color: tone.text }]}>{member.status.replace("_", " ")}</ThemedText>
+                      <ThemedText style={[styles.statusPillText, { color: tone.text }]}>
+                        {member.status === "on_time"
+                          ? t("On time")
+                          : member.status === "late"
+                            ? t("Late")
+                            : t("Missing")}
+                      </ThemedText>
                     </View>
                   </View>
                 );
               })
             ) : (
-              <ThemedText style={styles.supportText}>No payment roster available yet.</ThemedText>
+              <ThemedText style={styles.supportText}>{t("No payment roster available yet.")}</ThemedText>
             )}
           </View>
 
           <View style={styles.card}>
             <View style={styles.cardHeader}>
-              <ThemedText style={styles.cardTitle}>Submitted contributions</ThemedText>
-              <ThemedText style={styles.supportText}>{contributions.length} entries</ThemedText>
+              <ThemedText style={styles.cardTitle}>{t("Submitted contributions")}</ThemedText>
+              <ThemedText style={styles.supportText}>{t("{{count}} entries", { count: contributions.length })}</ThemedText>
             </View>
             {contributions.length === 0 ? (
               <View style={styles.emptyState}>
-                <ThemedText style={styles.emptyTitle}>No contributions yet</ThemedText>
-                <ThemedText style={styles.supportText}>As members submit payments, they will appear here with review status.</ThemedText>
+                <ThemedText style={styles.emptyTitle}>{t("No contributions yet")}</ThemedText>
+                <ThemedText style={styles.supportText}>
+                  {t("As members submit payments, they will appear here with review status.")}
+                </ThemedText>
               </View>
             ) : (
               contributions.map((item) => {
@@ -424,25 +441,31 @@ export default function CycleDetailScreen() {
                     <View style={styles.cardHeader}>
                       <View style={styles.rowText}>
                         <ThemedText style={styles.rowTitle}>{item.user_name}</ThemedText>
-                        <ThemedText style={styles.supportText}>Paid {formatDate(item.paid_at)}</ThemedText>
+                        <ThemedText style={styles.supportText}>{t("Paid {{date}}", { date: formatDate(item.paid_at) })}</ThemedText>
                       </View>
                       <View style={[styles.statusPill, { backgroundColor: tone.bg, borderColor: tone.border }]}>
-                        <ThemedText style={[styles.statusPillText, { color: tone.text }]}>{tone.label}</ThemedText>
+                        <ThemedText style={[styles.statusPillText, { color: tone.text }]}>{t(tone.label)}</ThemedText>
                       </View>
                     </View>
                     <View style={styles.metricGrid}>
                       <View style={styles.metricTile}>
                         <ThemedText style={styles.metricValue}>{formatCurrency(item.amount)}</ThemedText>
-                        <ThemedText style={styles.metricLabel}>Amount</ThemedText>
+                        <ThemedText style={styles.metricLabel}>{t("Amount")}</ThemedText>
                       </View>
                       <View style={styles.metricTile}>
-                        <ThemedText style={styles.metricValue}>{item.ledger_entry_created ? "Created" : "Pending"}</ThemedText>
-                        <ThemedText style={styles.metricLabel}>Ledger</ThemedText>
+                        <ThemedText style={styles.metricValue}>{item.ledger_entry_created ? t("Created") : t("Pending")}</ThemedText>
+                        <ThemedText style={styles.metricLabel}>{t("Ledger")}</ThemedText>
                       </View>
                     </View>
-                    <ThemedText style={styles.supportText}>Reference: {item.transaction_reference || "No reference"}</ThemedText>
+                    <ThemedText style={styles.supportText}>
+                      {t("Reference: {{reference}}", {
+                        reference: item.transaction_reference || t("No reference"),
+                      })}
+                    </ThemedText>
                     {item.proof_screenshot_url ? (
-                      <ThemedText style={styles.supportText}>Proof: {item.proof_screenshot_url}</ThemedText>
+                      <ThemedText style={styles.supportText}>
+                        {t("Proof: {{proof}}", { proof: item.proof_screenshot_url })}
+                      </ThemedText>
                     ) : null}
                   </View>
                 );
@@ -452,12 +475,12 @@ export default function CycleDetailScreen() {
 
           {isBeneficiary ? (
             <View style={styles.card}>
-              <ThemedText style={styles.cardTitle}>Beneficiary review</ThemedText>
+              <ThemedText style={styles.cardTitle}>{t("Beneficiary review")}</ThemedText>
               <ThemedText style={styles.supportText}>
-                Confirm submitted payments after checking the screenshot proof and transaction reference.
+                {t("Confirm submitted payments after checking the screenshot proof and transaction reference.")}
               </ThemedText>
               {pendingBeneficiaryReviews.length === 0 ? (
-                <ThemedText style={styles.supportText}>No pending reviews right now.</ThemedText>
+                <ThemedText style={styles.supportText}>{t("No pending reviews right now.")}</ThemedText>
               ) : (
                 pendingBeneficiaryReviews.map((item) => (
                   <View key={`review-${item.id}`} style={styles.contributionCard}>
@@ -465,17 +488,17 @@ export default function CycleDetailScreen() {
                       <View style={styles.rowText}>
                         <ThemedText style={styles.rowTitle}>{item.user_name}</ThemedText>
                         <ThemedText style={styles.supportText}>
-                          {formatCurrency(item.amount)} · {item.transaction_reference || "No reference"}
+                          {formatCurrency(item.amount)} · {item.transaction_reference || t("No reference")}
                         </ThemedText>
                       </View>
                       <View style={[styles.statusPill, { backgroundColor: "#FFFAEB", borderColor: "#FEDF89" }]}>
-                        <ThemedText style={[styles.statusPillText, { color: "#B54708" }]}>pending</ThemedText>
+                        <ThemedText style={[styles.statusPillText, { color: "#B54708" }]}>{t("pending")}</ThemedText>
                       </View>
                     </View>
                     {item.proof_screenshot_url ? (
-                      <ThemedText style={styles.supportText}>Proof: {item.proof_screenshot_url}</ThemedText>
+                      <ThemedText style={styles.supportText}>{t("Proof: {{proof}}", { proof: item.proof_screenshot_url })}</ThemedText>
                     ) : (
-                      <ThemedText style={styles.supportText}>No proof screenshot provided.</ThemedText>
+                      <ThemedText style={styles.supportText}>{t("No proof screenshot provided.")}</ThemedText>
                     )}
                     <View style={styles.actionsRow}>
                       <Pressable
@@ -484,7 +507,7 @@ export default function CycleDetailScreen() {
                         onPress={() => void onSetContributionApproval(item.id, true)}
                       >
                         <ThemedText style={styles.secondaryButtonText}>
-                          {approvingContributionId === item.id ? "Working..." : "Confirm"}
+                          {approvingContributionId === item.id ? t("Working...") : t("Confirm")}
                         </ThemedText>
                       </Pressable>
                       <Pressable
@@ -493,7 +516,7 @@ export default function CycleDetailScreen() {
                         onPress={() => void onSetContributionApproval(item.id, false)}
                       >
                         <ThemedText style={styles.inlineDangerButtonText}>
-                          {approvingContributionId === item.id ? "Working..." : "Reject"}
+                          {approvingContributionId === item.id ? t("Working...") : t("Reject")}
                         </ThemedText>
                       </Pressable>
                     </View>
@@ -505,21 +528,28 @@ export default function CycleDetailScreen() {
 
           <View style={styles.card}>
             <View style={styles.cardHeader}>
-              <ThemedText style={styles.cardTitle}>Debt snapshot</ThemedText>
+              <ThemedText style={styles.cardTitle}>{t("Debt snapshot")}</ThemedText>
               <Link href={{ pathname: "/(tabs)/tontines/[tontineId]/debts", params: { tontineId: String(tontineNum) } }} asChild>
                 <Pressable style={styles.linkButton}>
-                  <ThemedText style={styles.linkText}>Open debts</ThemedText>
+                  <ThemedText style={styles.linkText}>{t("Open debts")}</ThemedText>
                 </Pressable>
               </Link>
             </View>
             {debts.length === 0 ? (
-              <ThemedText style={styles.supportText}>No debts linked to this cycle.</ThemedText>
+              <ThemedText style={styles.supportText}>{t("No debts linked to this cycle.")}</ThemedText>
             ) : (
               debts.map((item) => (
                 <View key={item.id} style={styles.rowCard}>
                   <View style={styles.rowText}>
-                    <ThemedText style={styles.rowTitle}>{item.debtor_name} owes {item.coverer_name}</ThemedText>
-                    <ThemedText style={styles.supportText}>{formatCurrency(item.amount)} · {item.is_repaid ? "Repaid" : "Open"}</ThemedText>
+                    <ThemedText style={styles.rowTitle}>
+                      {t("{{debtor}} owes {{coverer}}", {
+                        debtor: item.debtor_name,
+                        coverer: item.coverer_name,
+                      })}
+                    </ThemedText>
+                    <ThemedText style={styles.supportText}>
+                      {formatCurrency(item.amount)} · {item.is_repaid ? t("Repaid") : t("Open")}
+                    </ThemedText>
                   </View>
                 </View>
               ))

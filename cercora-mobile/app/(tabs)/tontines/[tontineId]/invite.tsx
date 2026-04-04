@@ -45,7 +45,7 @@ export default function InviteMemberScreen() {
         role,
       });
       const msg = res.data?.message;
-      setMessage(typeof msg === "string" ? msg : "Invite sent.");
+      setMessage(typeof msg === "string" ? t(msg) : t("Invite sent."));
       setPhone("");
       router.back();
     } catch (e) {
@@ -76,40 +76,40 @@ export default function InviteMemberScreen() {
             <View style={styles.heroGlowTop} />
             <View style={styles.heroGlowBottom} />
 
-            <ThemedText style={styles.eyebrow}>New invitation</ThemedText>
-            <ThemedText style={styles.heroTitle}>Bring someone into the circle</ThemedText>
+            <ThemedText style={styles.eyebrow}>{t("New invitation")}</ThemedText>
+            <ThemedText style={styles.heroTitle}>{t("Bring someone into the circle")}</ThemedText>
             <ThemedText style={styles.heroSubtitle}>
-              Invite by phone number and choose whether they join as a standard member or as an admin.
+              {t("Invite by phone number and choose whether they join as a standard member or as an admin.")}
             </ThemedText>
 
             <View style={styles.heroStats}>
               <View style={styles.heroStat}>
-                <ThemedText style={styles.heroStatValue}>{role}</ThemedText>
-                <ThemedText style={styles.heroStatLabel}>Selected role</ThemedText>
+                <ThemedText style={styles.heroStatValue}>{t(role)}</ThemedText>
+                <ThemedText style={styles.heroStatLabel}>{t("Selected role")}</ThemedText>
               </View>
               <View style={styles.heroStat}>
                 <ThemedText style={styles.heroStatValue}>
-                  {phone.trim() ? "Ready" : "Needed"}
+                  {phone.trim() ? t("Ready") : t("Needed")}
                 </ThemedText>
-                <ThemedText style={styles.heroStatLabel}>Phone number</ThemedText>
+                <ThemedText style={styles.heroStatLabel}>{t("Phone number")}</ThemedText>
               </View>
             </View>
           </View>
 
           <View style={styles.card}>
-            <ThemedText type="subtitle">Invite details</ThemedText>
+            <ThemedText type="subtitle">{t("Invite details")}</ThemedText>
             <ThemedText style={styles.supportText}>
-              The invited person will see a pending invite after they sign in with this phone number.
+              {t("The invited person will see a pending invite after they sign in with this phone number.")}
             </ThemedText>
 
-            <ThemedText style={styles.label}>Phone number</ThemedText>
+            <ThemedText style={styles.label}>{t("Phone number")}</ThemedText>
             <PhoneInput
               value={phone}
               onChangeText={setPhone}
               placeholder={t("Local phone number")}
             />
 
-            <ThemedText style={styles.label}>Access level</ThemedText>
+            <ThemedText style={styles.label}>{t("Access level")}</ThemedText>
             <View style={styles.roleGrid}>
               <Pressable
                 style={[styles.roleCard, role === "member" ? styles.roleCardActive : null]}
@@ -121,7 +121,7 @@ export default function InviteMemberScreen() {
                     role === "member" ? styles.roleTitleActive : null,
                   ]}
                 >
-                  Member
+                  {t("Member")}
                 </ThemedText>
                 <ThemedText
                   style={[
@@ -129,7 +129,7 @@ export default function InviteMemberScreen() {
                     role === "member" ? styles.roleDescriptionActive : null,
                   ]}
                 >
-                  Joins cycles, contributes, and participates in the payout rotation.
+                  {t("Joins cycles, contributes, and participates in the payout rotation.")}
                 </ThemedText>
               </Pressable>
 
@@ -143,7 +143,7 @@ export default function InviteMemberScreen() {
                     role === "admin" ? styles.roleTitleActive : null,
                   ]}
                 >
-                  Admin
+                  {t("Admin")}
                 </ThemedText>
                 <ThemedText
                   style={[
@@ -151,7 +151,7 @@ export default function InviteMemberScreen() {
                     role === "admin" ? styles.roleDescriptionActive : null,
                   ]}
                 >
-                  Can help manage members and operational actions inside the tontine.
+                  {t("Can help manage members and operational actions inside the tontine.")}
                 </ThemedText>
               </Pressable>
             </View>
@@ -170,7 +170,7 @@ export default function InviteMemberScreen() {
               {isSubmitting ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
-                <ThemedText style={styles.primaryButtonText}>Send invite</ThemedText>
+                <ThemedText style={styles.primaryButtonText}>{t("Send invite")}</ThemedText>
               )}
             </Pressable>
           </View>

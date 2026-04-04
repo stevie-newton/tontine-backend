@@ -101,20 +101,20 @@ export default function CreateTontineScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.pageHeader}>
-            <ThemedText style={styles.pageTitle}>Create a tontine</ThemedText>
+            <ThemedText style={styles.pageTitle}>{t("Create tontine")}</ThemedText>
             <ThemedText style={styles.pageSubtitle}>
-              Configure your group with a streamlined setup, then refine membership and cycle planning from the tontine workspace.
+              {t("Configure your group with a streamlined setup, then refine membership and cycle planning from the tontine workspace.")}
             </ThemedText>
           </View>
 
           <View style={styles.formCard}>
-            <ThemedText style={styles.sectionTitle}>Setup details</ThemedText>
+            <ThemedText style={styles.sectionTitle}>{t("Setup details")}</ThemedText>
             <ThemedText style={styles.sectionSubtitle}>
-              Name the group, choose the contribution amount, and set the contribution rhythm.
+              {t("Name the group, choose the contribution amount, and set the contribution rhythm.")}
             </ThemedText>
 
             <View style={styles.formGroup}>
-              <ThemedText style={styles.label}>Name</ThemedText>
+              <ThemedText style={styles.label}>{t("Name")}</ThemedText>
               <TextInput
                 value={name}
                 onChangeText={setName}
@@ -125,7 +125,7 @@ export default function CreateTontineScreen() {
             </View>
 
             <View style={styles.formGroup}>
-              <ThemedText style={styles.label}>Contribution amount</ThemedText>
+              <ThemedText style={styles.label}>{t("Contribution amount")}</ThemedText>
               <TextInput
                 value={contributionAmount}
                 onChangeText={setContributionAmount}
@@ -137,17 +137,17 @@ export default function CreateTontineScreen() {
             </View>
 
             <View style={styles.formGroup}>
-              <ThemedText style={styles.label}>Frequency</ThemedText>
+              <ThemedText style={styles.label}>{t("Frequency")}</ThemedText>
               <View style={styles.frequencyRow}>
                 <Pressable
                   style={[styles.frequencyCard, frequency === "weekly" ? styles.frequencyCardActive : null]}
                   onPress={() => setFrequency("weekly")}
                 >
                   <ThemedText style={[styles.frequencyTitle, frequency === "weekly" ? styles.frequencyTitleActive : null]}>
-                    Weekly
+                    {t("Weekly")}
                   </ThemedText>
                   <ThemedText style={[styles.frequencyHint, frequency === "weekly" ? styles.frequencyHintActive : null]}>
-                    Faster rotations
+                    {t("Faster rotations")}
                   </ThemedText>
                 </Pressable>
 
@@ -156,10 +156,10 @@ export default function CreateTontineScreen() {
                   onPress={() => setFrequency("monthly")}
                 >
                   <ThemedText style={[styles.frequencyTitle, frequency === "monthly" ? styles.frequencyTitleActive : null]}>
-                    Monthly
+                    {t("Monthly")}
                   </ThemedText>
                   <ThemedText style={[styles.frequencyHint, frequency === "monthly" ? styles.frequencyHintActive : null]}>
-                    Lower pressure cadence
+                    {t("Lower pressure cadence")}
                   </ThemedText>
                 </Pressable>
               </View>
@@ -178,7 +178,7 @@ export default function CreateTontineScreen() {
               {isSubmitting ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
-                <ThemedText style={styles.primaryButtonText}>Create tontine</ThemedText>
+                <ThemedText style={styles.primaryButtonText}>{t("Create tontine")}</ThemedText>
               )}
             </Pressable>
           </View>

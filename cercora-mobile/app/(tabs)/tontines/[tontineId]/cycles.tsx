@@ -98,11 +98,11 @@ export default function TontineCyclesScreen() {
     useCallback(() => {
       if (!Number.isFinite(id)) {
         setIsLoading(false);
-        setError("Invalid tontine id.");
+        setError(t("Invalid tontine id."));
         return;
       }
       void load();
-    }, [id, load])
+    }, [id, load, t])
   );
 
   async function onRefresh() {
@@ -159,24 +159,24 @@ export default function TontineCyclesScreen() {
             <View style={styles.heroGlowTop} />
             <View style={styles.heroGlowBottom} />
 
-            <ThemedText style={styles.eyebrow}>Cycle planner</ThemedText>
+            <ThemedText style={styles.eyebrow}>{t("Cycle planner")}</ThemedText>
             <ThemedText style={styles.heroTitle}>
-              {tontine?.name ?? "Tontine"} cycles
+              {t("{{name}} cycles", { name: tontine?.name ?? t("Tontine") })}
             </ThemedText>
             <ThemedText style={styles.heroSubtitle}>
-              Track the full rotation, open the current cycle, and generate the schedule when the owner is ready.
+              {t("Track the full rotation, open the current cycle, and generate the schedule when the owner is ready.")}
             </ThemedText>
 
             <View style={styles.heroBadges}>
               <View style={styles.heroBadgeCool}>
-                <ThemedText style={styles.heroBadgeCoolText}>{openCycles.length} open</ThemedText>
+                <ThemedText style={styles.heroBadgeCoolText}>{t("{{count}} open", { count: openCycles.length })}</ThemedText>
               </View>
               <View style={styles.heroBadgeNeutral}>
-                <ThemedText style={styles.heroBadgeNeutralText}>{closedCycles.length} closed</ThemedText>
+                <ThemedText style={styles.heroBadgeNeutralText}>{t("{{count}} closed", { count: closedCycles.length })}</ThemedText>
               </View>
               {isOwner ? (
                 <View style={styles.heroBadgeWarm}>
-                  <ThemedText style={styles.heroBadgeWarmText}>Owner controls</ThemedText>
+                  <ThemedText style={styles.heroBadgeWarmText}>{t("Owner controls")}</ThemedText>
                 </View>
               ) : null}
             </View>
@@ -184,19 +184,19 @@ export default function TontineCyclesScreen() {
             <View style={styles.heroStats}>
               <View style={styles.heroStat}>
                 <ThemedText style={styles.heroStatValue}>{cycles.length}</ThemedText>
-                <ThemedText style={styles.heroStatLabel}>Generated cycles</ThemedText>
+                <ThemedText style={styles.heroStatLabel}>{t("Generated cycles")}</ThemedText>
               </View>
               <View style={styles.heroStat}>
                 <ThemedText style={styles.heroStatValue}>
                   {tontine ? `${tontine.current_cycle}/${tontine.total_cycles}` : "-"}
                 </ThemedText>
-                <ThemedText style={styles.heroStatLabel}>Progress</ThemedText>
+                <ThemedText style={styles.heroStatLabel}>{t("Progress")}</ThemedText>
               </View>
               <View style={styles.heroStat}>
                 <ThemedText style={styles.heroStatValue}>
-                  {nextCycle ? `Cycle ${nextCycle.cycle_number}` : "None"}
+                  {nextCycle ? t("Cycle {{number}}", { number: nextCycle.cycle_number }) : t("None")}
                 </ThemedText>
-                <ThemedText style={styles.heroStatLabel}>Current focus</ThemedText>
+                <ThemedText style={styles.heroStatLabel}>{t("Current focus")}</ThemedText>
               </View>
             </View>
           </View>
@@ -210,44 +210,44 @@ export default function TontineCyclesScreen() {
               onPress={() => void onGenerateCycles()}
             >
               <ThemedText style={styles.primaryActionText}>
-                {isGenerating ? "Generating..." : "Generate cycles"}
+                {isGenerating ? t("Generating...") : t("Generate cycles")}
               </ThemedText>
             </Pressable>
           ) : null}
 
           <View style={styles.card}>
-            <ThemedText type="subtitle">Cycle overview</ThemedText>
+            <ThemedText type="subtitle">{t("Cycle overview")}</ThemedText>
             <View style={styles.metricGrid}>
               <View style={styles.metricTile}>
                 <ThemedText style={styles.metricValue}>{openCycles.length}</ThemedText>
-                <ThemedText style={styles.metricLabel}>Open now</ThemedText>
+                <ThemedText style={styles.metricLabel}>{t("Open now")}</ThemedText>
               </View>
               <View style={styles.metricTile}>
                 <ThemedText style={styles.metricValue}>{closedCycles.length}</ThemedText>
-                <ThemedText style={styles.metricLabel}>Archived</ThemedText>
+                <ThemedText style={styles.metricLabel}>{t("Archived")}</ThemedText>
               </View>
               <View style={styles.metricTile}>
                 <ThemedText style={styles.metricValue}>
-                  {nextCycle?.payout_member_name ?? "Pending"}
+                  {nextCycle?.payout_member_name ?? t("Pending")}
                 </ThemedText>
-                <ThemedText style={styles.metricLabel}>Current payout</ThemedText>
+                <ThemedText style={styles.metricLabel}>{t("Current payout")}</ThemedText>
               </View>
             </View>
           </View>
 
           <View style={styles.card}>
             <View style={styles.cardHeader}>
-              <ThemedText type="subtitle">All cycles</ThemedText>
-              <ThemedText style={styles.supportText}>{cycles.length} total</ThemedText>
+              <ThemedText type="subtitle">{t("All cycles")}</ThemedText>
+              <ThemedText style={styles.supportText}>{t("{{count}} total", { count: cycles.length })}</ThemedText>
             </View>
 
             {cycles.length === 0 ? (
               <View style={styles.emptyState}>
-                <ThemedText style={styles.emptyTitle}>No cycles yet</ThemedText>
+                <ThemedText style={styles.emptyTitle}>{t("No cycles yet")}</ThemedText>
                 <ThemedText style={styles.supportText}>
                   {isOwner
-                    ? "Generate cycles to begin contributions, payouts, and the full rotation."
-                    : "Ask the owner to generate cycles before contributions can start."}
+                    ? t("Generate cycles to begin contributions, payouts, and the full rotation.")
+                    : t("Ask the owner to generate cycles before contributions can start.")}
                 </ThemedText>
               </View>
             ) : (
@@ -255,9 +255,12 @@ export default function TontineCyclesScreen() {
                   <View key={item.id} style={styles.cycleCard}>
                     <View style={styles.cycleHeader}>
                       <View style={styles.cycleHeading}>
-                        <ThemedText style={styles.cycleTitle}>Cycle {item.cycle_number}</ThemedText>
+                        <ThemedText style={styles.cycleTitle}>{t("Cycle {{number}}", { number: item.cycle_number })}</ThemedText>
                         <ThemedText style={styles.supportText}>
-                          {formatShortDate(item.start_date)} to {formatShortDate(item.end_date)}
+                          {t("{{start}} to {{end}}", {
+                            start: formatShortDate(item.start_date),
+                            end: formatShortDate(item.end_date),
+                          })}
                         </ThemedText>
                       </View>
 
@@ -275,7 +278,7 @@ export default function TontineCyclesScreen() {
                               : styles.statusBadgeCoolText,
                           ]}
                         >
-                          {item.is_closed ? "closed" : "open"}
+                          {item.is_closed ? t("closed") : t("open")}
                         </ThemedText>
                       </View>
                     </View>
@@ -283,15 +286,15 @@ export default function TontineCyclesScreen() {
                     <View style={styles.metricGrid}>
                       <View style={styles.metricTileCompact}>
                         <ThemedText style={styles.metricValueCompact}>
-                          {item.payout_member_name ?? "Unassigned"}
+                          {item.payout_member_name ?? t("Unassigned")}
                         </ThemedText>
-                        <ThemedText style={styles.metricLabel}>Payout member</ThemedText>
+                        <ThemedText style={styles.metricLabel}>{t("Payout member")}</ThemedText>
                       </View>
                       <View style={styles.metricTileCompact}>
                         <ThemedText style={styles.metricValueCompact}>
-                          {item.closed_at ? formatShortDate(item.closed_at) : "Still open"}
+                          {item.closed_at ? formatShortDate(item.closed_at) : t("Still open")}
                         </ThemedText>
-                        <ThemedText style={styles.metricLabel}>Closed at</ThemedText>
+                        <ThemedText style={styles.metricLabel}>{t("Closed at")}</ThemedText>
                       </View>
                     </View>
 
@@ -304,7 +307,7 @@ export default function TontineCyclesScreen() {
                         asChild
                       >
                         <Pressable style={styles.inlineAction}>
-                          <ThemedText style={styles.inlineActionText}>Open</ThemedText>
+                          <ThemedText style={styles.inlineActionText}>{t("Open")}</ThemedText>
                         </Pressable>
                       </Link>
 
@@ -317,7 +320,7 @@ export default function TontineCyclesScreen() {
                           asChild
                         >
                           <Pressable style={styles.inlinePrimaryAction}>
-                            <ThemedText style={styles.inlinePrimaryActionText}>Contribute</ThemedText>
+                            <ThemedText style={styles.inlinePrimaryActionText}>{t("Contribute")}</ThemedText>
                           </Pressable>
                         </Link>
                       ) : null}

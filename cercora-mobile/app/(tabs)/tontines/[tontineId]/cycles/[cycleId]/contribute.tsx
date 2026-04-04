@@ -73,7 +73,7 @@ export default function ContributeScreen() {
 
     if (!Number.isFinite(tontineNum) || !Number.isFinite(cycleNum)) {
       setIsLoading(false);
-      setError("Invalid route params.");
+      setError(t("Invalid route params."));
       return;
     }
 
@@ -81,7 +81,7 @@ export default function ContributeScreen() {
     return () => {
       isMounted = false;
     };
-  }, [cycleNum, tontineNum]);
+  }, [cycleNum, t, tontineNum]);
 
   async function onSubmit() {
     setError(null);
@@ -126,10 +126,10 @@ export default function ContributeScreen() {
               <View style={styles.heroGlowTop} />
               <View style={styles.heroGlowBottom} />
 
-              <ThemedText style={styles.eyebrow}>Contribution</ThemedText>
-              <ThemedText style={styles.heroTitle}>Submit your cycle payment</ThemedText>
+              <ThemedText style={styles.eyebrow}>{t("Contribution")}</ThemedText>
+              <ThemedText style={styles.heroTitle}>{t("Submit your cycle payment")}</ThemedText>
               <ThemedText style={styles.heroSubtitle}>
-                Add the transfer amount, reference, and proof link so the contribution can be reviewed quickly.
+                {t("Add the transfer amount, reference, and proof link so the contribution can be reviewed quickly.")}
               </ThemedText>
 
               <View style={styles.heroStats}>
@@ -137,17 +137,17 @@ export default function ContributeScreen() {
                   <ThemedText style={styles.heroStatValue}>
                     {tontine ? formatAmount(tontine.contribution_amount) : "-"}
                   </ThemedText>
-                  <ThemedText style={styles.heroStatLabel}>Expected amount</ThemedText>
+                  <ThemedText style={styles.heroStatLabel}>{t("Expected amount")}</ThemedText>
                 </View>
                 <View style={styles.heroStat}>
-                  <ThemedText style={styles.heroStatValue}>Cycle {cycleNum}</ThemedText>
-                  <ThemedText style={styles.heroStatLabel}>Target cycle</ThemedText>
+                  <ThemedText style={styles.heroStatValue}>{t("Cycle {{number}}", { number: cycleNum })}</ThemedText>
+                  <ThemedText style={styles.heroStatLabel}>{t("Target cycle")}</ThemedText>
                 </View>
               </View>
             </View>
 
             <View style={styles.card}>
-              <ThemedText type="subtitle">Payment details</ThemedText>
+              <ThemedText type="subtitle">{t("Payment details")}</ThemedText>
               <ThemedText style={styles.supportText}>
                 {tontine
                   ? t("{{tontine}} expects {{amount}} for this cycle.", {
@@ -157,7 +157,7 @@ export default function ContributeScreen() {
                   : t("Fill in the payment details below.")}
               </ThemedText>
 
-              <ThemedText style={styles.label}>Amount</ThemedText>
+              <ThemedText style={styles.label}>{t("Amount")}</ThemedText>
               <TextInput
                 value={amount}
                 onChangeText={setAmount}
@@ -167,7 +167,7 @@ export default function ContributeScreen() {
                 style={styles.input}
               />
 
-              <ThemedText style={styles.label}>Transaction reference</ThemedText>
+              <ThemedText style={styles.label}>{t("Transaction reference")}</ThemedText>
               <TextInput
                 value={transactionReference}
                 onChangeText={setTransactionReference}
@@ -177,7 +177,7 @@ export default function ContributeScreen() {
                 style={styles.input}
               />
 
-              <ThemedText style={styles.label}>Proof screenshot URL</ThemedText>
+              <ThemedText style={styles.label}>{t("Proof screenshot URL")}</ThemedText>
               <TextInput
                 value={proofUrl}
                 onChangeText={setProofUrl}
@@ -188,9 +188,9 @@ export default function ContributeScreen() {
               />
 
               <View style={styles.helperCard}>
-                <ThemedText style={styles.helperTitle}>Before you submit</ThemedText>
+                <ThemedText style={styles.helperTitle}>{t("Before you submit")}</ThemedText>
                 <ThemedText style={styles.supportText}>
-                  Make sure the amount matches your cycle contribution and the reference matches the transfer. Add screenshot proof if you have it for beneficiary review.
+                  {t("Make sure the amount matches your cycle contribution and the reference matches the transfer. Add screenshot proof if you have it for beneficiary review.")}
                 </ThemedText>
               </View>
 
@@ -202,7 +202,7 @@ export default function ContributeScreen() {
                 onPress={() => void onSubmit()}
               >
                 <ThemedText style={styles.primaryButtonText}>
-                  {isSubmitting ? "Submitting..." : "Submit contribution"}
+                  {isSubmitting ? t("Submitting...") : t("Submit contribution")}
                 </ThemedText>
               </Pressable>
             </View>
