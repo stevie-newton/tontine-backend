@@ -90,7 +90,7 @@ function getScoreTone(score: number | null) {
 }
 
 export default function ProfileScreen() {
-  const { isLoading, user, signOut } = useAuth();
+  const { biometric, disableBiometricSignIn, isLoading, user, signOut } = useAuth();
   const { locale, setLocale, t } = useI18n();
   const layout = useResponsiveLayout();
   const [reliability, setReliability] = useState<Reliability | null>(null);
@@ -101,6 +101,8 @@ export default function ProfileScreen() {
   const [invitesError, setInvitesError] = useState<string | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [biometricBusy, setBiometricBusy] = useState(false);
+  const [biometricError, setBiometricError] = useState<string | null>(null);
 
   const loadProfileData = useCallback(async () => {
     setInvitesError(null);
@@ -177,6 +179,18 @@ export default function ProfileScreen() {
       setDeleteError(getErrorMessage(e));
     } finally {
       setDeleteBusy(false);
+    }
+  }
+
+  async function turnOffBiometricSignIn() {
+    setBiometricBusy(true);
+    setBiometricError(null);
+    try {
+      await disableBiometricSignIn();
+    } catch (e) {
+      setBiometricError(getErrorMessage(e));
+    } finally {
+      setBiometricBusy(false);
     }
   }
 
@@ -432,6 +446,36 @@ export default function ProfileScreen() {
             </View>
 
             <View style={styles.card}>
+            <View style={styles.accountPanel}>
+              <ThemedText style={styles.accountTitle}>{biometric.label}</ThemedText>
+              <ThemedText style={styles.supportText}>
+                {biometric.isEnabled
+                  ? `${biometric.label} is enabled on this device. You can use it from the sign-in screen instead of typing your password.`
+                  : biometric.isAvailable
+                    ? `To enable ${biometric.label}, sign out and log back in once with your phone number and password.`
+                    : "Biometric sign in is not available on this device."}
+              </ThemedText>
+              {biometricError ? <ThemedText style={styles.errorText}>{biometricError}</ThemedText> : null}
+              {biometric.isEnabled ? (
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.biometricButton,
+                    pressed ? styles.biometricButtonPressed : null,
+                  ]}
+                  disabled={biometricBusy}
+                  onPress={() => void turnOffBiometricSignIn()}
+                >
+                  {biometricBusy ? (
+                    <ActivityIndicator color={BrandColors.blueDeep} />
+                  ) : (
+                    <ThemedText style={styles.biometricButtonText}>
+                      Turn off {biometric.label}
+                    </ThemedText>
+                  )}
+                </Pressable>
+              ) : null}
+            </View>
+
             <View style={styles.accountPanel}>
               <ThemedText style={styles.accountTitle}>Delete account</ThemedText>
               <ThemedText style={styles.supportText}>
@@ -777,6 +821,25 @@ const styles = StyleSheet.create({
   },
   deleteButtonPressed: {
     opacity: 0.82,
+  },
+  biometricButton: {
+    alignSelf: "flex-start",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(29, 78, 216, 0.16)",
+    backgroundColor: "rgba(29, 78, 216, 0.08)",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    alignItems: "center",
+    marginTop: 6,
+  },
+  biometricButtonPressed: {
+    opacity: 0.82,
+  },
+  biometricButtonText: {
+    color: BrandColors.blueDeep,
+    fontWeight: "700",
+    fontSize: 14,
   },
   deleteButtonText: {
     color: BrandColors.dangerText,

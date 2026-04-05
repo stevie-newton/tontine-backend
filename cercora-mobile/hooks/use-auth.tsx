@@ -2,6 +2,13 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter, useSegments } from "expo-router";
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 
+import {
+  disableBiometricCredentials,
+  getBiometricCredentials,
+  getBiometricErrorMessage,
+  getBiometricStatus,
+  saveBiometricCredentials,
+} from "@/hooks/biometric-auth";
 import { subscribeToSessionExpired } from "@/hooks/auth-session";
 import { api, setApiAccessToken } from "@/hooks/api-client";
 import { getErrorMessage } from "@/hooks/error-utils";
@@ -22,8 +29,19 @@ type AuthState = {
   user: User | null;
 };
 
+type BiometricState = {
+  isLoading: boolean;
+  isAvailable: boolean;
+  isEnabled: boolean;
+  label: string;
+};
+
 type AuthContextValue = AuthState & {
+  biometric: BiometricState;
   signIn: (args: { phone: string; password: string }) => Promise<void>;
+  signInWithBiometrics: () => Promise<void>;
+  enableBiometricSignIn: (args: { phone: string; password: string }) => Promise<void>;
+  disableBiometricSignIn: () => Promise<void>;
   signUp: (args: { name: string; phone: string; password: string }) => Promise<void>;
   verifyPhone: (args: { phone: string; code: string }) => Promise<void>;
   resendOtp: (args: { phone: string }) => Promise<void>;
@@ -45,6 +63,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isLoading: true,
     accessToken: null,
     user: null,
+  });
+  const [biometric, setBiometric] = useState<BiometricState>({
+    isLoading: true,
+    isAvailable: false,
+    isEnabled: false,
+    label: "Face ID",
   });
 
   useEffect(() => {
@@ -95,6 +119,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    let isMounted = true;
+
+    async function restoreBiometricState() {
+      try {
+        const status = await getBiometricStatus();
+        if (!isMounted) return;
+        setBiometric({ isLoading: false, ...status });
+      } catch {
+        if (!isMounted) return;
+        setBiometric({
+          isLoading: false,
+          isAvailable: false,
+          isEnabled: false,
+          label: "Face ID",
+        });
+      }
+    }
+
+    void restoreBiometricState();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
     return subscribeToSessionExpired(async () => {
       setApiAccessToken(null);
       await Promise.all([
@@ -129,23 +178,73 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       ]);
     }
 
+    async function refreshBiometricState() {
+      const status = await getBiometricStatus();
+      setBiometric({ isLoading: false, ...status });
+    }
+
+    async function requestSignIn(args: { phone: string; password: string }) {
+      const body = `username=${encodeURIComponent(args.phone)}&password=${encodeURIComponent(args.password)}`;
+
+      const res = await api.post("/auth/login", body, {
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      });
+
+      const accessToken = res.data?.access_token as string | undefined;
+      const user = res.data?.user as User | undefined;
+      if (!accessToken || !user) throw new Error("Unexpected login response");
+
+      await persist({ accessToken, user });
+    }
+
     return {
       ...state,
+      biometric,
       async signIn({ phone, password }) {
         try {
-          const body = `username=${encodeURIComponent(phone)}&password=${encodeURIComponent(password)}`;
-
-          const res = await api.post("/auth/login", body, {
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          });
-
-          const accessToken = res.data?.access_token as string | undefined;
-          const user = res.data?.user as User | undefined;
-          if (!accessToken || !user) throw new Error("Unexpected login response");
-
-          await persist({ accessToken, user });
+          await requestSignIn({ phone, password });
         } catch (err) {
           throw new Error(getErrorMessage(err));
+        }
+      },
+      async signInWithBiometrics() {
+        try {
+          const credentials = await getBiometricCredentials();
+          if (!credentials) {
+            throw new Error(`${biometric.label} is not set up on this device.`);
+          }
+
+          await requestSignIn(credentials);
+        } catch (err) {
+          const status = (err as { response?: { status?: number } } | null)?.response?.status;
+          const message = getBiometricErrorMessage(err, biometric.label);
+          const shouldReset = status === 401 || message === "Invalid phone or password";
+
+          if (shouldReset) {
+            await disableBiometricCredentials();
+            await refreshBiometricState();
+            throw new Error(
+              `Saved ${biometric.label} credentials are no longer valid. Sign in with your password to enable it again.`
+            );
+          }
+
+          throw new Error(message);
+        }
+      },
+      async enableBiometricSignIn({ phone, password }) {
+        try {
+          await saveBiometricCredentials({ phone, password });
+          await refreshBiometricState();
+        } catch (err) {
+          throw new Error(getBiometricErrorMessage(err, biometric.label));
+        }
+      },
+      async disableBiometricSignIn() {
+        try {
+          await disableBiometricCredentials();
+          await refreshBiometricState();
+        } catch (err) {
+          throw new Error(getBiometricErrorMessage(err, biometric.label));
         }
       },
       async signUp({ name, phone, password }) {
@@ -193,7 +292,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         router.replace("/(auth)/login");
       },
     };
-  }, [router, state]);
+  }, [biometric, router, state]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

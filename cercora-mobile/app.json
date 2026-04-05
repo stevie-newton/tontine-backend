@@ -16,7 +16,8 @@
       "bundleIdentifier": "com.cercora.mobile",
       "buildNumber": "2",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSFaceIDUsageDescription": "Use Face ID to sign in to your Cercora account on this iPhone."
       }
     },
     "android": {
@@ -57,7 +58,8 @@
             "backgroundColor": "#ffffff"
           }
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true,
