@@ -7,6 +7,7 @@ import secrets
 
 
 from app.core.database import get_db
+from app.core.i18n import get_explicit_locale_from_request
 from app.core.security import hash_password, verify_password, create_access_token
 from app.core.config import settings
 from app.core.phone import normalize_phone, phone_lookup_candidates
@@ -14,7 +15,10 @@ from app.core.rate_limit import clear_failed_attempts, get_client_ip, is_limited
 
 from pydantic import BaseModel, Field
 from app.models.user import User
+from app.models.pending_phone_invite import PendingPhoneInvite
 from app.models.registration_otp import RegistrationOTP
+from app.models.tontine import Tontine
+from app.models.tontine_membership import TontineMembership
 from app.schemas.user import (
     UserCreate,
     UserResponse,
@@ -24,6 +28,7 @@ from app.schemas.user import (
 )
 from app.core.dependencies import get_current_user
 from app.services.sms_service import SMSService
+from app.services.tontine_service import TontineService
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -153,6 +158,43 @@ def _send_password_reset_sms(requested_phone: str, stored_phone: str, code: str)
     )
 
 
+def _claim_pending_phone_invites_for_user(db: Session, user: User) -> None:
+    pending_invites = (
+        db.query(PendingPhoneInvite)
+        .filter(PendingPhoneInvite.phone == user.phone)
+        .order_by(PendingPhoneInvite.created_at.asc(), PendingPhoneInvite.id.asc())
+        .all()
+    )
+
+    touched_tontine_ids: set[int] = set()
+    for invite in pending_invites:
+        membership = (
+            db.query(TontineMembership)
+            .filter(
+                TontineMembership.user_id == user.id,
+                TontineMembership.tontine_id == invite.tontine_id,
+            )
+            .first()
+        )
+        if not membership:
+            membership = TontineMembership(
+                user_id=user.id,
+                tontine_id=invite.tontine_id,
+                role=invite.role or "member",
+                is_active=False,
+                payout_position=None,
+            )
+            db.add(membership)
+            touched_tontine_ids.add(invite.tontine_id)
+
+        db.delete(invite)
+
+    for tontine_id in touched_tontine_ids:
+        tontine = db.query(Tontine).filter(Tontine.id == tontine_id).first()
+        if tontine:
+            TontineService.sync_draft_payout_order(db, tontine)
+
+
 @router.post("/resend-otp", response_model=MessageResponse)
 def resend_registration_otp(payload: RegistrationOTPRequest, db: Session = Depends(get_db)):
     normalized_phone = normalize_phone(payload.phone)
@@ -219,9 +261,10 @@ def verify_phone(payload: RegistrationOTPVerifyRequest, db: Session = Depends(ge
 # Register
 # -------------------------
 @router.post("/register", response_model=UserResponse, operation_id="auth_register")
-def register(user_data: UserCreate, db: Session = Depends(get_db)):
+def register(request: Request, user_data: UserCreate, db: Session = Depends(get_db)):
     normalized_phone = normalize_phone(user_data.phone)
     candidates = phone_lookup_candidates(user_data.phone)
+    preferred_language = get_explicit_locale_from_request(request) or "en"
 
     # Check if phone already exists
     existing_user = db.query(User).filter(User.phone.in_(candidates)).first()
@@ -235,11 +278,14 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
     new_user = User(
         name=user_data.name,
         phone=normalized_phone,
+        preferred_language=preferred_language,
         is_phone_verified=False,
-       hashed_password=hash_password(user_data.password),
+        hashed_password=hash_password(user_data.password),
     )
 
     db.add(new_user)
+    db.flush()
+    _claim_pending_phone_invites_for_user(db, new_user)
     db.commit()
     db.refresh(new_user)
 
@@ -289,6 +335,12 @@ def login(
         )
 
     clear_failed_attempts(client_ip)
+    preferred_language = get_explicit_locale_from_request(request)
+    if preferred_language and user.preferred_language != preferred_language:
+        user.preferred_language = preferred_language
+        db.add(user)
+        db.commit()
+        db.refresh(user)
     if not user.is_phone_verified:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

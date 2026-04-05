@@ -1,6 +1,6 @@
 from typing import Optional
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from jose.exceptions import ExpiredSignatureError
 from jose import JWTError, jwt
@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.i18n import get_explicit_locale_from_request
 from app.models.user import User
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
@@ -16,6 +17,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
 def get_current_user(
     token: Optional[str] = Depends(oauth2_scheme),
     db: Session = Depends(get_db),
+    request: Request | None = None,
 ) -> User:
     """
     Dependency to get the current authenticated user from JWT token.
@@ -83,6 +85,14 @@ def get_current_user(
             detail="Inactive user"
         )
 
+    if request is not None:
+        preferred_language = get_explicit_locale_from_request(request)
+        if preferred_language and user.preferred_language != preferred_language:
+            user.preferred_language = preferred_language
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+
     return user
 
 
@@ -101,6 +111,7 @@ def get_current_global_admin(
 def get_current_user_optional(
     token: Optional[str] = Depends(oauth2_scheme),
     db: Session = Depends(get_db),
+    request: Request | None = None,
 ) -> Optional[User]:
     """
     Dependency to get current user, but returns None if not authenticated.
@@ -110,6 +121,6 @@ def get_current_user_optional(
         return None
     
     try:
-        return get_current_user(token, db)
+        return get_current_user(token=token, db=db, request=request)
     except HTTPException:
         return None

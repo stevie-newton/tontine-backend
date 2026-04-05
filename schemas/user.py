@@ -15,6 +15,7 @@ class UserResponse(BaseModel):
     id: int
     name: str
     phone: str
+    preferred_language: str = "en"
     is_phone_verified: bool = True
     is_global_admin: bool = False
     created_at: datetime

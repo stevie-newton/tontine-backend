@@ -9,6 +9,8 @@ export async function apiFetch<T>(
 ): Promise<T> {
   const token =
     typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+  const locale =
+    typeof window !== "undefined" ? localStorage.getItem("app_locale") : null;
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -19,6 +21,7 @@ export async function apiFetch<T>(
   };
 
   if (token) headers.Authorization = `Bearer ${token}`;
+  if (locale === "en" || locale === "fr") headers["x-locale"] = locale;
 
   const res = await fetch(`${API_URL}${path}`, {
     ...options,

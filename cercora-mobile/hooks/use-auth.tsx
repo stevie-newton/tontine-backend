@@ -10,6 +10,7 @@ type User = {
   id: number;
   name: string;
   phone: string;
+  preferred_language: string;
   is_phone_verified: boolean;
   is_global_admin: boolean;
   created_at: string;

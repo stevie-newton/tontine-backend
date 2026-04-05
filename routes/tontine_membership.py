@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from decimal import Decimal, ROUND_HALF_UP
+
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 from typing import List
 import re
@@ -7,7 +9,9 @@ from datetime import datetime
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.core.config import settings
+from app.core.i18n import get_explicit_locale_from_request
 from app.core.phone import normalize_phone
+from app.models.pending_phone_invite import PendingPhoneInvite
 from app.models.user import User
 from app.models.tontine import Tontine, TontineStatus
 from app.models.tontine_membership import TontineMembership
@@ -86,17 +90,126 @@ def _normalize_phone(phone: str) -> str:
     return normalize_phone(phone)
 
 
-def _send_registration_invite_sms(phone: str, tontine_name: str, inviter_name: str) -> tuple[bool, str | None]:
-    register_link = f"{settings.FRONTEND_URL.rstrip('/')}/register"
-    message = (
-        f"{inviter_name} invited you to join tontine '{tontine_name}'. "
-        f"Create your account here: {register_link}"
+def _format_amount_for_locale(amount: Decimal | float | int | str, locale: str) -> str:
+    quantized = Decimal(str(amount)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    formatted = f"{quantized:,.2f}"
+    if locale == "fr":
+        return formatted.replace(",", " ").replace(".", ",")
+    return formatted
+
+
+def _invite_download_links(locale: str) -> str:
+    if settings.MOBILE_APP_DOWNLOAD_URL:
+        if locale == "fr":
+            return f"Installez l'app Cercora : {settings.MOBILE_APP_DOWNLOAD_URL}"
+        return f"Get the Cercora app: {settings.MOBILE_APP_DOWNLOAD_URL}"
+
+    links: list[str] = []
+    if settings.APPLE_APP_STORE_URL:
+        if locale == "fr":
+            links.append(f"iPhone {settings.APPLE_APP_STORE_URL}")
+        else:
+            links.append(f"iPhone {settings.APPLE_APP_STORE_URL}")
+    if settings.GOOGLE_PLAY_STORE_URL:
+        if locale == "fr":
+            links.append(f"Android {settings.GOOGLE_PLAY_STORE_URL}")
+        else:
+            links.append(f"Android {settings.GOOGLE_PLAY_STORE_URL}")
+
+    if links:
+        if locale == "fr":
+            return "Installez l'app Cercora : " + " | ".join(links)
+        return "Get the Cercora app: " + " | ".join(links)
+
+    fallback = settings.FRONTEND_URL.rstrip("/")
+    if locale == "fr":
+        return f"Commencez ici : {fallback}"
+    return f"Start here: {fallback}"
+
+
+def _build_registration_invite_sms(
+    *,
+    locale: str,
+    tontine: Tontine,
+    inviter_name: str,
+) -> str:
+    amount = _format_amount_for_locale(tontine.contribution_amount, locale)
+    links = _invite_download_links(locale)
+    if locale == "fr":
+        return (
+            f"{inviter_name} vous a invite a rejoindre la tontine '{tontine.name}' sur Cercora. "
+            f"Montant de contribution : {amount}. {links}"
+        )
+    return (
+        f"{inviter_name} invited you to join the '{tontine.name}' tontine on Cercora. "
+        f"Contribution amount: {amount}. {links}"
+    )
+
+
+def _invite_locale_for_request(request: Request, inviter: User) -> str:
+    return get_explicit_locale_from_request(request) or getattr(inviter, "preferred_language", None) or "en"
+
+
+def _send_registration_invite_sms(
+    *,
+    phone: str,
+    tontine: Tontine,
+    inviter_name: str,
+    locale: str,
+) -> tuple[bool, str | None]:
+    message = _build_registration_invite_sms(
+        locale=locale,
+        tontine=tontine,
+        inviter_name=inviter_name,
     )
     try:
         SMSService.send_sms(phone, message)
         return True, None
     except Exception as exc:
         return False, str(exc)
+
+
+def _upsert_pending_phone_invite(
+    *,
+    db: Session,
+    normalized_phone: str,
+    tontine: Tontine,
+    inviter: User,
+    role: str | None,
+) -> PendingPhoneInvite:
+    pending_invite = (
+        db.query(PendingPhoneInvite)
+        .filter(
+            PendingPhoneInvite.phone == normalized_phone,
+            PendingPhoneInvite.tontine_id == tontine.id,
+        )
+        .first()
+    )
+    if pending_invite:
+        pending_invite.invited_by_user_id = inviter.id
+        pending_invite.role = role or "member"
+        db.add(pending_invite)
+        return pending_invite
+
+    pending_invite = PendingPhoneInvite(
+        phone=normalized_phone,
+        tontine_id=tontine.id,
+        invited_by_user_id=inviter.id,
+        role=role or "member",
+    )
+    db.add(pending_invite)
+    return pending_invite
+
+
+def _clear_pending_phone_invite(db: Session, normalized_phone: str, tontine_id: int) -> None:
+    (
+        db.query(PendingPhoneInvite)
+        .filter(
+            PendingPhoneInvite.phone == normalized_phone,
+            PendingPhoneInvite.tontine_id == tontine_id,
+        )
+        .delete(synchronize_session=False)
+    )
 
 
 # -------------------------
@@ -123,6 +236,7 @@ def join_tontine(
 @router.post("/add", response_model=TontineMembershipResponse, status_code=status.HTTP_201_CREATED)
 def add_member(
     membership_data: TontineMembershipCreate,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -158,10 +272,20 @@ def add_member(
 
     if not user:
         if normalized_phone:
+            locale = _invite_locale_for_request(request, current_user)
+            _upsert_pending_phone_invite(
+                db=db,
+                normalized_phone=normalized_phone,
+                tontine=tontine,
+                inviter=current_user,
+                role=membership_data.role,
+            )
+            db.commit()
             sms_sent, sms_error = _send_registration_invite_sms(
                 phone=normalized_phone,
-                tontine_name=tontine.name,
+                tontine=tontine,
                 inviter_name=current_user.name,
+                locale=locale,
             )
             if sms_sent:
                 raise HTTPException(
@@ -209,6 +333,8 @@ def add_member(
     )
     
     db.add(membership)
+    if normalized_phone:
+        _clear_pending_phone_invite(db, normalized_phone, membership_data.tontine_id)
     TontineService.sync_draft_payout_order(db, tontine)
     db.commit()
     db.refresh(membership)
@@ -235,6 +361,7 @@ def add_member(
 @router.post("/invite", response_model=InviteAckResponse, status_code=status.HTTP_201_CREATED)
 def invite_member(
     membership_data: TontineMembershipCreate,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -260,6 +387,7 @@ def invite_member(
             )
 
     if membership_data.phone:
+        locale = _invite_locale_for_request(request, current_user)
         normalized_phone = _normalize_phone(membership_data.phone)
         user = db.query(User).filter(User.phone == normalized_phone).first()
 
@@ -278,6 +406,7 @@ def invite_member(
                     payout_position=None
                 )
                 db.add(membership)
+                _clear_pending_phone_invite(db, normalized_phone, membership_data.tontine_id)
                 TontineService.sync_draft_payout_order(db, tontine)
                 db.commit()
                 db.refresh(membership)
@@ -293,18 +422,30 @@ def invite_member(
                     )
                 except Exception:
                     pass
+            else:
+                _clear_pending_phone_invite(db, normalized_phone, membership_data.tontine_id)
+                db.commit()
         else:
+            _upsert_pending_phone_invite(
+                db=db,
+                normalized_phone=normalized_phone,
+                tontine=tontine,
+                inviter=current_user,
+                role=membership_data.role,
+            )
+            db.commit()
             _send_registration_invite_sms(
                 phone=normalized_phone,
-                tontine_name=tontine.name,
+                tontine=tontine,
                 inviter_name=current_user.name,
+                locale=locale,
             )
 
         return {"message": "Invite sent (if the number can receive messages)."}
 
     # Fallback for legacy user_id invites with the same neutral message.
     try:
-        add_member(membership_data, db, current_user)
+        add_member(membership_data, request, db, current_user)
     except HTTPException as exc:
         if exc.status_code == status.HTTP_400_BAD_REQUEST and "already a member" in str(exc.detail).lower():
             return {"message": "Invite sent (if the number can receive messages)."}

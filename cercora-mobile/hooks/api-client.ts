@@ -4,6 +4,7 @@ import { API_BASE_URL } from "@/constants/api";
 import { notifySessionExpired } from "@/hooks/auth-session";
 import { emitGlobalError } from "@/hooks/error-bus";
 import { normalizeApiError } from "@/hooks/error-utils";
+import { getCurrentLocale } from "@/hooks/use-i18n";
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
@@ -41,6 +42,12 @@ api.interceptors.response.use(
     return Promise.reject(normalized);
   }
 );
+
+api.interceptors.request.use((config) => {
+  config.headers = config.headers ?? {};
+  config.headers["x-locale"] = getCurrentLocale();
+  return config;
+});
 
 export function setApiAccessToken(token: string | null) {
   if (token) {

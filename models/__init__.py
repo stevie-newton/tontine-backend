@@ -10,6 +10,7 @@ from app.models.debt import Debt
 from app.models.registration_otp import RegistrationOTP
 from app.models.support_ticket import SupportTicket
 from app.models.mobile_push_device import MobilePushDevice
+from app.models.pending_phone_invite import PendingPhoneInvite
 from app.models.push_subscription import PushSubscription
 from app.models.push_notification_log import PushNotificationLog
 
@@ -26,6 +27,7 @@ __all__ = [
     "RegistrationOTP",
     "SupportTicket",
     "MobilePushDevice",
+    "PendingPhoneInvite",
     "PushSubscription",
     "PushNotificationLog",
 ]

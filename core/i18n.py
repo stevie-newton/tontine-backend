@@ -75,6 +75,16 @@ def get_locale_from_request(request: Request) -> str:
     return "fr" if header.startswith("fr") else "en"
 
 
+def get_explicit_locale_from_request(request: Request) -> str | None:
+    header = (
+        request.headers.get("x-locale")
+        or request.headers.get("accept-language")
+    )
+    if not header:
+        return None
+    return "fr" if header.lower().startswith("fr") else "en"
+
+
 def _translate_dynamic_fr(text: str) -> str | None:
     m = re.fullmatch(r"Cycle (\d+) is already closed", text)
     if m:

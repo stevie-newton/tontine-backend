@@ -75,6 +75,9 @@ class Settings:
     # URLs
     BASE_URL: str = os.getenv("BASE_URL", "http://127.0.0.1:8000")
     FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://127.0.0.1:3000")
+    MOBILE_APP_DOWNLOAD_URL: str = os.getenv("MOBILE_APP_DOWNLOAD_URL", "").strip()
+    APPLE_APP_STORE_URL: str = os.getenv("APPLE_APP_STORE_URL", "").strip()
+    GOOGLE_PLAY_STORE_URL: str = os.getenv("GOOGLE_PLAY_STORE_URL", "").strip()
     CORS_ALLOW_ORIGINS: list[str] = _as_csv.__func__(
         os.getenv("CORS_ALLOW_ORIGINS", FRONTEND_URL)
     )

@@ -10,6 +10,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False)
     phone = Column(String(20), unique=True, index=True, nullable=False)
+    preferred_language = Column(String(5), nullable=False, server_default="en")
     is_phone_verified = Column(Boolean, nullable=False, server_default="true")
     is_global_admin = Column(Boolean, nullable=False, server_default="false")
     hashed_password = Column(String, nullable=False)
