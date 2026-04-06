@@ -17,7 +17,7 @@
       "buildNumber": "2",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSFaceIDUsageDescription": "Use Face ID to sign in to your Cercora account on this iPhone."
+        "NSFaceIDUsageDescription": "Use biometrics to sign in to your Cercora account on this iPhone."
       }
     },
     "android": {
