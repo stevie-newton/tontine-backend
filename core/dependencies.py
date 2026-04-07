@@ -17,7 +17,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
 def get_current_user(
     token: Optional[str] = Depends(oauth2_scheme),
     db: Session = Depends(get_db),
-    request: Request | None = None,
+    request: Request = None,
 ) -> User:
     """
     Dependency to get the current authenticated user from JWT token.
@@ -111,7 +111,7 @@ def get_current_global_admin(
 def get_current_user_optional(
     token: Optional[str] = Depends(oauth2_scheme),
     db: Session = Depends(get_db),
-    request: Request | None = None,
+    request: Request = None,
 ) -> Optional[User]:
     """
     Dependency to get current user, but returns None if not authenticated.
