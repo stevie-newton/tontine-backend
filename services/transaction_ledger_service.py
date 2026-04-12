@@ -48,14 +48,6 @@ class TransactionLedgerService:
             )
 
     @staticmethod
-    def _ensure_owner(tontine: Tontine, current_user: User) -> None:
-        if tontine.owner_id != current_user.id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only the tontine owner can export the ledger CSV",
-            )
-
-    @staticmethod
     def _ensure_member_access(db: Session, tontine: Tontine, current_user: User) -> None:
         if tontine.owner_id == current_user.id:
             return
@@ -436,7 +428,7 @@ class TransactionLedgerService:
                 detail="Tontine not found",
             )
 
-        TransactionLedgerService._ensure_owner(tontine, current_user)
+        TransactionLedgerService._ensure_member_access(db, tontine, current_user)
 
         rows = TransactionLedgerService.get_tontine_transactions(
             db=db,

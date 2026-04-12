@@ -6,6 +6,12 @@ type TranslationParams = Record<string, string | number>;
 
 const STORAGE_KEY = "app.locale";
 
+const enTranslations: Record<string, string> = {
+  "transactions.export_csv": "Export CSV",
+  "transactions.exporting": "Exporting...",
+  "transactions.export_title": "Tontine ledger export",
+};
+
 const frTranslations: Record<string, string> = {
   Dashboard: "Tableau de bord",
   Reminders: "Rappels",
@@ -721,9 +727,9 @@ const frTranslations: Record<string, string> = {
     "Cette vue reste liee aux routes du grand livre backend tout en correspondant a la nouvelle structure de l'espace tontine.",
   "Contribution volume": "Volume des contributions",
   "Payout volume": "Volume des paiements",
-  "Export CSV": "Exporter CSV",
-  "Exporting...": "Export en cours...",
-  "Tontine ledger export": "Export du grand livre de la tontine",
+  "transactions.export_csv": "Exporter CSV",
+  "transactions.exporting": "Export en cours...",
+  "transactions.export_title": "Export du grand livre de la tontine",
   "Make sure the amount matches your cycle contribution and the reference matches the transfer. Add screenshot proof if you have it for beneficiary review.":
     "Assurez-vous que le montant correspond a votre contribution de cycle et que la reference correspond au transfert. Ajoutez une capture de preuve si vous en avez une pour la validation du beneficiaire.",
   "Submitting...": "Envoi...",
@@ -750,7 +756,10 @@ function interpolate(template: string, params?: TranslationParams) {
 }
 
 function translate(locale: SupportedLocale, key: string, params?: TranslationParams) {
-  const template = locale === "fr" ? frTranslations[key] ?? key : key;
+  const template =
+    locale === "fr"
+      ? frTranslations[key] ?? enTranslations[key] ?? key
+      : enTranslations[key] ?? key;
   return interpolate(template, params);
 }
 

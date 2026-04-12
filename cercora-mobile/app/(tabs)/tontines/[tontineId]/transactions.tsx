@@ -19,7 +19,6 @@ import { ThemedView } from "@/components/themed-view";
 import { BrandColors, BrandShadow } from "@/constants/brand";
 import { api } from "@/hooks/api-client";
 import { getErrorMessage } from "@/hooks/error-utils";
-import { useAuth } from "@/hooks/use-auth";
 import { getCurrentLocale, useI18n } from "@/hooks/use-i18n";
 
 type Transaction = {
@@ -45,11 +44,6 @@ type TransactionSummary = {
   balance: string | number;
   transaction_count: number;
   last_transaction_date: string | null;
-};
-
-type Tontine = {
-  id: number;
-  owner_id: number;
 };
 
 function formatAmount(value: string | number) {
@@ -115,11 +109,9 @@ export default function TransactionsScreen() {
   const { tontineId } = useLocalSearchParams<{ tontineId: string }>();
   const id = useMemo(() => Number(tontineId), [tontineId]);
   const { t } = useI18n();
-  const { user } = useAuth();
 
   const [items, setItems] = useState<Transaction[]>([]);
   const [summary, setSummary] = useState<TransactionSummary | null>(null);
-  const [tontine, setTontine] = useState<Tontine | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -128,14 +120,12 @@ export default function TransactionsScreen() {
   const load = useCallback(async () => {
     setError(null);
     try {
-      const [listRes, sumRes, tontineRes] = await Promise.all([
+      const [listRes, sumRes] = await Promise.all([
         api.get<Transaction[]>(`/transactions/tontine/${id}`),
         api.get<TransactionSummary>(`/transactions/tontine/${id}/summary`),
-        api.get<Tontine>(`/tontines/${id}`),
       ]);
       setItems(listRes.data ?? []);
       setSummary(sumRes.data ?? null);
-      setTontine(tontineRes.data ?? null);
     } catch (e) {
       setError(getErrorMessage(e));
     } finally {
@@ -175,7 +165,7 @@ export default function TransactionsScreen() {
         Platform.OS === "android" ? await FileSystem.getContentUriAsync(fileUri) : fileUri;
       await Share.share({
         url: shareUri,
-        title: t("Tontine ledger export"),
+        title: t("transactions.export_title"),
         message: `tontine_${id}_ledger.csv`,
       });
     } catch (e) {
@@ -188,7 +178,6 @@ export default function TransactionsScreen() {
   const contributionTotal = Number(summary?.total_contributions ?? 0);
   const payoutTotal = Number(summary?.total_payouts ?? 0);
   const balanceTone = Number(summary?.balance ?? 0) >= 0 ? styles.balanceGood : styles.balanceWarn;
-  const isOwner = !!user && !!tontine && user.id === tontine.owner_id;
 
   return (
     <ThemedView style={styles.container} lightColor={BrandColors.canvas}>
@@ -290,17 +279,15 @@ export default function TransactionsScreen() {
             <View style={styles.cardHeader}>
               <ThemedText type="subtitle">{t("History")}</ThemedText>
               <View style={styles.headerActions}>
-                {isOwner ? (
-                  <Pressable
-                    style={styles.exportButton}
-                    disabled={isExporting}
-                    onPress={() => void onExportCsv()}
-                  >
-                    <ThemedText style={styles.exportButtonText}>
-                      {isExporting ? t("Exporting...") : t("Export CSV")}
-                    </ThemedText>
-                  </Pressable>
-                ) : null}
+                <Pressable
+                  style={styles.exportButton}
+                  disabled={isExporting}
+                  onPress={() => void onExportCsv()}
+                >
+                  <ThemedText style={styles.exportButtonText}>
+                    {isExporting ? t("transactions.exporting") : t("transactions.export_csv")}
+                  </ThemedText>
+                </Pressable>
                 <ThemedText style={styles.supportText}>{t("{{count}} transactions", { count: items.length })}</ThemedText>
               </View>
             </View>

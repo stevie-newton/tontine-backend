@@ -89,7 +89,7 @@ def get_tontine_transaction_summary(
 
 
 # -------------------------
-# Export transaction ledger CSV for a tontine (owner only)
+# Export transaction ledger CSV for a tontine (any active member)
 # -------------------------
 @router.get("/tontine/{tontine_id}/export/csv")
 def export_tontine_transactions_csv(

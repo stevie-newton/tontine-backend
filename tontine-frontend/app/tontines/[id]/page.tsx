@@ -1,6 +1,6 @@
 "use client";
 
-import { apiFetch } from "@/lib/api";
+import { apiFetch, apiFetchText } from "@/lib/api";
 import { FormEvent, use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -101,27 +101,6 @@ type MyReliabilityProfile = {
   cycles_completed: number;
   late_payments: number;
   debts_repaid: number;
-};
-
-type ContributionExportRow = {
-  id: number;
-  membership_id: number;
-  user_id: number;
-  user_name: string;
-  user_phone: string;
-  amount: string;
-  transaction_reference?: string;
-  proof_screenshot_url?: string | null;
-  beneficiary_decision?: string;
-  is_confirmed: boolean;
-  ledger_entry_created?: boolean;
-  paid_at: string;
-};
-
-type ContributionExportResponse = {
-  cycle_id: number;
-  count: number;
-  contributions: ContributionExportRow[];
 };
 
 export default function TontineDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -286,106 +265,13 @@ export default function TontineDetailPage({ params }: { params: Promise<{ id: st
     }
   }
 
-  function toCsvCell(value: unknown): string {
-    const s = String(value ?? "");
-    if (s.includes(",") || s.includes('"') || s.includes("\n")) {
-      return `"${s.replace(/"/g, '""')}"`;
-    }
-    return s;
-  }
-
   async function onExportLedgerCsv() {
     if (!tontine) return;
     setExporting(true);
     setErr(null);
     setMsg(null);
     try {
-      const contributionResponses = await Promise.all(
-        cycles.map((c) => apiFetch<ContributionExportResponse>(`/contributions/cycle/${c.id}`))
-      );
-
-      const cycleById = new Map<number, CycleStatus>();
-      (status?.cycles ?? []).forEach((c) => cycleById.set(c.cycle_id, c));
-
-      const rows: Array<string[]> = [];
-      rows.push([
-        "timestamp",
-        "entry_type",
-        "cycle_id",
-        "cycle_number",
-        "member",
-        "counterparty",
-        "amount",
-        "status",
-        "reference",
-        "notes",
-      ]);
-
-      for (const response of contributionResponses) {
-        const cycleStatus = cycleById.get(response.cycle_id);
-        const cycleNumber = cycleStatus?.cycle_number ?? "";
-        for (const c of response.contributions) {
-          rows.push([
-            c.paid_at ?? "",
-            "contribution",
-            String(response.cycle_id),
-            String(cycleNumber),
-            c.user_name ?? "",
-            "",
-            String(c.amount ?? ""),
-            c.is_confirmed ? "confirmed" : (c.beneficiary_decision ?? "pending"),
-            c.transaction_reference ?? "",
-            c.proof_screenshot_url ?? "",
-          ]);
-        }
-      }
-
-      for (const c of status?.cycles ?? []) {
-        if (!c.payout_processed) continue;
-        rows.push([
-          c.closed_at ?? "",
-          "payout",
-          String(c.cycle_id),
-          String(c.cycle_number),
-          c.payout_member_name ?? "",
-          "",
-          String(c.payout_amount ?? ""),
-          "processed",
-          "",
-          "Cycle payout",
-        ]);
-      }
-
-      for (const d of debts) {
-        rows.push([
-          d.created_at ?? "",
-          "debt_created",
-          String(d.cycle_id),
-          "",
-          d.debtor_name ?? "",
-          d.coverer_name ?? "",
-          String(d.amount ?? ""),
-          d.is_repaid ? "repaid" : "open",
-          "",
-          d.notes ?? "",
-        ]);
-        if (d.repaid_at) {
-          rows.push([
-            d.repaid_at,
-            "debt_repaid",
-            String(d.cycle_id),
-            "",
-            d.debtor_name ?? "",
-            d.coverer_name ?? "",
-            String(d.amount ?? ""),
-            "repaid",
-            "",
-            d.notes ?? "",
-          ]);
-        }
-      }
-
-      const csvText = rows.map((r) => r.map(toCsvCell).join(",")).join("\n");
+      const csvText = await apiFetchText(`/transactions/tontine/${tontineId}/export/csv`);
       const blob = new Blob([csvText], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -482,15 +368,13 @@ export default function TontineDetailPage({ params }: { params: Promise<{ id: st
                   {generating ? t("tontine_detail.generating") : t("tontine_detail.generate_cycles")}
                 </button>
               )}
-              {isOwner && (
-                <button
-                  onClick={onExportLedgerCsv}
-                  disabled={exporting}
-                  className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-900 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {exporting ? t("tontine_detail.exporting") : t("tontine_detail.export_csv")}
-                </button>
-              )}
+              <button
+                onClick={onExportLedgerCsv}
+                disabled={exporting}
+                className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-900 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {exporting ? t("tontine_detail.exporting") : t("tontine_detail.export_csv")}
+              </button>
               {isOwner && (
                 <button
                   onClick={() => setShowDeleteConfirm(true)}

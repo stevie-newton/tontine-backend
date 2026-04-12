@@ -3,10 +3,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 if (!API_URL) throw new Error("NEXT_PUBLIC_API_URL is not set");
 
-export async function apiFetch<T>(
-  path: string,
-  options: RequestInit = {}
-): Promise<T> {
+function buildHeaders(options: RequestInit = {}): Record<string, string> {
   const token =
     typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
   const locale =
@@ -23,6 +20,15 @@ export async function apiFetch<T>(
   if (token) headers.Authorization = `Bearer ${token}`;
   if (locale === "en" || locale === "fr") headers["x-locale"] = locale;
 
+  return headers;
+}
+
+export async function apiFetch<T>(
+  path: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const headers = buildHeaders(options);
+
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
     headers,
@@ -34,4 +40,23 @@ export async function apiFetch<T>(
   }
 
   return res.json() as Promise<T>;
+}
+
+export async function apiFetchText(
+  path: string,
+  options: RequestInit = {}
+): Promise<string> {
+  const headers = buildHeaders(options);
+
+  const res = await fetch(`${API_URL}${path}`, {
+    ...options,
+    headers,
+  });
+
+  const text = await res.text();
+  if (!res.ok) {
+    throw new Error(text || `Request failed: ${res.status}`);
+  }
+
+  return text;
 }
