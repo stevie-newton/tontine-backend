@@ -10,6 +10,7 @@ import {
 } from "react-native";
 
 import { BrandBackdrop } from "@/components/brand-backdrop";
+import { PasswordInput } from "@/components/password-input";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { BrandColors, BrandShadow } from "@/constants/brand";
@@ -90,7 +91,7 @@ function getScoreTone(score: number | null) {
 }
 
 export default function ProfileScreen() {
-  const { biometric, disableBiometricSignIn, isLoading, user, signOut } = useAuth();
+  const { biometric, disableBiometricSignIn, enableBiometricSignIn, isLoading, user, signOut } = useAuth();
   const { locale, setLocale, t } = useI18n();
   const layout = useResponsiveLayout();
   const [reliability, setReliability] = useState<Reliability | null>(null);
@@ -103,6 +104,7 @@ export default function ProfileScreen() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [biometricBusy, setBiometricBusy] = useState(false);
   const [biometricError, setBiometricError] = useState<string | null>(null);
+  const [biometricPassword, setBiometricPassword] = useState("");
 
   const loadProfileData = useCallback(async () => {
     setInvitesError(null);
@@ -194,6 +196,29 @@ export default function ProfileScreen() {
     }
   }
 
+  async function turnOnBiometricSignIn() {
+    const cleanPassword = biometricPassword.trim();
+    if (!user?.phone) {
+      setBiometricError(t("We could not find your phone number for biometric setup."));
+      return;
+    }
+    if (!cleanPassword) {
+      setBiometricError(t("Enter your current password to enable biometric sign-in."));
+      return;
+    }
+
+    setBiometricBusy(true);
+    setBiometricError(null);
+    try {
+      await enableBiometricSignIn({ phone: user.phone, password: cleanPassword });
+      setBiometricPassword("");
+    } catch (e) {
+      setBiometricError(getErrorMessage(e));
+    } finally {
+      setBiometricBusy(false);
+    }
+  }
+
   const score = reliability?.reliability_score_percent ?? null;
   const scoreLabel = getScoreLabel(score, t);
   const scoreTone = getScoreTone(score);
@@ -222,12 +247,12 @@ export default function ProfileScreen() {
               <ThemedText style={styles.avatarText}>{userInitial}</ThemedText>
             </View>
             <View style={styles.identityWrap}>
-              <ThemedText style={styles.eyebrow}>Profile</ThemedText>
+              <ThemedText style={styles.eyebrow}>{t("Profile")}</ThemedText>
               {isLoading ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
                 <>
-                  <ThemedText style={styles.heroTitle}>{user?.name ?? "Cercora member"}</ThemedText>
+                  <ThemedText style={styles.heroTitle}>{user?.name ?? t("Cercora member")}</ThemedText>
                   <ThemedText style={styles.heroSubtitle}>{user?.phone ?? "-"}</ThemedText>
                   <View style={styles.heroBadges}>
                     <View
@@ -246,13 +271,13 @@ export default function ProfileScreen() {
                             : styles.heroBadgeTextMuted,
                         ]}
                       >
-                        {user?.is_phone_verified ? "Phone verified" : "Phone unverified"}
+                        {user?.is_phone_verified ? t("Phone verified") : t("Phone unverified")}
                       </ThemedText>
                     </View>
                     {user?.is_global_admin ? (
                       <View style={[styles.heroBadge, styles.heroBadgeAdmin]}>
                         <ThemedText style={[styles.heroBadgeText, styles.heroBadgeTextAdmin]}>
-                          Global admin
+                          {t("Global admin")}
                         </ThemedText>
                       </View>
                     ) : null}
@@ -266,9 +291,9 @@ export default function ProfileScreen() {
         <View style={[styles.sectionGrid, layout.isTablet ? styles.sectionGridTablet : null]}>
           <View style={[styles.section, layout.isTablet ? styles.sectionColumn : null]}>
             <View style={styles.sectionHeader}>
-              <ThemedText type="subtitle">Reliability</ThemedText>
+              <ThemedText type="subtitle">{t("Reliability")}</ThemedText>
               <ThemedText style={styles.sectionCaption}>
-                Your current contribution and repayment posture
+                {t("Your current contribution and repayment posture")}
               </ThemedText>
             </View>
 
@@ -276,7 +301,7 @@ export default function ProfileScreen() {
             {reliabilityLoading ? (
               <View style={styles.loadingRow}>
                 <ActivityIndicator />
-                <ThemedText style={styles.supportText}>Loading your score...</ThemedText>
+                <ThemedText style={styles.supportText}>{t("Loading your score...")}</ThemedText>
               </View>
             ) : reliabilityError ? (
               <ThemedText style={styles.errorText}>{reliabilityError}</ThemedText>
@@ -303,7 +328,7 @@ export default function ProfileScreen() {
                       </ThemedText>
                     </View>
                     <ThemedText style={styles.supportText}>
-                      Based on on-time contributions, completed due cycles, and debt repayment behavior.
+                      {t("Based on on-time contributions, completed due cycles, and debt repayment behavior.")}
                     </ThemedText>
                   </View>
                 </View>
@@ -313,39 +338,39 @@ export default function ProfileScreen() {
                     <ThemedText style={styles.metricValue}>
                       {reliability.on_time_contributions}
                     </ThemedText>
-                    <ThemedText style={styles.metricLabel}>On time</ThemedText>
+                    <ThemedText style={styles.metricLabel}>{t("On time")}</ThemedText>
                   </View>
                   <View style={styles.metricTile}>
                     <ThemedText style={styles.metricValue}>
                       {reliability.late_payments}
                     </ThemedText>
-                    <ThemedText style={styles.metricLabel}>Late</ThemedText>
+                    <ThemedText style={styles.metricLabel}>{t("Late")}</ThemedText>
                   </View>
                   <View style={styles.metricTile}>
                     <ThemedText style={styles.metricValue}>
                       {reliability.missed_payments}
                     </ThemedText>
-                    <ThemedText style={styles.metricLabel}>Missed</ThemedText>
+                    <ThemedText style={styles.metricLabel}>{t("Missed")}</ThemedText>
                   </View>
                   <View style={styles.metricTile}>
                     <ThemedText style={styles.metricValue}>
                       {reliability.open_debts}
                     </ThemedText>
-                    <ThemedText style={styles.metricLabel}>Open debts</ThemedText>
+                    <ThemedText style={styles.metricLabel}>{t("Open debts")}</ThemedText>
                   </View>
                 </View>
               </>
             ) : (
-              <ThemedText style={styles.supportText}>No score available yet.</ThemedText>
+              <ThemedText style={styles.supportText}>{t("No score available yet.")}</ThemedText>
             )}
             </View>
           </View>
 
           <View style={[styles.section, layout.isTablet ? styles.sectionColumn : null]}>
             <View style={styles.sectionHeader}>
-              <ThemedText type="subtitle">Invites</ThemedText>
+              <ThemedText type="subtitle">{t("Invites")}</ThemedText>
               <ThemedText style={styles.sectionCaption}>
-                Join new circles directly from your profile
+                {t("Join new circles directly from your profile")}
               </ThemedText>
             </View>
 
@@ -353,15 +378,15 @@ export default function ProfileScreen() {
             {invitesLoading ? (
               <View style={styles.loadingRow}>
                 <ActivityIndicator />
-                <ThemedText style={styles.supportText}>Loading invites...</ThemedText>
+                <ThemedText style={styles.supportText}>{t("Loading invites...")}</ThemedText>
               </View>
             ) : invitesError ? (
               <ThemedText style={styles.errorText}>{invitesError}</ThemedText>
             ) : invites.length === 0 ? (
               <View style={styles.emptyState}>
-                <ThemedText style={styles.emptyTitle}>No pending invites</ThemedText>
+                <ThemedText style={styles.emptyTitle}>{t("No pending invites")}</ThemedText>
                 <ThemedText style={styles.supportText}>
-                  New tontine invitations will appear here with quick accept and reject actions.
+                  {t("New tontine invitations will appear here with quick accept and reject actions.")}
                 </ThemedText>
               </View>
             ) : (
@@ -369,20 +394,20 @@ export default function ProfileScreen() {
                 <View key={invite.membership_id} style={styles.inviteCard}>
                   <View style={styles.inviteInfo}>
                     <ThemedText style={styles.inviteTitle}>{invite.tontine_name}</ThemedText>
-                    <ThemedText style={styles.supportText}>Pending invitation</ThemedText>
+                    <ThemedText style={styles.supportText}>{t("Pending invitation")}</ThemedText>
                   </View>
                   <View style={styles.inviteActions}>
                     <Pressable
                       style={styles.acceptButton}
                       onPress={() => void acceptInvite(invite.membership_id)}
                     >
-                      <ThemedText style={styles.acceptButtonText}>Accept</ThemedText>
+                      <ThemedText style={styles.acceptButtonText}>{t("Accept")}</ThemedText>
                     </Pressable>
                     <Pressable
                       style={styles.rejectButton}
                       onPress={() => void rejectInvite(invite.membership_id)}
                     >
-                      <ThemedText style={styles.rejectButtonText}>Reject</ThemedText>
+                      <ThemedText style={styles.rejectButtonText}>{t("Reject")}</ThemedText>
                     </Pressable>
                   </View>
                 </View>
@@ -395,7 +420,7 @@ export default function ProfileScreen() {
         <View style={[styles.sectionGrid, layout.isTablet ? styles.sectionGridTablet : null]}>
           <View style={[styles.section, layout.isTablet ? styles.sectionColumn : null]}>
             <View style={styles.sectionHeader}>
-              <ThemedText type="subtitle">Language</ThemedText>
+              <ThemedText type="subtitle">{t("Language")}</ThemedText>
             </View>
 
             <View style={styles.card}>
@@ -439,9 +464,9 @@ export default function ProfileScreen() {
 
           <View style={[styles.section, layout.isTablet ? styles.sectionColumn : null]}>
             <View style={styles.sectionHeader}>
-              <ThemedText type="subtitle">Account</ThemedText>
+              <ThemedText type="subtitle">{t("Account")}</ThemedText>
               <ThemedText style={styles.sectionCaption}>
-                Manage session access and irreversible account actions
+                {t("Manage session access and irreversible account actions")}
               </ThemedText>
             </View>
 
@@ -449,37 +474,127 @@ export default function ProfileScreen() {
             <View style={styles.accountPanel}>
               <ThemedText style={styles.accountTitle}>{biometric.label}</ThemedText>
               <ThemedText style={styles.supportText}>
-                {biometric.isEnabled
-                  ? `${biometric.label} is enabled on this device. You can use it from the sign-in screen instead of typing your password.`
-                  : biometric.isAvailable
-                    ? `To enable ${biometric.label}, sign out and log back in once with your phone number and password.`
-                    : "Biometric sign in is not available on this device."}
+                {biometric.isAvailable
+                  ? t("Your phone decides whether that means Face ID, fingerprint, or another enrolled biometric.")
+                  : t("Biometric sign in is not available on this device.")}
               </ThemedText>
               {biometricError ? <ThemedText style={styles.errorText}>{biometricError}</ThemedText> : null}
-              {biometric.isEnabled ? (
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.biometricButton,
-                    pressed ? styles.biometricButtonPressed : null,
-                  ]}
-                  disabled={biometricBusy}
-                  onPress={() => void turnOffBiometricSignIn()}
-                >
-                  {biometricBusy ? (
-                    <ActivityIndicator color={BrandColors.blueDeep} />
+              {biometric.isAvailable ? (
+                <>
+                  <View style={styles.biometricChoiceActions}>
+                    <View
+                      style={[
+                        styles.biometricChoiceButton,
+                        !biometric.isEnabled ? styles.biometricChoiceButtonActive : null,
+                      ]}
+                    >
+                      <ThemedText
+                        style={[
+                          styles.biometricChoiceButtonText,
+                          !biometric.isEnabled ? styles.biometricChoiceButtonTextActive : null,
+                        ]}
+                      >
+                        {t("Use password")}
+                      </ThemedText>
+                    </View>
+                    <View
+                      style={[
+                        styles.biometricChoiceButton,
+                        biometric.isEnabled ? styles.biometricChoiceButtonActive : null,
+                      ]}
+                    >
+                      <ThemedText
+                        style={[
+                          styles.biometricChoiceButtonText,
+                          biometric.isEnabled ? styles.biometricChoiceButtonTextActive : null,
+                        ]}
+                      >
+                        {t("Use {{label}}", { label: biometric.label })}
+                      </ThemedText>
+                    </View>
+                  </View>
+
+                  <View
+                    style={[
+                      styles.biometricOption,
+                      biometric.isEnabled ? styles.biometricOptionActive : null,
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.biometricCheck,
+                        biometric.isEnabled ? styles.biometricCheckActive : null,
+                      ]}
+                    >
+                      {biometric.isEnabled ? <View style={styles.biometricCheckInner} /> : null}
+                    </View>
+                    <View style={styles.biometricOptionCopy}>
+                      <ThemedText style={styles.biometricOptionTitle}>
+                        {biometric.isEnabled
+                          ? t("Biometric sign-in is active on this device")
+                          : t("Password sign-in is active on this device")}
+                      </ThemedText>
+                      <ThemedText style={styles.biometricOptionText}>
+                        {biometric.isEnabled
+                          ? t("You can use {{label}} from the sign-in screen instead of typing your password.", {
+                              label: biometric.label,
+                            })
+                          : t("Confirm your password to turn on biometric sign-in for this device.")}
+                      </ThemedText>
+                    </View>
+                  </View>
+
+                  {!biometric.isEnabled ? (
+                    <View style={styles.biometricSetupForm}>
+                      <ThemedText style={styles.supportText}>{t("Enter your current password to enable biometric sign-in.")}</ThemedText>
+                      <PasswordInput
+                        value={biometricPassword}
+                        onChangeText={setBiometricPassword}
+                        placeholder={t("Enter your password")}
+                      />
+                      <Pressable
+                        style={({ pressed }) => [
+                          styles.biometricButton,
+                          pressed ? styles.biometricButtonPressed : null,
+                        ]}
+                        disabled={biometricBusy}
+                        onPress={() => void turnOnBiometricSignIn()}
+                      >
+                        {biometricBusy ? (
+                          <ActivityIndicator color={BrandColors.blueDeep} />
+                        ) : (
+                          <ThemedText style={styles.biometricButtonText}>
+                            {t("Enable {{label}}", { label: biometric.label })}
+                          </ThemedText>
+                        )}
+                      </Pressable>
+                    </View>
                   ) : (
-                    <ThemedText style={styles.biometricButtonText}>
-                      Turn off {biometric.label}
-                    </ThemedText>
+                    <Pressable
+                      style={({ pressed }) => [
+                        styles.biometricButton,
+                        pressed ? styles.biometricButtonPressed : null,
+                      ]}
+                      disabled={biometricBusy}
+                      onPress={() => void turnOffBiometricSignIn()}
+                    >
+                      {biometricBusy ? (
+                        <ActivityIndicator color={BrandColors.blueDeep} />
+                      ) : (
+                        <ThemedText style={styles.biometricButtonText}>
+                          {t("Turn off {{label}}", { label: biometric.label })}
+                        </ThemedText>
+                      )}
+                    </Pressable>
                   )}
-                </Pressable>
+                </>
               ) : null}
             </View>
 
             <View style={styles.accountPanel}>
-              <ThemedText style={styles.accountTitle}>Delete account</ThemedText>
+              <ThemedText style={styles.accountTitle}>{t("Delete account")}</ThemedText>
               <ThemedText style={styles.supportText}>
-                This only succeeds if you do not own or belong to an active tontine and no protected financial records block removal.
+                {t("This only succeeds if you do not own or belong to an active tontine and no protected financial records block removal.")}
               </ThemedText>
               {deleteError ? <ThemedText style={styles.errorText}>{deleteError}</ThemedText> : null}
               <Pressable
@@ -493,13 +608,13 @@ export default function ProfileScreen() {
                 {deleteBusy ? (
                   <ActivityIndicator color={BrandColors.dangerText} />
                 ) : (
-                  <ThemedText style={styles.deleteButtonText}>Delete account</ThemedText>
+                  <ThemedText style={styles.deleteButtonText}>{t("Delete account")}</ThemedText>
                 )}
               </Pressable>
             </View>
 
             <Pressable style={styles.signOutButton} onPress={() => void signOut()}>
-              <ThemedText style={styles.signOutButtonText}>Sign out</ThemedText>
+              <ThemedText style={styles.signOutButtonText}>{t("Sign out")}</ThemedText>
             </Pressable>
             </View>
           </View>
@@ -840,6 +955,86 @@ const styles = StyleSheet.create({
     color: BrandColors.blueDeep,
     fontWeight: "700",
     fontSize: 14,
+  },
+  biometricChoiceActions: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  biometricChoiceButton: {
+    flex: 1,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#D0D5DD",
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  biometricChoiceButtonActive: {
+    borderColor: "#1D4ED8",
+    backgroundColor: "#EFF6FF",
+  },
+  biometricChoiceButtonText: {
+    color: "#344054",
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "700",
+  },
+  biometricChoiceButtonTextActive: {
+    color: "#1D4ED8",
+  },
+  biometricOption: {
+    flexDirection: "row",
+    gap: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#D0D5DD",
+    backgroundColor: "#F8FAFC",
+    padding: 14,
+    alignItems: "flex-start",
+  },
+  biometricOptionActive: {
+    borderColor: "#1D4ED8",
+    backgroundColor: "#EFF6FF",
+  },
+  biometricCheck: {
+    width: 24,
+    height: 24,
+    borderRadius: 999,
+    borderWidth: 1.5,
+    borderColor: "#98A2B3",
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 2,
+  },
+  biometricCheckActive: {
+    borderColor: "#1D4ED8",
+    backgroundColor: "#1D4ED8",
+  },
+  biometricCheckInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 999,
+    backgroundColor: "#FFFFFF",
+  },
+  biometricOptionCopy: {
+    flex: 1,
+    gap: 2,
+  },
+  biometricOptionTitle: {
+    color: "#101828",
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: "800",
+  },
+  biometricOptionText: {
+    color: "#475467",
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  biometricSetupForm: {
+    gap: 10,
   },
   deleteButtonText: {
     color: BrandColors.dangerText,

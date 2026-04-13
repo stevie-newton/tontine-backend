@@ -511,7 +511,7 @@ def accept_invite(
 
     membership.is_active = True
     tontine = db.query(Tontine).filter(Tontine.id == membership.tontine_id).first()
-    TontineService.sync_draft_payout_order(db, tontine)
+    TontineService.sync_member_positions(db, tontine)
     _sync_total_cycles_to_active_members(db, tontine)
     db.commit()
     db.refresh(membership)
@@ -581,6 +581,10 @@ def get_tontine_members(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You don't have access to this tontine"
         )
+
+    TontineService.sync_member_positions(db, tontine)
+    _sync_total_cycles_to_active_members(db, tontine)
+    db.commit()
     
     # Get members with their membership details
     members = db.query(
@@ -662,19 +666,15 @@ def update_membership(
     if update_data.is_active is not None:
         membership.is_active = update_data.is_active
     if update_data.payout_position is not None:
-        has_started = (
-            db.query(TontineCycle.id)
-            .filter(TontineCycle.tontine_id == membership.tontine_id)
-            .first()
-            is not None
+        TontineService.move_member_to_position(
+            db=db,
+            tontine=tontine,
+            membership=membership,
+            new_position=update_data.payout_position,
         )
-        if has_started:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Cannot change payout_position after tontine has started",
-            )
+    else:
+        TontineService.sync_member_positions(db, tontine)
 
-    TontineService.sync_draft_payout_order(db, tontine)
     _sync_total_cycles_to_active_members(db, tontine)
     db.commit()
     db.refresh(membership)
@@ -770,7 +770,7 @@ def remove_member(
     tontine_id = membership.tontine_id
     db.delete(membership)
     tontine = db.query(Tontine).filter(Tontine.id == tontine_id).first()
-    TontineService.sync_draft_payout_order(db, tontine)
+    TontineService.sync_member_positions(db, tontine)
     _sync_total_cycles_to_active_members(db, tontine)
     db.commit()
     

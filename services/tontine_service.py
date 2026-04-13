@@ -3,7 +3,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from typing import Optional
 
 from fastapi import HTTPException, status
-from sqlalchemy import and_, case, func
+from sqlalchemy import and_, func
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -32,6 +32,43 @@ class TontineService:
     """Service layer for tontine business logic."""
 
     MONEY_Q = Decimal("0.01")
+
+    @staticmethod
+    def _positioned_active_memberships(
+        db: Session,
+        tontine_id: int,
+        owner_id: int,
+        *,
+        prefer_rotation: bool,
+    ) -> list[TontineMembership]:
+        memberships = (
+            db.query(TontineMembership)
+            .filter(
+                TontineMembership.tontine_id == tontine_id,
+                TontineMembership.is_active.is_(True),
+            )
+            .all()
+        )
+
+        def sort_key(membership: TontineMembership):
+            primary_position = (
+                membership.rotation_position if prefer_rotation else membership.payout_position
+            )
+            secondary_position = (
+                membership.payout_position if prefer_rotation else membership.rotation_position
+            )
+            joined_at_value = membership.joined_at.timestamp() if membership.joined_at else 0
+            return (
+                0 if primary_position is not None else 1,
+                primary_position if primary_position is not None else 0,
+                0 if secondary_position is not None else 1,
+                secondary_position if secondary_position is not None else 0,
+                0 if membership.user_id == owner_id else 1,
+                -joined_at_value,
+                -membership.id,
+            )
+
+        return sorted(memberships, key=sort_key)
 
     @staticmethod
     def cycle_duration_for_frequency(frequency: str):
@@ -126,29 +163,27 @@ class TontineService:
         tontine_id: int,
         owner_id: int,
     ) -> list[TontineMembership]:
-        return (
-            db.query(TontineMembership)
-            .filter(
-                TontineMembership.tontine_id == tontine_id,
-                TontineMembership.is_active.is_(True),
-            )
-            .order_by(
-                case((TontineMembership.user_id == owner_id, 0), else_=1),
-                TontineMembership.joined_at.desc(),
-                TontineMembership.id.desc(),
-            )
-            .all()
+        return TontineService._positioned_active_memberships(
+            db,
+            tontine_id,
+            owner_id,
+            prefer_rotation=False,
         )
 
     @staticmethod
     def sync_rotation_order(db: Session, tontine: Tontine) -> None:
-        """Rebuild beneficiary order: owner first, then active members by most recent join."""
+        """Keep payout order stable and append new active members at the end."""
         if not tontine:
             return
 
         TontineService.ensure_owner_membership(db, tontine)
 
-        active_members = TontineService._ordered_active_memberships(db, tontine.id, tontine.owner_id)
+        active_members = TontineService._positioned_active_memberships(
+            db,
+            tontine.id,
+            tontine.owner_id,
+            prefer_rotation=False,
+        )
         for index, membership in enumerate(active_members, start=1):
             membership.payout_position = index
 
@@ -164,6 +199,48 @@ class TontineService:
             membership.payout_position = None
 
     @staticmethod
+    def sync_started_rotation_order(db: Session, tontine: Tontine) -> None:
+        """Preserve frozen rotation order for active tontines and append new active members."""
+        if not tontine:
+            return
+
+        TontineService.ensure_owner_membership(db, tontine)
+
+        active_members = TontineService._positioned_active_memberships(
+            db,
+            tontine.id,
+            tontine.owner_id,
+            prefer_rotation=True,
+        )
+        for index, membership in enumerate(active_members, start=1):
+            membership.rotation_position = index
+            membership.payout_position = index
+
+        inactive_members = (
+            db.query(TontineMembership)
+            .filter(
+                TontineMembership.tontine_id == tontine.id,
+                TontineMembership.is_active.is_(False),
+            )
+            .all()
+        )
+        for membership in inactive_members:
+            membership.rotation_position = None
+            membership.payout_position = None
+
+    @staticmethod
+    def sync_member_positions(db: Session, tontine: Tontine) -> None:
+        if not tontine:
+            return
+
+        status_value = tontine.status.value if hasattr(tontine.status, "value") else str(tontine.status)
+        if status_value == TontineStatus.DRAFT.value:
+            TontineService.sync_rotation_order(db, tontine)
+            return
+
+        TontineService.sync_started_rotation_order(db, tontine)
+
+    @staticmethod
     def sync_draft_payout_order(db: Session, tontine: Tontine) -> None:
         """
         Keep beneficiary order aligned to the business rule:
@@ -177,6 +254,72 @@ class TontineService:
             return
 
         TontineService.sync_rotation_order(db, tontine)
+
+    @staticmethod
+    def move_member_to_position(
+        db: Session,
+        tontine: Tontine,
+        membership: TontineMembership,
+        new_position: int,
+    ) -> None:
+        if not tontine:
+            return
+        if not membership.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Only active members can be reordered",
+            )
+
+        status_value = tontine.status.value if hasattr(tontine.status, "value") else str(tontine.status)
+        ordered_members = TontineService._positioned_active_memberships(
+            db,
+            tontine.id,
+            tontine.owner_id,
+            prefer_rotation=status_value != TontineStatus.DRAFT.value,
+        )
+        if membership.id not in {item.id for item in ordered_members}:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Membership not found in active rotation",
+            )
+
+        max_position = len(ordered_members)
+        if new_position < 1 or new_position > max_position:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Position must be between 1 and {max_position}",
+            )
+
+        reordered = [item for item in ordered_members if item.id != membership.id]
+        reordered.insert(new_position - 1, membership)
+
+        for index, item in enumerate(reordered, start=1):
+            item.payout_position = index
+            if status_value != TontineStatus.DRAFT.value:
+                item.rotation_position = index
+
+        if status_value != TontineStatus.DRAFT.value:
+            TontineService.reassign_future_cycle_payouts(db, tontine)
+
+    @staticmethod
+    def reassign_future_cycle_payouts(db: Session, tontine: Tontine) -> None:
+        if not tontine:
+            return
+
+        future_cycles = (
+            db.query(TontineCycle)
+            .filter(
+                TontineCycle.tontine_id == tontine.id,
+                TontineCycle.is_closed.is_(False),
+                TontineCycle.cycle_number > tontine.current_cycle,
+            )
+            .order_by(TontineCycle.cycle_number.asc())
+            .all()
+        )
+
+        for cycle in future_cycles:
+            payout_member = TontineService._determine_payout_member(db, tontine.id, cycle.cycle_number)
+            cycle.payout_member_id = payout_member.user_id if payout_member else None
 
     @staticmethod
     def sync_draft_total_cycles(db: Session, tontine: Tontine) -> bool:
@@ -287,6 +430,7 @@ class TontineService:
         if not tontine:
             return False
 
+        TontineService.sync_member_positions(db, tontine)
         changed = TontineService.sync_total_cycles_to_active_members_if_safe(db, tontine)
         has_activity = TontineService.has_financial_activity(db, tontine.id)
 
@@ -337,6 +481,56 @@ class TontineService:
             changed = True
 
         return changed
+
+    @staticmethod
+    def append_cycle_round(db: Session, tontine: Tontine) -> bool:
+        if not tontine:
+            return False
+
+        TontineService.sync_member_positions(db, tontine)
+        active_members = TontineService._positioned_active_memberships(
+            db,
+            tontine.id,
+            tontine.owner_id,
+            prefer_rotation=True,
+        )
+        if not active_members:
+            return False
+
+        last_cycle = (
+            db.query(TontineCycle)
+            .filter(TontineCycle.tontine_id == tontine.id)
+            .order_by(TontineCycle.cycle_number.desc())
+            .first()
+        )
+
+        cycle_duration = TontineService.cycle_duration_for_frequency(tontine.frequency)
+        next_cycle_number = (last_cycle.cycle_number if last_cycle else 0) + 1
+        start_date = (
+            last_cycle.end_date
+            if last_cycle
+            else tontine.created_at.replace(hour=0, minute=0, second=0, microsecond=0)
+        )
+
+        for offset in range(len(active_members)):
+            cycle_number = next_cycle_number + offset
+            end_date = start_date + cycle_duration
+            payout_member = TontineService._determine_payout_member(db, tontine.id, cycle_number)
+            db.add(
+                TontineCycle(
+                    tontine_id=tontine.id,
+                    cycle_number=cycle_number,
+                    payout_member_id=payout_member.user_id if payout_member else None,
+                    start_date=start_date,
+                    end_date=end_date,
+                    is_closed=False,
+                )
+            )
+            start_date = end_date
+
+        tontine.total_cycles += len(active_members)
+        tontine.status = TontineStatus.ACTIVE.value
+        return True
 
     @staticmethod
     def ensure_cycle_payout_assignments(db: Session, tontine: Tontine) -> bool:
@@ -576,10 +770,11 @@ class TontineService:
             cycle.is_closed = True
             cycle.closed_at = now
 
-            # Advance cycle
+            # Advance cycle and automatically append the next round when needed.
             tontine.current_cycle = cycle.cycle_number + 1
             if tontine.current_cycle > tontine.total_cycles:
-                tontine.status = TontineStatus.COMPLETED.value
+                if not TontineService.append_cycle_round(db, tontine):
+                    tontine.status = TontineStatus.COMPLETED.value
 
             # 🧾 Ledger log (same DB transaction)
             TransactionLedgerService.log_payout(
@@ -653,24 +848,18 @@ class TontineService:
         if not tontine:
             return None
 
-        member = (
-            db.query(TontineMembership)
-            .filter(
-                TontineMembership.tontine_id == tontine_id,
-                TontineMembership.payout_position == cycle_number,
-                TontineMembership.is_active.is_(True),
-            )
-            .first()
+        status_value = tontine.status.value if hasattr(tontine.status, "value") else str(tontine.status)
+        ordered_members = TontineService._positioned_active_memberships(
+            db,
+            tontine_id,
+            tontine.owner_id,
+            prefer_rotation=status_value != TontineStatus.DRAFT.value,
         )
-        if member:
-            return member
-
-        all_members = TontineService._ordered_active_memberships(db, tontine_id, tontine.owner_id)
-        if not all_members:
+        if not ordered_members:
             return None
 
-        position = (cycle_number - 1) % len(all_members)
-        return all_members[position]
+        position = (cycle_number - 1) % len(ordered_members)
+        return ordered_members[position]
 
     @staticmethod
     def get_cycle_status(db: Session, tontine_id: int) -> dict:

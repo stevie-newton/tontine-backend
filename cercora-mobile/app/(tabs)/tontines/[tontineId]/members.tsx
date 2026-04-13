@@ -56,6 +56,7 @@ export default function TontineMembersScreen() {
   const [items, setItems] = useState<Member[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [movingMembershipId, setMovingMembershipId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -97,7 +98,39 @@ export default function TontineMembersScreen() {
     (tontine?.owner_id === user?.id || myMembership?.membership_role === "admin");
   const activeMembers = items.filter((member) => member.membership_status === "active");
   const pendingMembers = items.filter((member) => member.membership_status !== "active");
+  const activeOrderedMembers = [...activeMembers].sort((a, b) => {
+    const ap = a.payout_position ?? a.rotation_position ?? Number.MAX_SAFE_INTEGER;
+    const bp = b.payout_position ?? b.rotation_position ?? Number.MAX_SAFE_INTEGER;
+    if (ap !== bp) return ap - bp;
+    return new Date(a.joined_at).getTime() - new Date(b.joined_at).getTime();
+  });
   const adminCount = items.filter((member) => member.membership_role === "admin").length;
+
+  async function onMoveMember(membershipId: number, direction: "up" | "down") {
+    const currentIndex = activeOrderedMembers.findIndex((member) => member.membership_id === membershipId);
+    if (currentIndex < 0) {
+      setError(t("Only active members can be reordered."));
+      return;
+    }
+
+    const nextIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+    if (nextIndex < 0 || nextIndex >= activeOrderedMembers.length) {
+      return;
+    }
+
+    setMovingMembershipId(membershipId);
+    setError(null);
+    try {
+      await api.put(`/tontine-memberships/${membershipId}`, {
+        payout_position: nextIndex + 1,
+      });
+      await load();
+    } catch (e) {
+      setError(getErrorMessage(e));
+    } finally {
+      setMovingMembershipId(null);
+    }
+  }
 
   return (
     <ThemedView style={styles.container} lightColor={BrandColors.canvas}>
@@ -156,17 +189,24 @@ export default function TontineMembersScreen() {
           {error ? <ThemedText style={styles.error}>{error}</ThemedText> : null}
 
           {canInvite ? (
-            <Link
-              href={{
-                pathname: "/(tabs)/tontines/[tontineId]/invite",
-                params: { tontineId: String(id) },
-              }}
-              asChild
-            >
-              <Pressable style={styles.primaryAction}>
-                <ThemedText style={styles.primaryActionText}>{t("Invite member")}</ThemedText>
-              </Pressable>
-            </Link>
+            <View style={styles.actionStack}>
+              <Link
+                href={{
+                  pathname: "/(tabs)/tontines/[tontineId]/invite",
+                  params: { tontineId: String(id) },
+                }}
+                asChild
+              >
+                <Pressable style={styles.primaryAction}>
+                  <ThemedText style={styles.primaryActionText}>{t("Invite member")}</ThemedText>
+                </Pressable>
+              </Link>
+              <View style={styles.infoBanner}>
+                <ThemedText style={styles.infoBannerText}>
+                  {t("Reordering applies to upcoming cycles.")}
+                </ThemedText>
+              </View>
+            </View>
           ) : (
             <View style={styles.infoBanner}>
               <ThemedText style={styles.infoBannerText}>
@@ -211,9 +251,13 @@ export default function TontineMembersScreen() {
                 </ThemedText>
               </View>
             ) : (
-              [...activeMembers, ...pendingMembers].map((item) => {
+              [...activeOrderedMembers, ...pendingMembers].map((item) => {
                 const isAdmin = item.membership_role === "admin";
                 const isPending = item.membership_status !== "active";
+                const activeIndex = activeOrderedMembers.findIndex((member) => member.membership_id === item.membership_id);
+                const canMoveUp = canInvite && !isPending && activeIndex > 0;
+                const canMoveDown = canInvite && !isPending && activeIndex >= 0 && activeIndex < activeOrderedMembers.length - 1;
+                const isMoving = movingMembershipId === item.membership_id;
                 return (
                   <View key={item.membership_id} style={styles.memberCard}>
                     <View style={styles.memberHeader}>
@@ -276,6 +320,33 @@ export default function TontineMembersScreen() {
                         <ThemedText style={styles.metricLabel}>{t("Joined")}</ThemedText>
                       </View>
                     </View>
+
+                    {canInvite && !isPending ? (
+                      <View style={styles.reorderRow}>
+                        <Pressable
+                          style={[
+                            styles.reorderButton,
+                            !canMoveUp || isMoving ? styles.reorderButtonDisabled : null,
+                          ]}
+                          disabled={!canMoveUp || isMoving}
+                          onPress={() => void onMoveMember(item.membership_id, "up")}
+                        >
+                          <ThemedText style={styles.reorderButtonText}>
+                            {isMoving ? t("Saving order...") : t("Move earlier")}
+                          </ThemedText>
+                        </Pressable>
+                        <Pressable
+                          style={[
+                            styles.reorderButton,
+                            !canMoveDown || isMoving ? styles.reorderButtonDisabled : null,
+                          ]}
+                          disabled={!canMoveDown || isMoving}
+                          onPress={() => void onMoveMember(item.membership_id, "down")}
+                        >
+                          <ThemedText style={styles.reorderButtonText}>{t("Move later")}</ThemedText>
+                        </Pressable>
+                      </View>
+                    ) : null}
                   </View>
                 );
               })
@@ -435,6 +506,9 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     fontSize: 14,
   },
+  actionStack: {
+    gap: 10,
+  },
   infoBanner: {
     borderRadius: 20,
     backgroundColor: BrandColors.warningBg,
@@ -588,6 +662,28 @@ const styles = StyleSheet.create({
     fontSize: 18,
     lineHeight: 24,
     fontWeight: "800",
+  },
+  reorderRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  reorderButton: {
+    flex: 1,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: BrandColors.borderStrong,
+    backgroundColor: BrandColors.surfaceMuted,
+    paddingVertical: 10,
+    alignItems: "center",
+  },
+  reorderButtonDisabled: {
+    opacity: 0.45,
+  },
+  reorderButtonText: {
+    color: BrandColors.inkSoft,
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "700",
   },
   error: {
     color: BrandColors.dangerText,

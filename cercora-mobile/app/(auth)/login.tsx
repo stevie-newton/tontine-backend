@@ -72,9 +72,9 @@ export default function LoginScreen() {
           { label: t("Password"), value: password ? t("Entered") : t("Needed") },
         ]}
       >
-        <ThemedText type="subtitle">Your account</ThemedText>
+        <ThemedText type="subtitle">{t("Your account")}</ThemedText>
         <ThemedText style={authStyles.sectionText}>
-          Use the same phone number you registered with to access your tontines, reminders, and profile.
+          {t("Use the same phone number you registered with to access your tontines, reminders, and profile.")}
         </ThemedText>
 
         <View style={styles.form}>
@@ -92,25 +92,24 @@ export default function LoginScreen() {
                   <ActivityIndicator />
                 ) : (
                   <ThemedText style={authStyles.secondaryButtonText}>
-                    Sign in with {biometric.label}
+                    {t("Sign in with {{label}}", { label: biometric.label })}
                   </ThemedText>
                 )}
               </Pressable>
               <ThemedText style={styles.biometricHint}>
-                {biometric.label} is ready on this device. You can also use your phone number and
-                password below.
+                {t("Your device will use its enrolled biometric method automatically. You can still sign in with your phone number and password below.")}
               </ThemedText>
             </>
           ) : null}
 
-          <ThemedText style={authStyles.label}>Phone number</ThemedText>
+          <ThemedText style={authStyles.label}>{t("Phone number")}</ThemedText>
           <PhoneInput
             value={phone}
             onChangeText={setPhone}
             placeholder={t("Local phone number")}
           />
 
-          <ThemedText style={authStyles.label}>Password</ThemedText>
+          <ThemedText style={authStyles.label}>{t("Password")}</ThemedText>
           <PasswordInput
             value={password}
             onChangeText={setPassword}
@@ -120,31 +119,81 @@ export default function LoginScreen() {
           {error ? <ThemedText style={authStyles.error}>{error}</ThemedText> : null}
 
           {biometric.isAvailable && !biometric.isEnabled ? (
-            <Pressable
-              style={({ pressed }) => [
-                styles.biometricOption,
-                useBiometricNextTime ? styles.biometricOptionActive : null,
-                pressed ? styles.biometricOptionPressed : null,
-              ]}
-              onPress={() => setUseBiometricNextTime((current) => !current)}
-            >
+            <View style={styles.biometricChoiceGroup}>
+              <ThemedText style={styles.biometricChoiceTitle}>
+                {t("Choose how you want to sign in next time")}
+              </ThemedText>
+              <ThemedText style={styles.biometricChoiceText}>
+                {t("Your phone decides whether that means Face ID, fingerprint, or another enrolled biometric.")}
+              </ThemedText>
+
+              <View style={styles.biometricChoiceActions}>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.biometricChoiceButton,
+                    !useBiometricNextTime ? styles.biometricChoiceButtonActive : null,
+                    pressed ? styles.biometricOptionPressed : null,
+                  ]}
+                  onPress={() => setUseBiometricNextTime(false)}
+                >
+                  <ThemedText
+                    style={[
+                      styles.biometricChoiceButtonText,
+                      !useBiometricNextTime ? styles.biometricChoiceButtonTextActive : null,
+                    ]}
+                  >
+                    {t("Use password")}
+                  </ThemedText>
+                </Pressable>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.biometricChoiceButton,
+                    useBiometricNextTime ? styles.biometricChoiceButtonActive : null,
+                    pressed ? styles.biometricOptionPressed : null,
+                  ]}
+                  onPress={() => setUseBiometricNextTime(true)}
+                >
+                  <ThemedText
+                    style={[
+                      styles.biometricChoiceButtonText,
+                      useBiometricNextTime ? styles.biometricChoiceButtonTextActive : null,
+                    ]}
+                  >
+                    {t("Use {{label}}", { label: biometric.label })}
+                  </ThemedText>
+                </Pressable>
+              </View>
+
               <View
                 style={[
-                  styles.biometricCheck,
-                  useBiometricNextTime ? styles.biometricCheckActive : null,
+                  styles.biometricOption,
+                  useBiometricNextTime ? styles.biometricOptionActive : null,
                 ]}
               >
-                {useBiometricNextTime ? <View style={styles.biometricCheckInner} /> : null}
+                <View
+                  style={[
+                    styles.biometricCheck,
+                    useBiometricNextTime ? styles.biometricCheckActive : null,
+                  ]}
+                >
+                  {useBiometricNextTime ? <View style={styles.biometricCheckInner} /> : null}
+                </View>
+                <View style={styles.biometricOptionCopy}>
+                  <ThemedText style={styles.biometricOptionTitle}>
+                    {useBiometricNextTime
+                      ? t("Biometric sign-in will be ready after this login")
+                      : t("Password sign-in stays as your default")}
+                  </ThemedText>
+                  <ThemedText style={styles.biometricOptionText}>
+                    {useBiometricNextTime
+                      ? t("We will securely save this login so your device can unlock Cercora with {{label}} next time.", {
+                          label: biometric.label,
+                        })
+                      : t("You can still turn on biometric sign-in later whenever you are ready.")}
+                  </ThemedText>
+                </View>
               </View>
-              <View style={styles.biometricOptionCopy}>
-                <ThemedText style={styles.biometricOptionTitle}>
-                  Enable {biometric.label} after sign in
-                </ThemedText>
-                <ThemedText style={styles.biometricOptionText}>
-                  Save your login securely so next time you can unlock Cercora with {biometric.label}.
-                </ThemedText>
-              </View>
-            </Pressable>
+            </View>
           ) : null}
 
           <Pressable
@@ -158,27 +207,27 @@ export default function LoginScreen() {
             {isSubmitting ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <ThemedText style={authStyles.primaryButtonText}>Sign in</ThemedText>
+              <ThemedText style={authStyles.primaryButtonText}>{t("Sign in")}</ThemedText>
             )}
           </Pressable>
         </View>
 
         <View style={authStyles.helperBox}>
-          <ThemedText style={authStyles.helperTitle}>Need help getting in?</ThemedText>
+          <ThemedText style={authStyles.helperTitle}>{t("Need help getting in?")}</ThemedText>
           <ThemedText style={authStyles.sectionText}>
-            Reset your password if you forgot it, or create a new account if this is your first time.
+            {t("Reset your password if you forgot it, or create a new account if this is your first time.")}
           </ThemedText>
         </View>
 
         <View style={authStyles.inlineLinks}>
           <Link href="/(auth)/forgot-password" asChild>
             <Pressable style={authStyles.linkRow}>
-              <ThemedText style={authStyles.linkRowText}>Forgot password</ThemedText>
+              <ThemedText style={authStyles.linkRowText}>{t("Forgot password")}</ThemedText>
             </Pressable>
           </Link>
           <Link href="/(auth)/register" asChild>
             <Pressable style={authStyles.linkRow}>
-              <ThemedText style={authStyles.linkRowText}>Create an account</ThemedText>
+              <ThemedText style={authStyles.linkRowText}>{t("Create an account")}</ThemedText>
             </Pressable>
           </Link>
         </View>
@@ -195,6 +244,47 @@ const styles = StyleSheet.create({
     color: "#475467",
     fontSize: 13,
     lineHeight: 18,
+  },
+  biometricChoiceGroup: {
+    gap: 10,
+  },
+  biometricChoiceTitle: {
+    color: "#101828",
+    fontSize: 15,
+    lineHeight: 21,
+    fontWeight: "800",
+  },
+  biometricChoiceText: {
+    color: "#475467",
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  biometricChoiceActions: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  biometricChoiceButton: {
+    flex: 1,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#D0D5DD",
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  biometricChoiceButtonActive: {
+    borderColor: "#1D4ED8",
+    backgroundColor: "#EFF6FF",
+  },
+  biometricChoiceButtonText: {
+    color: "#344054",
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "700",
+  },
+  biometricChoiceButtonTextActive: {
+    color: "#1D4ED8",
   },
   biometricOption: {
     flexDirection: "row",

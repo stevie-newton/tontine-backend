@@ -63,6 +63,7 @@ const frTranslations: Record<string, string> = {
   "Use the same phone number you registered with to access your tontines, reminders, and profile.":
     "Utilisez le même numéro de téléphone que lors de votre inscription pour accéder à vos tontines, rappels et profil.",
   "Phone number": "Numéro de téléphone",
+  "Sign in with {{label}}": "Se connecter avec {{label}}",
   "Use international format (e.g. +237670000000)":
     "Utilisez le format international (par ex. +237670000000)",
   "Local phone number": "Numéro local",
@@ -88,6 +89,50 @@ const frTranslations: Record<string, string> = {
     "Réinitialisez votre mot de passe si vous l'avez oublié, ou créez un compte si c'est votre première visite.",
   "Forgot password": "Mot de passe oublié",
   "Create an account": "Créer un compte",
+  "Your device will use its enrolled biometric method automatically. You can still sign in with your phone number and password below.":
+    "Votre appareil utilisera automatiquement sa méthode biométrique configurée. Vous pouvez toujours vous connecter avec votre numéro de téléphone et votre mot de passe ci-dessous.",
+  "Use biometric sign-in next time":
+    "Utiliser la connexion biométrique la prochaine fois",
+  "Save this login securely so your device can use its enrolled biometric method the next time you open Cercora.":
+    "Enregistrez cette connexion de façon sécurisée afin que votre appareil puisse utiliser sa méthode biométrique configurée la prochaine fois que vous ouvrirez Cercora.",
+  "Choose how you want to sign in next time":
+    "Choisissez comment vous voulez vous connecter la prochaine fois",
+  "Your phone decides whether that means Face ID, fingerprint, or another enrolled biometric.":
+    "Votre téléphone décide s'il faut utiliser Face ID, l'empreinte digitale ou une autre biométrie configurée.",
+  "Use password": "Utiliser le mot de passe",
+  "Use {{label}}": "Utiliser {{label}}",
+  "Biometric sign-in will be ready after this login":
+    "La connexion biométrique sera prête après cette connexion",
+  "Password sign-in stays as your default":
+    "La connexion par mot de passe reste votre option par défaut",
+  "We will securely save this login so your device can unlock Cercora with {{label}} next time.":
+    "Nous enregistrerons cette connexion de façon sécurisée afin que votre appareil puisse ouvrir Cercora avec {{label}} la prochaine fois.",
+  "You can still turn on biometric sign-in later whenever you are ready.":
+    "Vous pourrez toujours activer la connexion biométrique plus tard quand vous serez prêt.",
+
+  "We could not find your phone number for biometric setup.":
+    "Nous n'avons pas pu trouver votre numero de telephone pour configurer la connexion biometrigue.",
+  "Enter your current password to enable biometric sign-in.":
+    "Entrez votre mot de passe actuel pour activer la connexion biometrigue.",
+  "Biometric sign in is not available on this device.":
+    "La connexion biometrigue n'est pas disponible sur cet appareil.",
+  "Biometric sign-in is active on this device":
+    "La connexion biometrigue est active sur cet appareil",
+  "Password sign-in is active on this device":
+    "La connexion par mot de passe est active sur cet appareil",
+  "You can use {{label}} from the sign-in screen instead of typing your password.":
+    "Vous pouvez utiliser {{label}} depuis l'ecran de connexion au lieu de saisir votre mot de passe.",
+  "Confirm your password to turn on biometric sign-in for this device.":
+    "Confirmez votre mot de passe pour activer la connexion biometrigue sur cet appareil.",
+  "Enable {{label}}": "Activer {{label}}",
+  "Turn off {{label}}": "Desactiver {{label}}",
+  "Reordering applies to upcoming cycles.":
+    "La reorganisation s'applique aux cycles a venir.",
+  "Only active members can be reordered.":
+    "Seuls les membres actifs peuvent etre reordonnes.",
+  "Saving order...": "Enregistrement de l'ordre...",
+  "Move earlier": "Avancer",
+  "Move later": "Reculer",
 
   "Get started": "Commencer",
   "Create your Cercora account": "Créez votre compte Cercora",
@@ -159,6 +204,8 @@ const frTranslations: Record<string, string> = {
   "Admin command": "Commande admin",
   "Operational visibility for the whole platform": "Visibilité opérationnelle sur toute la plateforme",
   "Global admin": "Admin global",
+  "Phone verified": "Téléphone vérifié",
+  "Phone unverified": "Téléphone non vérifié",
   "Global admin session": "Session admin globale",
   On: "Activé",
   Off: "Désactivé",

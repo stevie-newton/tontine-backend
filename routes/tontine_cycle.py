@@ -73,6 +73,8 @@ def generate_cycles(
     else:
         cycle_duration = timedelta(days=7)  # Default
     
+    TontineService.sync_started_rotation_order(db, tontine)
+
     # Generate cycles
     cycles = []
     start_date = tontine.created_at.replace(hour=0, minute=0, second=0, microsecond=0)
