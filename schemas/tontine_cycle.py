@@ -32,6 +32,11 @@ class TontineCycleUpdate(BaseModel):
     closed_at: Optional[datetime] = None
 
 
+class TontineCycleDeadlineUpdate(BaseModel):
+    contribution_deadline: Optional[datetime] = None
+    grace_period_hours: Optional[int] = Field(None, ge=0)
+
+
 class TontineCycleResponse(TontineCycleBase):
     id: int
     tontine_id: int

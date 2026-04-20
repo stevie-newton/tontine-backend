@@ -14,6 +14,7 @@ from app.schemas.tontine_cycle import (
     TontineCycleCreate,
     TontineCycleResponse,
     TontineCycleUpdate,
+    TontineCycleDeadlineUpdate,
     TontineCycleWithMember
 )
 from app.schemas.payout import PayoutResponse
@@ -159,6 +160,8 @@ def get_tontine_cycles(
             "cycle_number": cycle.cycle_number,
             "start_date": cycle.start_date,
             "end_date": cycle.end_date,
+            "contribution_deadline": cycle.contribution_deadline,
+            "grace_period_hours": cycle.grace_period_hours,
             "is_closed": cycle.is_closed,
             "closed_at": cycle.closed_at,
             "created_at": cycle.created_at,
@@ -222,6 +225,8 @@ def get_cycle(
         "cycle_number": cycle.cycle_number,
         "start_date": cycle.start_date,
         "end_date": cycle.end_date,
+        "contribution_deadline": cycle.contribution_deadline,
+        "grace_period_hours": cycle.grace_period_hours,
         "is_closed": cycle.is_closed,
         "closed_at": cycle.closed_at,
         "created_at": cycle.created_at,
@@ -235,6 +240,75 @@ def get_cycle(
             cycle_data["payout_member_phone"] = member.phone
     
     return cycle_data
+
+
+# -------------------------
+# Update cycle deadline
+# -------------------------
+@router.put("/{cycle_id}/deadline", response_model=TontineCycleResponse)
+def update_cycle_deadline(
+    cycle_id: int,
+    update_data: TontineCycleDeadlineUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Update contribution deadline and grace period for a cycle.
+    - Only owner or admin can update
+    - Closed cycles cannot be changed
+    """
+    cycle = db.query(TontineCycle).filter(TontineCycle.id == cycle_id).first()
+
+    if not cycle:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Cycle not found"
+        )
+
+    tontine = db.query(Tontine).filter(Tontine.id == cycle.tontine_id).first()
+    if not tontine:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Tontine not found"
+        )
+
+    if tontine.owner_id != current_user.id:
+        admin_membership = db.query(TontineMembership).filter(
+            TontineMembership.user_id == current_user.id,
+            TontineMembership.tontine_id == cycle.tontine_id,
+            TontineMembership.role == "admin",
+            TontineMembership.is_active.is_(True),
+        ).first()
+
+        if not admin_membership:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only owner or admin can update cycle deadlines"
+            )
+
+    if cycle.is_closed:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Closed cycles cannot be updated"
+        )
+
+    if update_data.contribution_deadline is not None and update_data.contribution_deadline <= cycle.start_date:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Contribution deadline must be after the cycle start date"
+        )
+
+    if update_data.contribution_deadline is not None:
+        cycle.contribution_deadline = update_data.contribution_deadline
+        cycle.pre_deadline_sms_sent_at = None
+
+    if update_data.grace_period_hours is not None:
+        cycle.grace_period_hours = update_data.grace_period_hours
+
+    db.commit()
+    db.refresh(cycle)
+
+    return cycle
 
 
 # -------------------------
