@@ -456,6 +456,7 @@ const frTranslations: Record<string, string> = {
   "No member reliability reports yet.": "Aucun rapport de fiabilité membre pour le moment.",
   Score: "Score",
   "Late payments": "Paiements en retard",
+  "Debts repaid": "Dettes remboursées",
   "Pending invites": "Invitations en attente",
   "Accept or reject invitations without leaving the tontines home screen.":
     "Acceptez ou refusez les invitations sans quitter l'écran d'accueil des tontines.",
