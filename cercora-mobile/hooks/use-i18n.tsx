@@ -450,8 +450,10 @@ const frTranslations: Record<string, string> = {
     "Accédez à votre profil de fiabilité, à vos invitations en attente, aux outils de création et à vos groupes actifs depuis un espace de travail unifié.",
   Groups: "Groupes",
   "Reliability profile": "Profil de fiabilité",
+  "Member reliability": "Fiabilité des membres",
   "The same score summary from the web tontines page, adapted for mobile.":
     "Le même résumé de score que sur la page web des tontines, adapté au mobile.",
+  "No member reliability reports yet.": "Aucun rapport de fiabilité membre pour le moment.",
   Score: "Score",
   "Late payments": "Paiements en retard",
   "Pending invites": "Invitations en attente",

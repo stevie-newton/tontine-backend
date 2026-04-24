@@ -99,6 +99,22 @@ type MyReliabilityProfile = {
   debts_repaid: number;
 };
 
+type MemberReliabilityProfile = {
+  membership_id: number;
+  user_id: number;
+  name: string;
+  reliability_score_percent: number;
+  cycles_completed: number;
+  late_payments: number;
+  debts_repaid: number;
+};
+
+type MemberReliabilityResponse = {
+  tontine_id: number;
+  count: number;
+  members: MemberReliabilityProfile[];
+};
+
 function formatShortDate(value: string) {
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return value;
@@ -162,6 +178,7 @@ export default function TontineDetailScreen() {
   const [summary, setSummary] = useState<ContributionSummary | null>(null);
   const [debts, setDebts] = useState<Debt[]>([]);
   const [myReliability, setMyReliability] = useState<MyReliabilityProfile | null>(null);
+  const [memberReliability, setMemberReliability] = useState<MemberReliabilityProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isActivating, setIsActivating] = useState(false);
@@ -183,18 +200,18 @@ export default function TontineDetailScreen() {
         .get<DebtListResponse>(`/debts/tontine/${id}`)
         .then((r) => r.data.debts)
         .catch(() => [] as Debt[]);
-      const reliabilityReq = api
-        .get<MyReliabilityProfile>("/users/me/reliability", { params: { tontine_id: id } })
-        .then((r) => r.data)
-        .catch(() => null);
+      const memberReliabilityReq = api
+        .get<MemberReliabilityResponse>(`/tontines/${id}/reliability`)
+        .then((r) => r.data.members)
+        .catch(() => [] as MemberReliabilityProfile[]);
 
-      const [tontineRes, membersRes, cyclesRes, cycle, debtList, reliability] = await Promise.all([
+      const [tontineRes, membersRes, cyclesRes, cycle, debtList, reliabilityRows] = await Promise.all([
         tontineReq,
         membersReq,
         cyclesReq,
         currentCycleReq,
         debtsReq,
-        reliabilityReq,
+        memberReliabilityReq,
       ]);
 
       setTontine(tontineRes.data);
@@ -202,7 +219,10 @@ export default function TontineDetailScreen() {
       setCycles(cyclesRes.data);
       setCurrentCycle(cycle);
       setDebts(debtList);
-      setMyReliability(reliability);
+      setMemberReliability(reliabilityRows);
+      setMyReliability(
+        (user ? reliabilityRows.find((row) => row.user_id === user.id) : null) ?? null
+      );
 
       if (cycle) {
         try {
@@ -222,7 +242,7 @@ export default function TontineDetailScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [id]);
+  }, [id, user]);
 
   useFocusEffect(
     useCallback(() => {
@@ -512,6 +532,32 @@ export default function TontineDetailScreen() {
             </View>
             </View>
           ) : null}
+
+          <View style={[styles.cardShell, layout.isTablet ? styles.cardShellTablet : null]}>
+          <View style={styles.card}>
+            <ThemedText style={styles.cardTitle}>{t("Member reliability")}</ThemedText>
+            {memberReliability.length === 0 ? (
+              <ThemedText style={styles.supportText}>{t("No member reliability reports yet.")}</ThemedText>
+            ) : (
+              memberReliability.map((row) => (
+                <View key={row.membership_id} style={styles.rowCard}>
+                  <View style={styles.rowText}>
+                    <ThemedText style={styles.rowTitle}>{row.name}</ThemedText>
+                    <ThemedText style={styles.supportText}>
+                      {t("Cycles")}: {row.cycles_completed} · {t("Late payments")}: {row.late_payments} ·{" "}
+                      {t("Debts repaid")}: {row.debts_repaid}
+                    </ThemedText>
+                  </View>
+                  <View style={styles.reliabilityScoreBadge}>
+                    <ThemedText style={styles.reliabilityScoreText}>
+                      {row.reliability_score_percent}%
+                    </ThemedText>
+                  </View>
+                </View>
+              ))
+            )}
+          </View>
+          </View>
 
           <View style={[styles.cardShell, layout.isTablet ? styles.cardShellTablet : null]}>
           <View style={styles.card}>
@@ -1192,6 +1238,20 @@ const styles = StyleSheet.create({
   inlineOpenButtonText: {
     color: BrandColors.inkSoft,
     fontSize: 13,
+    lineHeight: 16,
+    fontWeight: "800",
+  },
+  reliabilityScoreBadge: {
+    borderRadius: 999,
+    backgroundColor: "rgba(46,207,227,0.1)",
+    borderWidth: 1,
+    borderColor: BrandColors.borderStrong,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  reliabilityScoreText: {
+    color: BrandColors.inkSoft,
+    fontSize: 12,
     lineHeight: 16,
     fontWeight: "800",
   },

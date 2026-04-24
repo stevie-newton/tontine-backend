@@ -133,7 +133,9 @@ export default function TontineDetailPage({ params }: { params: Promise<{ id: st
   const isOwner = !!me && !!tontine && me.id === tontine.owner_id;
   const myMemberRow = me ? members.find((m) => m.id === me.id) : undefined;
   const isAdmin = !!myMemberRow && myMemberRow.membership_role === "admin" && myMemberRow.membership_status === "active";
+  const isActiveMember = !!myMemberRow && myMemberRow.membership_status === "active";
   const canManageDebt = isOwner || isAdmin;
+  const canViewMemberReliability = isOwner || isActiveMember;
   const hasAnyContributions = !!status?.cycles?.some((c) => c.contributions_count > 0);
   const cycleOne = cycles.find((c) => c.cycle_number === 1);
   const cycleOneStarted =
@@ -502,7 +504,7 @@ export default function TontineDetailPage({ params }: { params: Promise<{ id: st
             </section>
           )}
 
-          {(isOwner || isAdmin) && (
+          {canViewMemberReliability && (
             <section className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
               <h2 className="text-lg font-semibold text-slate-900">{t("reliability.member_list_title")}</h2>
               {memberReliabilityError && (
@@ -546,7 +548,7 @@ export default function TontineDetailPage({ params }: { params: Promise<{ id: st
             </section>
           )}
 
-          {!isOwner && !isAdmin && myReliability && (
+          {!canViewMemberReliability && myReliability && (
             <section className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
               <h2 className="text-lg font-semibold text-slate-900">{t("reliability.title")}</h2>
               <div className="mt-2 grid gap-2 text-sm text-slate-700 sm:grid-cols-2">

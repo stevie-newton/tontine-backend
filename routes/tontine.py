@@ -17,6 +17,7 @@ from app.models.payment import Payment
 from app.models.payout import Payout
 from app.models.debt import Debt
 from app.models.transaction_ledger import TransactionLedger
+from app.services.reliability_service import build_reliability_report_for_memberships
 from app.services.tontine_service import TontineService
 
 router = APIRouter(prefix="/tontines", tags=["Tontines"])
@@ -115,6 +116,27 @@ def _ensure_owner_or_active_admin(db: Session, tontine: Tontine, current_user: U
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only the owner or an active admin can perform this action",
+        )
+
+
+def _ensure_owner_or_active_member(db: Session, tontine: Tontine, current_user: User) -> None:
+    if tontine.owner_id == current_user.id:
+        return
+
+    is_active_member = (
+        db.query(TontineMembership)
+        .filter(
+            TontineMembership.user_id == current_user.id,
+            TontineMembership.tontine_id == tontine.id,
+            TontineMembership.is_active.is_(True),
+        )
+        .first()
+        is not None
+    )
+    if not is_active_member:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the owner or an active member can view this reliability report",
         )
 
 
@@ -246,6 +268,59 @@ def get_tontine(
         db.refresh(tontine)
 
     return tontine
+
+
+@router.get("/{tontine_id}/reliability")
+def get_tontine_reliability(
+    tontine_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    tontine = db.query(Tontine).filter(Tontine.id == tontine_id).first()
+    if not tontine:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Tontine not found",
+        )
+
+    _ensure_owner_or_active_member(db, tontine, current_user)
+
+    active_memberships = (
+        db.query(TontineMembership)
+        .join(User, User.id == TontineMembership.user_id)
+        .filter(
+            TontineMembership.tontine_id == tontine_id,
+            TontineMembership.is_active.is_(True),
+        )
+        .order_by(User.name.asc())
+        .all()
+    )
+
+    members: list[dict] = []
+    for membership in active_memberships:
+        report = build_reliability_report_for_memberships(
+            db,
+            [membership],
+            user_id=membership.user_id,
+            tontine_id=tontine_id,
+        )
+        members.append(
+            {
+                "membership_id": membership.id,
+                "user_id": membership.user_id,
+                "name": membership.user.name,
+                "reliability_score_percent": report["reliability_score_percent"],
+                "cycles_completed": report["cycles_completed"],
+                "late_payments": report["late_payments"],
+                "debts_repaid": report["debts_repaid"],
+            }
+        )
+
+    return {
+        "tontine_id": tontine_id,
+        "count": len(members),
+        "members": members,
+    }
 
 # -------------------------
 # Update tontine (optional addition)
