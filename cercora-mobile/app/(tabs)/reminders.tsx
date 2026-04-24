@@ -38,6 +38,8 @@ type Reminder = {
   cycle_number: number;
   deadline: string;
   hours_remaining: number;
+  is_overdue: boolean;
+  hours_overdue: number;
 };
 
 type AdminReminderPreview = {
@@ -215,6 +217,7 @@ export default function RemindersScreen() {
   }, [refreshPushSubscriptionState]);
 
   const nextReminder = reminders[0] ?? null;
+  const overdueCount = reminders.filter((reminder) => reminder.is_overdue).length;
 
   function urlBase64ToUint8Array(base64String: string) {
     const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -323,6 +326,19 @@ export default function RemindersScreen() {
     }
   }
 
+  function getReminderUrgencyText(reminder: Reminder) {
+    if (reminder.is_overdue) {
+      if (reminder.hours_overdue > 0) {
+        return t("{{count}}h late", { count: reminder.hours_overdue });
+      }
+      return t("Overdue");
+    }
+    if (reminder.hours_remaining > 0) {
+      return t("{{count}}h left", { count: reminder.hours_remaining });
+    }
+    return t("Due now");
+  }
+
   return (
     <ThemedView style={styles.container} lightColor={BrandColors.canvas}>
       <BrandBackdrop />
@@ -345,7 +361,7 @@ export default function RemindersScreen() {
           <View style={styles.heroBadges}>
             <View style={styles.heroBadgeWarm}>
               <ThemedText style={styles.heroBadgeWarmText}>
-                {remindersLoading ? "Loading" : `${reminders.length} queued`}
+                {remindersLoading ? "Loading" : `${reminders.length} ${t("open")}`}
               </ThemedText>
             </View>
             <View style={styles.heroBadgeCool}>
@@ -371,7 +387,7 @@ export default function RemindersScreen() {
           <View style={styles.heroStats}>
             <View style={styles.heroStat}>
               <ThemedText style={styles.heroStatValue}>
-                {nextReminder ? `${nextReminder.hours_remaining}h` : "Clear"}
+                {nextReminder ? getReminderUrgencyText(nextReminder) : "Clear"}
               </ThemedText>
               <ThemedText style={styles.heroStatLabel}>Next urgency</ThemedText>
             </View>
@@ -424,7 +440,11 @@ export default function RemindersScreen() {
           <View style={styles.cardHeader}>
             <ThemedText type="subtitle">Your reminders</ThemedText>
             <ThemedText style={styles.supportText}>
-              {remindersLoading ? "Checking feed" : `${reminders.length} upcoming`}
+              {remindersLoading
+                ? "Checking feed"
+                : overdueCount > 0
+                  ? `${overdueCount} ${t("Overdue").toLowerCase()}`
+                  : `${reminders.length} ${t("open")}`}
             </ThemedText>
           </View>
 
@@ -444,6 +464,7 @@ export default function RemindersScreen() {
                 style={[
                   styles.reminderCard,
                   index === 0 ? styles.reminderCardPriority : null,
+                  reminder.is_overdue ? styles.reminderCardOverdue : null,
                 ]}
               >
                 <View style={styles.reminderMetaRow}>
@@ -451,9 +472,19 @@ export default function RemindersScreen() {
                     <ThemedText style={styles.reminderTitle}>{reminder.tontine_name}</ThemedText>
                     <ThemedText style={styles.supportText}>Cycle {reminder.cycle_number}</ThemedText>
                   </View>
-                  <View style={styles.reminderHoursBadge}>
-                    <ThemedText style={styles.reminderHoursText}>
-                      {reminder.hours_remaining}h left
+                  <View
+                    style={[
+                      styles.reminderHoursBadge,
+                      reminder.is_overdue ? styles.reminderHoursBadgeOverdue : null,
+                    ]}
+                  >
+                    <ThemedText
+                      style={[
+                        styles.reminderHoursText,
+                        reminder.is_overdue ? styles.reminderHoursTextOverdue : null,
+                      ]}
+                    >
+                      {getReminderUrgencyText(reminder)}
                     </ThemedText>
                   </View>
                 </View>
@@ -829,6 +860,10 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(46,207,227,0.08)",
     borderColor: BrandColors.borderStrong,
   },
+  reminderCardOverdue: {
+    backgroundColor: BrandColors.dangerBg,
+    borderColor: BrandColors.dangerBorder,
+  },
   reminderMetaRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -858,6 +893,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 16,
     fontWeight: "800",
+  },
+  reminderHoursBadgeOverdue: {
+    borderColor: BrandColors.dangerBorder,
+    backgroundColor: "#FFFFFF",
+  },
+  reminderHoursTextOverdue: {
+    color: BrandColors.dangerText,
   },
   helperCard: {
     borderRadius: 18,

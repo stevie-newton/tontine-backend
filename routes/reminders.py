@@ -30,10 +30,11 @@ def list_my_pre_deadline_reminders(
     """
     Notification-friendly reminders (no SMS).
 
-    Returns upcoming cycles in the lookahead window where the current user:
+    Returns cycles where the current user:
     - is an active member
     - is not the payout member for the cycle
     - has NOT yet submitted a confirmed contribution for that cycle
+    - and the cycle deadline is either overdue or within the lookahead window
     """
     now = datetime.now(timezone.utc)
     lookahead_hours = max(1, int(settings.AUTO_REMINDER_LOOKAHEAD_HOURS))
@@ -71,7 +72,6 @@ def list_my_pre_deadline_reminders(
         .filter(
             TontineCycle.is_closed.is_(False),
             deadline_expr.isnot(None),
-            deadline_expr > now,
             deadline_expr <= window_end,
             or_(
                 TontineCycle.payout_member_id.is_(None),
@@ -85,7 +85,10 @@ def list_my_pre_deadline_reminders(
 
     reminders: list[PreDeadlineReminder] = []
     for cycle_id, tontine_id, tontine_name, cycle_number, deadline in rows:
-        hours_remaining = int(max(0, (deadline - now).total_seconds() // 3600))
+        seconds_until_due = (deadline - now).total_seconds()
+        is_overdue = seconds_until_due < 0
+        hours_remaining = int(max(0, seconds_until_due // 3600))
+        hours_overdue = int(max(0, (now - deadline).total_seconds() // 3600))
         reminders.append(
             PreDeadlineReminder(
                 cycle_id=cycle_id,
@@ -94,6 +97,8 @@ def list_my_pre_deadline_reminders(
                 cycle_number=cycle_number,
                 deadline=deadline,
                 hours_remaining=hours_remaining,
+                is_overdue=is_overdue,
+                hours_overdue=hours_overdue,
             )
         )
 

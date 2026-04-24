@@ -37,6 +37,8 @@ type Reminder = {
   cycle_number: number;
   deadline: string;
   hours_remaining: number;
+  is_overdue: boolean;
+  hours_overdue: number;
 };
 
 type AdminOverview = {
@@ -303,15 +305,40 @@ export default function Dashboard() {
   }, [refreshPushSubscriptionState]);
 
   const nextReminder = reminders[0] ?? null;
+  const overdueCount = reminders.filter((reminder) => reminder.is_overdue).length;
+  const upcomingCount = reminders.length - overdueCount;
   const greetingName = user?.name?.split(" ")[0] ?? t("there");
   const reminderSummary = useMemo(() => {
     if (remindersLoading) return t("Checking your upcoming contribution windows.");
     if (remindersError) return t("Reminder feed needs attention right now.");
-    if (!reminders.length) return t("You are clear for now. No upcoming reminders.");
+    if (!reminders.length) return t("You are clear for now. No outstanding reminders.");
+    if (overdueCount > 0 && upcomingCount > 0) {
+      return t("{{overdue}} overdue and {{upcoming}} upcoming reminders.", {
+        overdue: overdueCount,
+        upcoming: upcomingCount,
+      });
+    }
+    if (overdueCount === 1) return t("1 overdue reminder needs attention.");
+    if (overdueCount > 1) {
+      return t("{{count}} overdue reminders need attention.", { count: overdueCount });
+    }
     return reminders.length === 1
       ? t("1 reminder waiting across your groups.")
       : t("{{count}} reminders waiting across your groups.", { count: reminders.length });
-  }, [reminders.length, remindersError, remindersLoading, t]);
+  }, [overdueCount, upcomingCount, reminders.length, remindersError, remindersLoading, t]);
+
+  function getReminderUrgencyText(reminder: Reminder) {
+    if (reminder.is_overdue) {
+      if (reminder.hours_overdue > 0) {
+        return t("{{count}}h late", { count: reminder.hours_overdue });
+      }
+      return t("Overdue");
+    }
+    if (reminder.hours_remaining > 0) {
+      return t("{{count}}h left", { count: reminder.hours_remaining });
+    }
+    return t("Due now");
+  }
 
   function urlBase64ToUint8Array(base64String: string) {
     const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -471,7 +498,7 @@ export default function Dashboard() {
             </View>
             <View style={styles.heroStatCard}>
               <ThemedText style={styles.heroStatValue}>
-                {nextReminder ? `${nextReminder.hours_remaining}h` : "Clear"}
+                {nextReminder ? getReminderUrgencyText(nextReminder) : "Clear"}
               </ThemedText>
               <ThemedText style={styles.heroStatLabel}>Next deadline</ThemedText>
             </View>
@@ -542,15 +569,26 @@ export default function Dashboard() {
                   style={[
                     styles.reminderCard,
                     index === 0 ? styles.reminderCardPriority : null,
+                    reminder.is_overdue ? styles.reminderCardOverdue : null,
                   ]}
                 >
                   <View style={styles.reminderMetaRow}>
                     <ThemedText style={styles.reminderTitle}>
                       {reminder.tontine_name}
                     </ThemedText>
-                    <View style={styles.reminderHoursBadge}>
-                      <ThemedText style={styles.reminderHoursText}>
-                        {reminder.hours_remaining}h left
+                    <View
+                      style={[
+                        styles.reminderHoursBadge,
+                        reminder.is_overdue ? styles.reminderHoursBadgeOverdue : null,
+                      ]}
+                    >
+                      <ThemedText
+                        style={[
+                          styles.reminderHoursText,
+                          reminder.is_overdue ? styles.reminderHoursTextOverdue : null,
+                        ]}
+                      >
+                        {getReminderUrgencyText(reminder)}
                       </ThemedText>
                     </View>
                   </View>
@@ -1042,6 +1080,10 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(46,207,227,0.12)",
     borderColor: BrandColors.borderStrong,
   },
+  reminderCardOverdue: {
+    backgroundColor: BrandColors.dangerBg,
+    borderColor: BrandColors.dangerBorder,
+  },
   reminderMetaRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -1066,6 +1108,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 16,
     fontWeight: "800",
+  },
+  reminderHoursBadgeOverdue: {
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: BrandColors.dangerBorder,
+  },
+  reminderHoursTextOverdue: {
+    color: BrandColors.dangerText,
   },
   metricGrid: {
     flexDirection: "row",

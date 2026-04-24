@@ -10,6 +10,8 @@ class PreDeadlineReminder(BaseModel):
     cycle_number: int
     deadline: datetime
     hours_remaining: int = Field(..., ge=0)
+    is_overdue: bool = False
+    hours_overdue: int = Field(0, ge=0)
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -20,4 +22,3 @@ class PreDeadlineRemindersResponse(BaseModel):
     reminders: list[PreDeadlineReminder]
 
     model_config = ConfigDict(from_attributes=True)
-
