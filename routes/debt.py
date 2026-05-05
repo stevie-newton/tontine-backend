@@ -28,6 +28,9 @@ class CoverPaymentCreate(BaseModel):
 
 
 def _ensure_owner_or_admin(db: Session, tontine: Tontine, current_user: User) -> None:
+    if getattr(current_user, "is_global_admin", False):
+        return
+
     if tontine.owner_id == current_user.id:
         return
     admin = (
@@ -48,6 +51,9 @@ def _ensure_owner_or_admin(db: Session, tontine: Tontine, current_user: User) ->
 
 
 def _ensure_member_access(db: Session, tontine: Tontine, current_user: User) -> None:
+    if getattr(current_user, "is_global_admin", False):
+        return
+
     if tontine.owner_id == current_user.id:
         return
     membership = (

@@ -164,6 +164,7 @@ export default function CyclePage({ params }: { params: Promise<{ cycleId: strin
   const [deadlineInput, setDeadlineInput] = useState("");
   const [graceHoursInput, setGraceHoursInput] = useState("24");
   const isOwner = !!me && !!tontine && me.id === tontine.owner_id;
+  const isGlobalAdmin = !!me?.is_global_admin;
   const myMember = me ? members.find((m) => m.id === me.id) : null;
   const isAdmin = !!myMember && myMember.membership_role === "admin" && myMember.membership_status === "active";
   const canManageDebt = isOwner || isAdmin;
@@ -172,7 +173,7 @@ export default function CyclePage({ params }: { params: Promise<{ cycleId: strin
   const myContribution = me ? contributions.find((c) => c.user_id === me.id) : null;
   const hasSubmitted = !!myContribution;
   const isClosed = !!cycle?.is_closed;
-  const canClose = isOwner && !!status?.is_fully_funded && !isClosed;
+  const canClose = (isOwner || isGlobalAdmin) && !!status?.is_fully_funded && !isClosed;
   const paidNames = status?.paid_members?.map((m) => m.name) ?? [];
   const missingNames = status?.missing_members?.map((m) => m.name) ?? [];
 
@@ -535,7 +536,7 @@ export default function CyclePage({ params }: { params: Promise<{ cycleId: strin
                 )}
               </div>
 
-              {isOwner && (
+              {(isOwner || isGlobalAdmin) && (
                 <button
                   onClick={onCloseCycle}
                   disabled={closing || !canClose}

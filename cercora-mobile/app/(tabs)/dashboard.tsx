@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
 import axios from "axios";
+import { Link } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -85,6 +86,24 @@ type AdminTontineStats = {
   created_last_30_days: number;
 };
 
+type AdminTontineDirectoryItem = {
+  id: number;
+  name: string;
+  status: string;
+  current_cycle: number;
+  total_cycles: number;
+  contribution_amount: number;
+  created_at: string;
+  owner_id: number;
+  owner_name: string;
+  active_members_count: number;
+};
+
+type AdminTontineDirectory = {
+  count: number;
+  items: AdminTontineDirectoryItem[];
+};
+
 type AdminReminderPreview = {
   window_start: string;
   window_end: string;
@@ -164,6 +183,8 @@ export default function Dashboard() {
   const [adminTontineStats, setAdminTontineStats] = useState<AdminTontineStats | null>(
     null
   );
+  const [adminTontineDirectory, setAdminTontineDirectory] =
+    useState<AdminTontineDirectory | null>(null);
   const [adminReminderPreview, setAdminReminderPreview] =
     useState<AdminReminderPreview | null>(null);
   const [adminReminderResult, setAdminReminderResult] =
@@ -231,6 +252,7 @@ export default function Dashboard() {
     if (!user?.is_global_admin) {
       setAdminOverview(null);
       setAdminTontineStats(null);
+      setAdminTontineDirectory(null);
       setAdminReminderPreview(null);
       setAdminReminderResult(null);
       setAdminError(null);
@@ -251,10 +273,17 @@ export default function Dashboard() {
       setAdminOverview(overviewRes.data);
       setAdminTontineStats(tontinesRes.data);
       setAdminReminderPreview(previewRes.data);
+      try {
+        const directoryRes = await api.get<AdminTontineDirectory>("/admin/stats/tontines/list");
+        setAdminTontineDirectory(directoryRes.data);
+      } catch {
+        setAdminTontineDirectory(null);
+      }
     } catch (e) {
       setAdminError(getErrorMessage(e));
       setAdminOverview(null);
       setAdminTontineStats(null);
+      setAdminTontineDirectory(null);
       setAdminReminderPreview(null);
     } finally {
       setAdminLoading(false);
@@ -507,11 +536,6 @@ export default function Dashboard() {
 
         <View style={[styles.tabletSectionGrid, layout.isTablet ? styles.tabletSectionGridOn : null]}>
           <View style={[styles.section, layout.isTablet ? styles.tabletSectionColumn : null]}>
-            <View style={styles.sectionHeader}>
-              <ThemedText type="subtitle">System pulse</ThemedText>
-              <ThemedText style={styles.sectionCaption}>Live health and delivery controls</ThemedText>
-            </View>
-
             <View style={styles.card}>
             <View style={styles.cardTopRow}>
               <View>
@@ -545,11 +569,6 @@ export default function Dashboard() {
           </View>
 
           <View style={[styles.section, layout.isTablet ? styles.tabletSectionColumn : null]}>
-            <View style={styles.sectionHeader}>
-              <ThemedText type="subtitle">Your reminders</ThemedText>
-              <ThemedText style={styles.sectionCaption}>Upcoming contributions that need attention</ThemedText>
-            </View>
-
             <View style={styles.card}>
             {remindersLoading ? (
               <View style={styles.loadingRow}>
@@ -607,11 +626,6 @@ export default function Dashboard() {
 
         {user?.is_global_admin ? (
           <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <ThemedText type="subtitle">Admin command</ThemedText>
-              <ThemedText style={styles.sectionCaption}>Operational visibility for the whole platform</ThemedText>
-            </View>
-
             <View style={[styles.card, styles.adminCard]}>
               <View style={styles.cardTopRow}>
                 <View>
@@ -711,6 +725,48 @@ export default function Dashboard() {
                       </View>
                     </View>
                   ) : null}
+
+                  <View style={styles.subsection}>
+                    <ThemedText style={styles.subsectionTitle}>Tontine directory</ThemedText>
+                    <ThemedText style={styles.supportText}>
+                      Browse and open user tontine groups from the admin dashboard
+                    </ThemedText>
+                    {adminTontineDirectory?.items?.length ? (
+                      adminTontineDirectory.items.slice(0, 6).map((item) => (
+                        <View key={item.id} style={styles.previewRow}>
+                          <View style={styles.cardTopRow}>
+                            <View style={styles.directoryText}>
+                              <ThemedText style={styles.previewTitle}>{item.name}</ThemedText>
+                              <ThemedText style={styles.supportText}>
+                                {t("Owner")}: {item.owner_name}
+                              </ThemedText>
+                              <ThemedText style={styles.supportText}>
+                                {t("Members")}: {item.active_members_count} | {t("Created")}: {formatShortDate(item.created_at)}
+                              </ThemedText>
+                              <ThemedText style={styles.supportText}>
+                                {t("Status")}: {item.status} | {t("Cycle")}: {item.current_cycle}/{item.total_cycles}
+                              </ThemedText>
+                            </View>
+                            <Link
+                              href={{
+                                pathname: "/(tabs)/tontines/[tontineId]",
+                                params: { tontineId: String(item.id) },
+                              }}
+                              asChild
+                            >
+                              <Pressable style={styles.actionButtonGhost}>
+                                <ThemedText style={styles.actionButtonGhostText}>
+                                  {t("Open group")}
+                                </ThemedText>
+                              </Pressable>
+                            </Link>
+                          </View>
+                        </View>
+                      ))
+                    ) : (
+                      <ThemedText style={styles.supportText}>No tontine groups available.</ThemedText>
+                    )}
+                  </View>
 
                   <View style={styles.subsection}>
                     <View style={styles.cardTopRow}>
@@ -955,16 +1011,6 @@ const styles = StyleSheet.create({
   tabletSectionColumn: {
     flex: 1,
   },
-  sectionHeader: {
-    gap: 5,
-    paddingHorizontal: 4,
-  },
-  sectionCaption: {
-    color: BrandColors.muted,
-    fontSize: 13,
-    lineHeight: 19,
-    letterSpacing: 0.1,
-  },
   card: {
     borderRadius: 30,
     backgroundColor: BrandColors.surface,
@@ -1173,6 +1219,10 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
     fontWeight: "700",
+  },
+  directoryText: {
+    flex: 1,
+    gap: 2,
   },
   resultStrip: {
     borderRadius: 18,

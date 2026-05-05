@@ -41,6 +41,9 @@ router = APIRouter(prefix="/tontine-memberships", tags=["tontine-memberships"])
 
 
 def _ensure_owner_or_admin(db: Session, tontine: Tontine, current_user: User) -> None:
+    if getattr(current_user, "is_global_admin", False):
+        return
+
     is_owner = tontine.owner_id == current_user.id
     if is_owner:
         return
@@ -569,7 +572,7 @@ def get_tontine_members(
         )
     
     # Check if user is owner or active member
-    is_owner = tontine.owner_id == current_user.id
+    is_owner = tontine.owner_id == current_user.id or getattr(current_user, "is_global_admin", False)
     is_member = db.query(TontineMembership).filter(
         TontineMembership.user_id == current_user.id,
         TontineMembership.tontine_id == tontine_id,

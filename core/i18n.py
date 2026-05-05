@@ -29,6 +29,8 @@ _EXACT_FR: dict[str, str] = {
     "You don't have access to these payouts": "Vous n'avez pas acces a ces paiements",
     "You don't have access to this cycle's contributions": "Vous n'avez pas acces aux contributions de ce cycle",
     "Only owner can close cycle": "Seul le proprietaire peut cloturer le cycle",
+    "Only the owner or a global admin can close cycle": "Seul le proprietaire ou un admin global peut cloturer le cycle",
+    "Only the owner or a global admin can delete this tontine": "Seul le proprietaire ou un admin global peut supprimer cette tontine",
     "Only owner can generate cycles": "Seul le proprietaire peut generer des cycles",
     "Only owner or admin can perform this action": "Seul le proprietaire ou un admin peut effectuer cette action",
     "Only owner or admin can update memberships": "Seul le proprietaire ou un admin peut modifier les adhesions",
@@ -60,6 +62,8 @@ _EXACT_FR: dict[str, str] = {
     "Cannot update deadline for closed cycle": "Impossible de modifier la date limite d'un cycle cloture",
     "User is not an active member": "L'utilisateur n'est pas un membre actif",
     "You are not an active member of this tontine": "Vous n'etes pas un membre actif de cette tontine",
+    "Only the owner, an active member, or a global admin can access this tontine":
+        "Seul le proprietaire, un membre actif ou un admin global peut acceder a cette tontine",
     "transaction_reference is required": "transaction_reference est obligatoire",
     "Tontine cannot be deleted after it has started with contributions": "La tontine ne peut pas etre supprimee apres son demarrage avec contributions",
     "Tontine cannot be deleted due to dependent records": "La tontine ne peut pas etre supprimee a cause d'enregistrements dependants",

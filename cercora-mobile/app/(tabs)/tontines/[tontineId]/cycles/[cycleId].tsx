@@ -239,15 +239,21 @@ export default function CycleDetailScreen() {
   }
 
   const isOwner = !!user && !!tontine && user.id === tontine.owner_id;
+  const isGlobalAdmin = !!user?.is_global_admin;
   const myMember = user ? members.find((member) => member.id === user.id) : null;
   const isActiveMember = !!myMember && myMember.membership_status === "active";
   const isAdmin = !!myMember && myMember.membership_role === "admin" && myMember.membership_status === "active";
-  const canManage = isOwner || isAdmin;
+  const canManage = isOwner || isAdmin || isGlobalAdmin;
   const isCurrentCycle = !!cycle && !!tontine && cycle.cycle_number === tontine.current_cycle;
   const isBeneficiary = !!user && !!cycle && cycle.payout_member_id === user.id;
   const canContribute = !!cycle && !cycle.is_closed && isCurrentCycle && isActiveMember && !isBeneficiary;
   const openDebts = debts.filter((item) => !item.is_repaid);
-  const canClose = isOwner && !!cycle && !cycle.is_closed && !!status?.is_fully_funded && isCurrentCycle;
+  const canClose =
+    (isOwner || isGlobalAdmin) &&
+    !!cycle &&
+    !cycle.is_closed &&
+    !!status?.is_fully_funded &&
+    isCurrentCycle;
   const pendingBeneficiaryReviews = contributions.filter(
     (item) => !item.is_confirmed && (item.beneficiary_decision || "pending").toLowerCase() === "pending"
   );

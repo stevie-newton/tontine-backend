@@ -131,6 +131,7 @@ export default function TontineDetailPage({ params }: { params: Promise<{ id: st
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [memberPhone, setMemberPhone] = useState("");
   const isOwner = !!me && !!tontine && me.id === tontine.owner_id;
+  const isGlobalAdmin = !!me?.is_global_admin;
   const myMemberRow = me ? members.find((m) => m.id === me.id) : undefined;
   const isAdmin = !!myMemberRow && myMemberRow.membership_role === "admin" && myMemberRow.membership_status === "active";
   const isActiveMember = !!myMemberRow && myMemberRow.membership_status === "active";
@@ -377,7 +378,7 @@ export default function TontineDetailPage({ params }: { params: Promise<{ id: st
               >
                 {exporting ? t("tontine_detail.exporting") : t("tontine_detail.export_csv")}
               </button>
-              {isOwner && (
+              {(isOwner || isGlobalAdmin) && (
                 <button
                   onClick={() => setShowDeleteConfirm(true)}
                   className="rounded-xl border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 transition hover:bg-red-50"
@@ -398,13 +399,16 @@ export default function TontineDetailPage({ params }: { params: Promise<{ id: st
             {showDeleteConfirm && (
               <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">
                 <p className="font-semibold">{t("tontine_detail.delete_warning")}</p>
-                {hasAnyContributions && (
+                {hasAnyContributions && !isGlobalAdmin && (
                   <p className="mt-2">{t("tontine_detail.cannot_delete_tx")}</p>
+                )}
+                {isGlobalAdmin && (
+                  <p className="mt-2">{t("tontine_detail.global_admin_delete_override")}</p>
                 )}
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button
                     onClick={onDeleteGroup}
-                    disabled={deleting || hasAnyContributions}
+                    disabled={deleting || (hasAnyContributions && !isGlobalAdmin)}
                     className="rounded-xl bg-red-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {deleting ? t("tontine_detail.deleting") : t("tontine_detail.confirm_delete")}

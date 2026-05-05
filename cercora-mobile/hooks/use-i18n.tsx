@@ -279,18 +279,23 @@ const frTranslations: Record<string, string> = {
   "You are fully caught up. This area will surface the next contribution windows automatically.":
     "Vous êtes à jour. Cette zone affichera automatiquement les prochaines fenêtres de contribution.",
   "Users": "Utilisateurs",
+  Status: "Statut",
   "Open debts": "Dettes ouvertes",
   "Blocked cycles": "Cycles bloqués",
   "Tontine status mix": "Répartition des statuts des tontines",
   "Reminder operations": "Opérations de rappel",
   "Preview and trigger pre-deadline SMS from mobile":
     "Prévisualiser et déclencher les SMS avant échéance depuis le mobile",
+  "Tontine directory": "RÃ©pertoire des tontines",
+  "Browse and open user tontine groups from the admin dashboard":
+    "Parcourez et ouvrez les groupes de tontine des utilisateurs depuis le tableau de bord admin.",
   Refresh: "Actualiser",
   "Send now": "Envoyer maintenant",
   Targets: "Cibles",
   Lookahead: "Horizon",
   "No reminder preview available.": "Aucun aperçu de rappel disponible.",
   "No admin overview available.": "Aucun aperçu admin disponible.",
+  "No tontine groups available.": "Aucun groupe de tontine disponible.",
   "Permission: {{permission}}{{subscription}}": "Permission : {{permission}}{{subscription}}",
   "New users 7d: {{count}}": "Nouveaux utilisateurs 7 j : {{count}}",
   "New tontines 7d: {{count}}": "Nouvelles tontines 7 j : {{count}}",
@@ -426,6 +431,8 @@ const frTranslations: Record<string, string> = {
   "Current cycle: {{current}}/{{total}}": "Cycle actuel : {{current}}/{{total}}",
   "You can remove this tontine only when no financial activity has been recorded yet.":
     "Vous pouvez supprimer cette tontine uniquement lorsqu'aucune activité financière n'a encore été enregistrée.",
+  "As a global admin, you can delete this tontine even if financial activity already exists. This action cannot be undone.":
+    "En tant qu'admin global, vous pouvez supprimer cette tontine meme si une activite financiere existe deja. Cette action est definitive.",
   "Generate cycles to activate this tontine flow.":
     "Générez des cycles pour activer le fonctionnement de cette tontine.",
   "Activate tontine": "Activer la tontine",

@@ -54,6 +54,9 @@ def build_reliability_report_for_memberships(
     for membership in membership_list:
         tontine_cycles = cycles_by_tontine.get(membership.tontine_id, [])
         for cycle in tontine_cycles:
+            if cycle.payout_member_id == membership.user_id:
+                continue
+
             deadline = cycle.contribution_deadline or cycle.end_date
             if deadline is None:
                 continue

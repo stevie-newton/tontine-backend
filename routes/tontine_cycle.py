@@ -23,6 +23,22 @@ from app.services.tontine_service import TontineService
 router = APIRouter(prefix="/tontine-cycles", tags=["tontine-cycles"])
 
 
+def _has_tontine_access(db: Session, tontine: Tontine, current_user: User) -> bool:
+    if tontine.owner_id == current_user.id or getattr(current_user, "is_global_admin", False):
+        return True
+
+    return (
+        db.query(TontineMembership)
+        .filter(
+            TontineMembership.user_id == current_user.id,
+            TontineMembership.tontine_id == tontine.id,
+            TontineMembership.is_active.is_(True),
+        )
+        .first()
+        is not None
+    )
+
+
 # -------------------------
 # Create cycles for a tontine
 # -------------------------
@@ -130,17 +146,11 @@ def get_tontine_cycles(
         )
     
     # Check if user has access
-    if tontine.owner_id != current_user.id:
-        membership = db.query(TontineMembership).filter(
-            TontineMembership.user_id == current_user.id,
-            TontineMembership.tontine_id == tontine_id
-        ).first()
-        
-        if not membership:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You don't have access to this tontine"
-            )
+    if not _has_tontine_access(db, tontine, current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have access to this tontine"
+        )
 
     if TontineService.sync_cycle_rows_to_active_members_if_safe(db, tontine):
         db.commit()
@@ -202,17 +212,11 @@ def get_cycle(
     
     # Check access
     tontine = db.query(Tontine).filter(Tontine.id == cycle.tontine_id).first()
-    if tontine.owner_id != current_user.id:
-        membership = db.query(TontineMembership).filter(
-            TontineMembership.user_id == current_user.id,
-            TontineMembership.tontine_id == cycle.tontine_id
-        ).first()
-        
-        if not membership:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You don't have access to this cycle"
-            )
+    if not _has_tontine_access(db, tontine, current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have access to this cycle"
+        )
 
     if TontineService.sync_cycle_rows_to_active_members_if_safe(db, tontine):
         db.commit()
@@ -414,17 +418,11 @@ def get_cycle_status(
             detail="Tontine not found"
         )
     
-    if tontine.owner_id != current_user.id:
-        membership = db.query(TontineMembership).filter(
-            TontineMembership.user_id == current_user.id,
-            TontineMembership.tontine_id == tontine_id
-        ).first()
-        
-        if not membership:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You don't have access to this tontine"
-            )
+    if not _has_tontine_access(db, tontine, current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have access to this tontine"
+        )
 
     if TontineService.sync_cycle_rows_to_active_members_if_safe(db, tontine):
         db.commit()
@@ -455,17 +453,11 @@ def get_current_cycle(
         )
     
     # Check access
-    if tontine.owner_id != current_user.id:
-        membership = db.query(TontineMembership).filter(
-            TontineMembership.user_id == current_user.id,
-            TontineMembership.tontine_id == tontine_id
-        ).first()
-        
-        if not membership:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You don't have access to this tontine"
-            )
+    if not _has_tontine_access(db, tontine, current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have access to this tontine"
+        )
 
     if TontineService.sync_cycle_rows_to_active_members_if_safe(db, tontine):
         db.commit()

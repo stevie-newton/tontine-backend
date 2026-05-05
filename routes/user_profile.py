@@ -80,7 +80,8 @@ def get_my_reliability(
     - Open debt penalty (-10%)
 
     Reporting rules:
-    - "late_payments" counts any due cycle that was not paid by the cutoff,
+    - Beneficiary cycles are excluded because the beneficiary does not contribute that turn.
+    - "late_payments" counts any non-beneficiary due cycle that was not paid by the cutoff,
       including overdue cycles that are still unpaid.
     - "missed_payments" remains the stricter unpaid subset.
     """

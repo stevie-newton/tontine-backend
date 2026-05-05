@@ -65,6 +65,68 @@ def tontine_stats(
     }
 
 
+@router.get("/tontines/list")
+def tontine_directory(
+    limit: int = 20,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_global_admin),
+):
+    safe_limit = max(1, min(int(limit), 100))
+
+    active_members_subquery = (
+        db.query(
+            TontineMembership.tontine_id.label("tontine_id"),
+            func.count(TontineMembership.id).label("active_members_count"),
+        )
+        .filter(TontineMembership.is_active.is_(True))
+        .group_by(TontineMembership.tontine_id)
+        .subquery()
+    )
+
+    rows = (
+        db.query(
+            Tontine.id,
+            Tontine.name,
+            Tontine.status,
+            Tontine.current_cycle,
+            Tontine.total_cycles,
+            Tontine.contribution_amount,
+            Tontine.created_at,
+            Tontine.owner_id,
+            User.name.label("owner_name"),
+            func.coalesce(active_members_subquery.c.active_members_count, 0).label("active_members_count"),
+        )
+        .join(User, User.id == Tontine.owner_id)
+        .outerjoin(active_members_subquery, active_members_subquery.c.tontine_id == Tontine.id)
+        .order_by(Tontine.created_at.desc())
+        .limit(safe_limit)
+        .all()
+    )
+
+    items = []
+    for row in rows:
+        status_value = row.status.value if hasattr(row.status, "value") else str(row.status)
+        items.append(
+            {
+                "id": row.id,
+                "name": row.name,
+                "status": status_value,
+                "current_cycle": row.current_cycle,
+                "total_cycles": row.total_cycles,
+                "contribution_amount": float(row.contribution_amount),
+                "created_at": row.created_at,
+                "owner_id": row.owner_id,
+                "owner_name": row.owner_name,
+                "active_members_count": int(row.active_members_count or 0),
+            }
+        )
+
+    return {
+        "count": len(items),
+        "items": items,
+    }
+
+
 @router.get("/overview")
 def overview_stats(
     db: Session = Depends(get_db),

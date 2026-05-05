@@ -33,6 +33,9 @@ class ContributionService:
         if not tontine:
             raise HTTPException(status_code=404, detail="Tontine not found")
 
+        if getattr(current_user, "is_global_admin", False):
+            return None
+
         if tontine.owner_id == current_user.id:
             return None
 
@@ -55,6 +58,9 @@ class ContributionService:
         tontine = db.query(Tontine).filter(Tontine.id == tontine_id).first()
         if not tontine:
             raise HTTPException(status_code=404, detail="Tontine not found")
+
+        if getattr(current_user, "is_global_admin", False):
+            return None
 
         if tontine.owner_id == current_user.id:
             return None

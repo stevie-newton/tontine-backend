@@ -4,6 +4,7 @@ import PageShell from "@/components/PageShell";
 import { apiFetch } from "@/lib/api";
 import { useAuthGuard } from "@/lib/useAuth";
 import { useI18n } from "@/lib/i18n";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 type AdminOverview = {
@@ -69,6 +70,24 @@ type ReminderSendResult = {
   sms_failed: number;
 };
 
+type AdminTontineDirectoryItem = {
+  id: number;
+  name: string;
+  status: string;
+  current_cycle: number;
+  total_cycles: number;
+  contribution_amount: number;
+  created_at: string;
+  owner_id: number;
+  owner_name: string;
+  active_members_count: number;
+};
+
+type AdminTontineDirectory = {
+  count: number;
+  items: AdminTontineDirectoryItem[];
+};
+
 export default function AdminDashboardPage() {
   const { me, loading: authLoading } = useAuthGuard();
   const { locale, t } = useI18n();
@@ -76,6 +95,7 @@ export default function AdminDashboardPage() {
   const [err, setErr] = useState<string | null>(null);
   const [reminderPreview, setReminderPreview] = useState<ReminderPreview | null>(null);
   const [reminderResult, setReminderResult] = useState<ReminderSendResult | null>(null);
+  const [directory, setDirectory] = useState<AdminTontineDirectory | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [sendLoading, setSendLoading] = useState(false);
 
@@ -90,8 +110,18 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     if (authLoading) return;
     if (!me?.is_global_admin) return;
-    apiFetch<AdminOverview>("/admin/stats/overview")
-      .then(setData)
+    Promise.all([
+      apiFetch<AdminOverview>("/admin/stats/overview"),
+    ])
+      .then(async ([overview]) => {
+        setData(overview);
+        try {
+          const tontineDirectory = await apiFetch<AdminTontineDirectory>("/admin/stats/tontines/list");
+          setDirectory(tontineDirectory);
+        } catch {
+          setDirectory(null);
+        }
+      })
       .catch((e) => setErr(String(e)));
   }, [authLoading, me?.is_global_admin]);
 
@@ -163,6 +193,41 @@ export default function AdminDashboardPage() {
               <div>{t("admin.new_tontines_7", { value: data.tontines.created_last_7_days })}</div>
               <div>{t("admin.new_tontines_30", { value: data.tontines.created_last_30_days })}</div>
             </div>
+          </section>
+
+          <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <h2 className="text-lg font-semibold text-slate-900">{t("admin.groups_title")}</h2>
+            <p className="mt-1 text-sm text-slate-600">{t("admin.groups_subtitle")}</p>
+            {!directory?.items?.length ? (
+              <div className="mt-3 text-sm text-slate-600">{t("admin.groups_empty")}</div>
+            ) : (
+              <div className="mt-3 space-y-3">
+                {directory.items.map((item) => (
+                  <div key={item.id} className="rounded-xl border border-slate-200 p-3">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-semibold text-slate-900">{item.name}</div>
+                        <div className="mt-1 text-sm text-slate-700">
+                          {t("admin.group_owner", { value: item.owner_name })} | {t("admin.group_members", { value: item.active_members_count })}
+                        </div>
+                        <div className="text-sm text-slate-700">
+                          {t("admin.group_status", { value: item.status })} | {t("admin.group_cycle", { current: item.current_cycle, total: item.total_cycles })}
+                        </div>
+                        <div className="text-sm text-slate-600">
+                          {t("admin.group_created", { value: new Date(item.created_at).toLocaleDateString() })}
+                        </div>
+                      </div>
+                      <Link
+                        href={`/tontines/${item.id}`}
+                        className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-900 hover:bg-slate-50"
+                      >
+                        {t("admin.open_group")}
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
 
           <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">

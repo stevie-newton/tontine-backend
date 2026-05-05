@@ -97,6 +97,9 @@ def _tontine_has_financial_activity(db: Session, tontine_id: int) -> bool:
 
 
 def _ensure_owner_or_active_admin(db: Session, tontine: Tontine, current_user: User) -> None:
+    if getattr(current_user, "is_global_admin", False):
+        return
+
     is_owner = tontine.owner_id == current_user.id
     if is_owner:
         return
@@ -120,6 +123,9 @@ def _ensure_owner_or_active_admin(db: Session, tontine: Tontine, current_user: U
 
 
 def _ensure_owner_or_active_member(db: Session, tontine: Tontine, current_user: User) -> None:
+    if getattr(current_user, "is_global_admin", False):
+        return
+
     if tontine.owner_id == current_user.id:
         return
 
@@ -136,7 +142,7 @@ def _ensure_owner_or_active_member(db: Session, tontine: Tontine, current_user: 
     if not is_active_member:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only the owner or an active member can view this reliability report",
+            detail="Only the owner, an active member, or a global admin can access this tontine",
         )
 
 
@@ -240,28 +246,12 @@ def get_tontine(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    tontine = (
-        db.query(Tontine)
-        .outerjoin(
-            TontineMembership,
-            TontineMembership.tontine_id == Tontine.id,
-        )
-        .filter(
-            Tontine.id == tontine_id,
-            or_(
-                Tontine.owner_id == current_user.id,
-                and_(
-                    TontineMembership.user_id == current_user.id,
-                    TontineMembership.is_active.is_(True),
-                ),
-            ),
-        )
-        .distinct()
-        .first()
-    )
+    tontine = db.query(Tontine).filter(Tontine.id == tontine_id).first()
 
     if not tontine:
         raise HTTPException(status_code=404, detail="Tontine not found")
+
+    _ensure_owner_or_active_member(db, tontine, current_user)
 
     if _sync_tontine_total_cycles_if_safe(db, tontine):
         db.commit()
@@ -503,10 +493,7 @@ def delete_tontine(
     """
     Delete a tontine.
     """
-    tontine = db.query(Tontine).filter(
-        Tontine.id == tontine_id,
-        Tontine.owner_id == current_user.id
-    ).first()
+    tontine = db.query(Tontine).filter(Tontine.id == tontine_id).first()
     
     if not tontine:
         raise HTTPException(
@@ -514,7 +501,15 @@ def delete_tontine(
             detail="Tontine not found"
         )
 
-    if TontineService.has_financial_activity(db, tontine_id):
+    if tontine.owner_id != current_user.id and not getattr(current_user, "is_global_admin", False):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the owner or a global admin can delete this tontine",
+        )
+
+    is_global_admin = getattr(current_user, "is_global_admin", False)
+
+    if TontineService.has_financial_activity(db, tontine_id) and not is_global_admin:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=(

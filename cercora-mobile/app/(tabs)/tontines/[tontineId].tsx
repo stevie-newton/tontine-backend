@@ -297,9 +297,13 @@ export default function TontineDetailScreen() {
   function confirmDeleteTontine() {
     Alert.alert(
       t("Delete tontine"),
-      t(
-        "Delete this tontine only if it has no contributions, payments, payouts, debts, or ledger activity. This action cannot be undone."
-      ),
+      isGlobalAdmin
+        ? t(
+            "As a global admin, you can delete this tontine even if financial activity already exists. This action cannot be undone."
+          )
+        : t(
+            "Delete this tontine only if it has no contributions, payments, payouts, debts, or ledger activity. This action cannot be undone."
+          ),
       [
         { text: t("Cancel"), style: "cancel" },
         {
@@ -315,11 +319,13 @@ export default function TontineDetailScreen() {
   const pendingMembers = members.filter((member) => member.membership_status !== "active");
   const myMembership = user ? members.find((member) => member.id === user.id) ?? null : null;
   const isOwner = !!user && !!tontine && tontine.owner_id === user.id;
+  const isGlobalAdmin = !!user?.is_global_admin;
   const isAdmin =
     !!myMembership &&
     myMembership.membership_role === "admin" &&
     myMembership.membership_status === "active";
   const canManage = isOwner || isAdmin;
+  const canDeleteTontine = isOwner || isGlobalAdmin;
   const tone = getStatusTone(tontine?.status ?? "draft");
   const openDebts = debts.filter((debt) => !debt.is_repaid);
   const recentCycles = cycles.slice(0, 3);
@@ -479,11 +485,15 @@ export default function TontineDetailScreen() {
             </Link>
           </View>
 
-          {isOwner ? (
+          {canDeleteTontine ? (
             <View style={styles.dangerCard}>
               <ThemedText style={styles.dangerTitle}>{t("Delete tontine")}</ThemedText>
               <ThemedText style={styles.supportText}>
-                {t("You can remove this tontine only when no financial activity has been recorded yet.")}
+                {isGlobalAdmin
+                  ? t(
+                      "As a global admin, you can delete this tontine even if financial activity already exists. This action cannot be undone."
+                    )
+                  : t("You can remove this tontine only when no financial activity has been recorded yet.")}
               </ThemedText>
               <Pressable
                 style={[

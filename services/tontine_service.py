@@ -630,9 +630,9 @@ class TontineService:
             if not tontine:
                 raise HTTPException(status_code=404, detail="Associated tontine not found")
 
-            # Permission: only owner
-            if tontine.owner_id != current_user.id:
-                raise HTTPException(status_code=403, detail="Only owner can close cycle")
+            # Permission: tontine owner or global admin
+            if tontine.owner_id != current_user.id and not getattr(current_user, "is_global_admin", False):
+                raise HTTPException(status_code=403, detail="Only the owner or a global admin can close cycle")
 
             # Optional but recommended: enforce sequential closing
             if cycle.cycle_number != tontine.current_cycle:
