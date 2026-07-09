@@ -210,25 +210,32 @@ def list_my_tontines(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    tontines = (
-        db.query(Tontine)
-        .outerjoin(
-            TontineMembership,
-            TontineMembership.tontine_id == Tontine.id,
+    if getattr(current_user, "is_global_admin", False):
+        tontines = (
+            db.query(Tontine)
+            .order_by(Tontine.created_at.desc())
+            .all()
         )
-        .filter(
-            or_(
-                Tontine.owner_id == current_user.id,
-                and_(
-                    TontineMembership.user_id == current_user.id,
-                    TontineMembership.is_active.is_(True),
-                ),
+    else:
+        tontines = (
+            db.query(Tontine)
+            .outerjoin(
+                TontineMembership,
+                TontineMembership.tontine_id == Tontine.id,
             )
+            .filter(
+                or_(
+                    Tontine.owner_id == current_user.id,
+                    and_(
+                        TontineMembership.user_id == current_user.id,
+                        TontineMembership.is_active.is_(True),
+                    ),
+                )
+            )
+            .distinct()
+            .order_by(Tontine.created_at.desc())
+            .all()
         )
-        .distinct()
-        .order_by(Tontine.created_at.desc())
-        .all()
-    )
 
     changed = False
     for tontine in tontines:

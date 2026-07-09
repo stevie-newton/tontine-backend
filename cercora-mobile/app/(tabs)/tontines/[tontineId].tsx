@@ -92,6 +92,15 @@ type DebtListResponse = {
   debts: Debt[];
 };
 
+type TransactionSummary = {
+  transaction_count: number;
+  total_contributions: string | number;
+  total_payouts: string | number;
+  total_fees: string | number;
+  balance: string | number;
+  last_transaction_date: string | null;
+};
+
 type MyReliabilityProfile = {
   reliability_score_percent: number;
   cycles_completed: number;
@@ -176,6 +185,7 @@ export default function TontineDetailScreen() {
   const [cycles, setCycles] = useState<Cycle[]>([]);
   const [currentCycle, setCurrentCycle] = useState<Cycle | null>(null);
   const [summary, setSummary] = useState<ContributionSummary | null>(null);
+  const [transactionSummary, setTransactionSummary] = useState<TransactionSummary | null>(null);
   const [debts, setDebts] = useState<Debt[]>([]);
   const [myReliability, setMyReliability] = useState<MyReliabilityProfile | null>(null);
   const [memberReliability, setMemberReliability] = useState<MemberReliabilityProfile[]>([]);
@@ -204,14 +214,27 @@ export default function TontineDetailScreen() {
         .get<MemberReliabilityResponse>(`/tontines/${id}/reliability`)
         .then((r) => r.data.members)
         .catch(() => [] as MemberReliabilityProfile[]);
+      const transactionSummaryReq = api
+        .get<TransactionSummary>(`/transactions/tontine/${id}/summary`)
+        .then((r) => r.data)
+        .catch(() => null);
 
-      const [tontineRes, membersRes, cyclesRes, cycle, debtList, reliabilityRows] = await Promise.all([
+      const [
+        tontineRes,
+        membersRes,
+        cyclesRes,
+        cycle,
+        debtList,
+        reliabilityRows,
+        ledgerSummary,
+      ] = await Promise.all([
         tontineReq,
         membersReq,
         cyclesReq,
         currentCycleReq,
         debtsReq,
         memberReliabilityReq,
+        transactionSummaryReq,
       ]);
 
       setTontine(tontineRes.data);
@@ -219,6 +242,7 @@ export default function TontineDetailScreen() {
       setCycles(cyclesRes.data);
       setCurrentCycle(cycle);
       setDebts(debtList);
+      setTransactionSummary(ledgerSummary);
       setMemberReliability(reliabilityRows);
       setMyReliability(
         (user ? reliabilityRows.find((row) => row.user_id === user.id) : null) ?? null
@@ -295,6 +319,17 @@ export default function TontineDetailScreen() {
   }
 
   function confirmDeleteTontine() {
+    if (hasFinancialActivity && !isGlobalAdmin) {
+      Alert.alert(
+        t("Financial records preserved"),
+        t(
+          "This tontine has financial activity and cannot be deleted. Its contributions, payouts, debts, and ledger history stay available for records."
+        ),
+        [{ text: t("OK") }]
+      );
+      return;
+    }
+
     Alert.alert(
       t("Delete tontine"),
       isGlobalAdmin
@@ -325,7 +360,14 @@ export default function TontineDetailScreen() {
     myMembership.membership_role === "admin" &&
     myMembership.membership_status === "active";
   const canManage = isOwner || isAdmin;
-  const canDeleteTontine = isOwner || isGlobalAdmin;
+  const hasFinancialActivity =
+    !!summary?.total_contributions ||
+    Number(summary?.total_amount ?? 0) > 0 ||
+    (transactionSummary?.transaction_count ?? 0) > 0 ||
+    debts.length > 0 ||
+    cycles.some((cycle) => cycle.is_closed);
+  const canDeleteTontine = isGlobalAdmin || (isOwner && !hasFinancialActivity);
+  const shouldShowProtectedRecords = isOwner && hasFinancialActivity && !isGlobalAdmin;
   const tone = getStatusTone(tontine?.status ?? "draft");
   const openDebts = debts.filter((debt) => !debt.is_repaid);
   const recentCycles = cycles.slice(0, 3);
@@ -485,7 +527,16 @@ export default function TontineDetailScreen() {
             </Link>
           </View>
 
-          {canDeleteTontine ? (
+          {shouldShowProtectedRecords ? (
+            <View style={styles.protectedCard}>
+              <ThemedText style={styles.protectedTitle}>{t("Financial records preserved")}</ThemedText>
+              <ThemedText style={styles.supportText}>
+                {t(
+                  "This tontine has financial activity and cannot be deleted. Its contributions, payouts, debts, and ledger history stay available for records."
+                )}
+              </ThemedText>
+            </View>
+          ) : canDeleteTontine ? (
             <View style={styles.dangerCard}>
               <ThemedText style={styles.dangerTitle}>{t("Delete tontine")}</ThemedText>
               <ThemedText style={styles.supportText}>
@@ -1050,6 +1101,21 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontWeight: "800",
     fontSize: 14,
+  },
+  protectedCard: {
+    borderRadius: 28,
+    backgroundColor: "#EFF6FF",
+    borderWidth: 1,
+    borderColor: "#BFDBFE",
+    padding: 20,
+    gap: 12,
+    ...BrandShadow,
+  },
+  protectedTitle: {
+    color: "#1D4ED8",
+    fontSize: 18,
+    lineHeight: 22,
+    fontWeight: "800",
   },
   card: {
     borderRadius: 30,

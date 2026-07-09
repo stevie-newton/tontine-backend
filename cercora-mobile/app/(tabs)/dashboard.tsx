@@ -700,6 +700,16 @@ export default function Dashboard() {
                     </ThemedText>
                   </View>
 
+                  <View style={styles.actionsRow}>
+                    <Link href="/(tabs)/tontines" asChild>
+                      <Pressable style={styles.actionButtonGhost}>
+                        <ThemedText style={styles.actionButtonGhostText}>
+                          {t("Open all groups")}
+                        </ThemedText>
+                      </Pressable>
+                    </Link>
+                  </View>
+
                   {adminTontineStats ? (
                     <View style={styles.subsection}>
                       <ThemedText style={styles.subsectionTitle}>Tontine status mix</ThemedText>

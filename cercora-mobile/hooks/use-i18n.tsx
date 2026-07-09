@@ -296,6 +296,7 @@ const frTranslations: Record<string, string> = {
   "No reminder preview available.": "Aucun aperçu de rappel disponible.",
   "No admin overview available.": "Aucun aperçu admin disponible.",
   "No tontine groups available.": "Aucun groupe de tontine disponible.",
+  "Open all groups": "Ouvrir tous les groupes",
   "Permission: {{permission}}{{subscription}}": "Permission : {{permission}}{{subscription}}",
   "New users 7d: {{count}}": "Nouveaux utilisateurs 7 j : {{count}}",
   "New tontines 7d: {{count}}": "Nouvelles tontines 7 j : {{count}}",
@@ -339,6 +340,7 @@ const frTranslations: Record<string, string> = {
   "Delete account if the backend allows it. Continue?":
     "Supprimer votre compte si le backend l'autorise. Continuer ?",
   Cancel: "Annuler",
+  OK: "OK",
   Delete: "Supprimer",
 
   "Reminder center": "Centre des rappels",
@@ -433,6 +435,9 @@ const frTranslations: Record<string, string> = {
     "Vous pouvez supprimer cette tontine uniquement lorsqu'aucune activité financière n'a encore été enregistrée.",
   "As a global admin, you can delete this tontine even if financial activity already exists. This action cannot be undone.":
     "En tant qu'admin global, vous pouvez supprimer cette tontine meme si une activite financiere existe deja. Cette action est definitive.",
+  "Financial records preserved": "Enregistrements financiers conserves",
+  "This tontine has financial activity and cannot be deleted. Its contributions, payouts, debts, and ledger history stay available for records.":
+    "Cette tontine contient une activite financiere et ne peut pas etre supprimee. Ses contributions, paiements, dettes et historique du grand livre restent disponibles pour les dossiers.",
   "Generate cycles to activate this tontine flow.":
     "Générez des cycles pour activer le fonctionnement de cette tontine.",
   "Activate tontine": "Activer la tontine",

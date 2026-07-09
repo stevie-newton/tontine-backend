@@ -193,6 +193,14 @@ export default function AdminDashboardPage() {
               <div>{t("admin.new_tontines_7", { value: data.tontines.created_last_7_days })}</div>
               <div>{t("admin.new_tontines_30", { value: data.tontines.created_last_30_days })}</div>
             </div>
+            <div className="mt-3">
+              <Link
+                href="/tontines"
+                className="inline-flex rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-900 hover:bg-slate-50"
+              >
+                {t("admin.open_all_groups")}
+              </Link>
+            </div>
           </section>
 
           <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
