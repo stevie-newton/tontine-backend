@@ -3,8 +3,8 @@ import "./globals.css";
 import { I18nProvider } from "@/lib/i18n";
 
 export const metadata: Metadata = {
-  title: "Tontine App",
-  description: "Tontine management platform",
+  title: "Cercora | Save together. Grow with confidence.",
+  description: "A clear, secure way to manage your tontine, track contributions, and organize payouts together.",
   icons: {
     icon: "/logo.png",
     shortcut: "/logo.png",
