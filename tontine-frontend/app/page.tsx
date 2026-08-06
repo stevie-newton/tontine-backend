@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n";
 
+const WHATSAPP_COMMUNITY_URL = "https://chat.whatsapp.com/FPkAMaDSwcDJeeSPObvY59";
+
 const copy = {
   en: {
     nav: ["How it works", "Features", "Security"],
@@ -46,9 +48,14 @@ const copy = {
     communityPoints: ["English and French", "Mobile-friendly experience", "Clear member roles"],
     ctaTitle: "Ready to move your circle forward?",
     ctaBody: "Create your Cercora account and bring transparency to your next savings cycle.",
+    whatsapp: "Join the WhatsApp community",
+    payoutDate: "Aug 15",
+    memberCount: "6 members",
     footer: "Community-powered saving, made simple.",
     product: "Product",
     company: "Resources",
+    privacy: "Privacy",
+    motto: "Save together · Grow together",
     rights: "All rights reserved.",
   },
   fr: {
@@ -93,9 +100,14 @@ const copy = {
     communityPoints: ["Français et anglais", "Expérience mobile", "Rôles clairs pour les membres"],
     ctaTitle: "Prêt à faire avancer votre cercle ?",
     ctaBody: "Créez votre compte Cercora et apportez plus de transparence à votre prochain cycle.",
+    whatsapp: "Rejoindre la communauté WhatsApp",
+    payoutDate: "15 août",
+    memberCount: "6 membres",
     footer: "L’épargne communautaire, en toute simplicité.",
     product: "Produit",
     company: "Ressources",
+    privacy: "Confidentialité",
+    motto: "Épargner ensemble · Grandir ensemble",
     rights: "Tous droits réservés.",
   },
 } as const;
@@ -183,8 +195,8 @@ export default function HomePage() {
                     <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-600">● &nbsp;{c.active}</span>
                   </div>
                   <div className="mt-6 grid grid-cols-2 gap-3">
-                    <div className="rounded-2xl border border-[#e1eaf6] bg-white p-4"><p className="text-xs text-[#7a8aa5]">{c.nextPayout}</p><p className="mt-2 text-lg font-extrabold">15 Aug</p><p className="mt-1 text-xs font-medium text-[#2c66d7]">Nadia K.</p></div>
-                    <div className="rounded-2xl bg-[#172650] p-4 text-white"><p className="text-xs text-white/60">{c.contribution}</p><p className="mt-2 text-lg font-extrabold">$100 CAD</p><p className="mt-1 text-xs text-cyan-300">6 members</p></div>
+                    <div className="rounded-2xl border border-[#e1eaf6] bg-white p-4"><p className="text-xs text-[#7a8aa5]">{c.nextPayout}</p><p className="mt-2 text-lg font-extrabold">{c.payoutDate}</p><p className="mt-1 text-xs font-medium text-[#2c66d7]">Nadia K.</p></div>
+                    <div className="rounded-2xl bg-[#172650] p-4 text-white"><p className="text-xs text-white/60">{c.contribution}</p><p className="mt-2 text-lg font-extrabold">$100 CAD</p><p className="mt-1 text-xs text-cyan-300">{c.memberCount}</p></div>
                   </div>
                   <div className="mt-3 rounded-2xl border border-[#e1eaf6] bg-white p-5">
                     <div className="flex justify-between text-xs"><span className="font-semibold text-[#415273]">{c.progress}</span><span className="font-extrabold text-[#2c66d7]">83%</span></div>
@@ -241,7 +253,24 @@ export default function HomePage() {
       <section className="px-5 pb-20 sm:px-8 sm:pb-28">
         <div className="relative mx-auto max-w-7xl overflow-hidden rounded-[2.25rem] bg-[linear-gradient(115deg,#20bfd5,#2c66d7_52%,#8a37c9)] px-6 py-16 text-center text-white shadow-[0_30px_70px_rgba(44,102,215,0.24)] sm:px-12 sm:py-20">
           <div className="absolute -left-10 -top-20 h-64 w-64 rounded-full border-[50px] border-white/10" /><div className="absolute -bottom-28 -right-8 h-72 w-72 rounded-full border-[55px] border-white/10" />
-          <div className="relative"><h2 className="text-4xl font-black tracking-[-0.045em] sm:text-5xl">{c.ctaTitle}</h2><p className="mx-auto mt-5 max-w-2xl text-lg text-white/75">{c.ctaBody}</p><Link href="/register" className="mt-8 inline-flex items-center gap-2 rounded-full bg-white px-7 py-4 text-sm font-extrabold text-[#244da9] shadow-xl transition hover:-translate-y-1">{c.getStarted} <span>→</span></Link></div>
+          <div className="relative">
+            <h2 className="text-4xl font-black tracking-[-0.045em] sm:text-5xl">{c.ctaTitle}</h2>
+            <p className="mx-auto mt-5 max-w-2xl text-lg text-white/75">{c.ctaBody}</p>
+            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <Link href="/register" className="inline-flex items-center gap-2 rounded-full bg-white px-7 py-4 text-sm font-extrabold text-[#244da9] shadow-xl transition hover:-translate-y-1">
+                {c.getStarted} <span>→</span>
+              </Link>
+              <a
+                href={WHATSAPP_COMMUNITY_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-[#20b95a] px-7 py-4 text-sm font-extrabold text-white shadow-xl transition hover:-translate-y-1 hover:bg-[#18a64e]"
+              >
+                <span aria-hidden="true">💬</span>
+                {c.whatsapp}
+              </a>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -249,9 +278,9 @@ export default function HomePage() {
         <div className="mx-auto grid max-w-7xl gap-10 px-5 py-12 sm:px-8 md:grid-cols-[1fr_auto_auto] md:gap-20">
           <div><CercoraMark /><p className="mt-4 max-w-xs text-sm leading-6 text-[#72819b]">{c.footer}</p></div>
           <div><p className="text-xs font-extrabold uppercase tracking-wider text-[#22345c]">{c.product}</p><div className="mt-4 grid gap-3 text-sm text-[#72819b]"><a href="#how-it-works">{c.nav[0]}</a><a href="#features">{c.nav[1]}</a><Link href="/login">{c.signIn}</Link></div></div>
-          <div><p className="text-xs font-extrabold uppercase tracking-wider text-[#22345c]">{c.company}</p><div className="mt-4 grid gap-3 text-sm text-[#72819b]"><Link href="/help/faq">FAQ</Link><Link href="/support">Support</Link><Link href="/privacy-policy">Privacy</Link></div></div>
+          <div><p className="text-xs font-extrabold uppercase tracking-wider text-[#22345c]">{c.company}</p><div className="mt-4 grid gap-3 text-sm text-[#72819b]"><Link href="/help/faq">FAQ</Link><Link href="/support">Support</Link><Link href="/privacy-policy">{c.privacy}</Link></div></div>
         </div>
-        <div className="mx-auto flex max-w-7xl flex-col gap-3 border-t border-[#e6edf6] px-5 py-6 text-xs text-[#8a97ac] sm:flex-row sm:items-center sm:justify-between sm:px-8"><span>© {new Date().getFullYear()} Cercora. {c.rights}</span><span>Save together · Grow together</span></div>
+        <div className="mx-auto flex max-w-7xl flex-col gap-3 border-t border-[#e6edf6] px-5 py-6 text-xs text-[#8a97ac] sm:flex-row sm:items-center sm:justify-between sm:px-8"><span>© {new Date().getFullYear()} Cercora. {c.rights}</span><span>{c.motto}</span></div>
       </footer>
     </main>
   );
