@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n";
+import BrandLogo from "@/src/components/BrandLogo";
 
 const WHATSAPP_COMMUNITY_URL = "https://chat.whatsapp.com/FPkAMaDSwcDJeeSPObvY59";
 
@@ -112,16 +113,8 @@ const copy = {
   },
 } as const;
 
-function CercoraMark({ light = false }: { light?: boolean }) {
-  return (
-    <span className="inline-flex items-center gap-2.5" aria-label="Cercora">
-      <span className="relative grid h-9 w-9 place-items-center rounded-full bg-[linear-gradient(135deg,#26d4df,#315ad9_58%,#9639c7)] shadow-[0_8px_20px_rgba(49,90,217,0.22)]">
-        <span className="h-3.5 w-3.5 rounded-full bg-white/95" />
-        <span className="absolute -right-0.5 top-3 h-2.5 w-2.5 rounded-full border-2 border-white bg-cyan-400" />
-      </span>
-      <span className={`text-xl font-extrabold tracking-[-0.04em] ${light ? "text-white" : "text-[#172650]"}`}>Cercora</span>
-    </span>
-  );
+function CercoraMark() {
+  return <BrandLogo width={260} height={180} className="h-auto max-w-[120px]" />;
 }
 
 function Icon({ type }: { type: number }) {
