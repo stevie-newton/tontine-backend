@@ -114,7 +114,7 @@ const copy = {
 } as const;
 
 function CercoraMark() {
-  return <BrandLogo width={260} height={180} className="h-auto max-w-[120px]" />;
+  return <BrandLogo width={260} height={180} className="h-auto max-w-[104px] sm:max-w-[120px]" />;
 }
 
 function Icon({ type }: { type: number }) {
@@ -134,15 +134,15 @@ export default function HomePage() {
   return (
     <main className="min-h-screen overflow-hidden bg-[#f8fbff] text-[#172650]">
       <header className="sticky top-0 z-20 border-b border-[#dbe6f5]/80 bg-white/85 backdrop-blur-xl">
-        <div className="mx-auto flex h-[76px] max-w-7xl items-center justify-between px-5 sm:px-8">
+        <div className="mx-auto flex min-h-[112px] max-w-7xl flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-2 sm:h-[76px] sm:min-h-0 sm:flex-nowrap sm:px-8 sm:py-0">
           <Link href="/" className="shrink-0"><CercoraMark /></Link>
           <nav className="hidden items-center gap-8 text-sm font-medium text-[#536481] md:flex">
             <a href="#how-it-works" className="transition hover:text-[#2c66d7]">{c.nav[0]}</a>
             <a href="#features" className="transition hover:text-[#2c66d7]">{c.nav[1]}</a>
             <a href="#security" className="transition hover:text-[#2c66d7]">{c.nav[2]}</a>
           </nav>
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="hidden rounded-full border border-[#dbe6f5] bg-[#f7faff] p-0.5 sm:flex">
+          <div className="order-last flex w-full min-w-0 items-center gap-2 sm:order-none sm:ml-auto sm:w-auto sm:justify-end sm:gap-3">
+            <div className="flex shrink-0 rounded-full border border-[#dbe6f5] bg-[#f7faff] p-0.5" aria-label="Language">
               <button onClick={() => setLocale("en")} className={`rounded-full px-2.5 py-1 text-[11px] font-bold transition ${locale === "en" ? "bg-white text-[#172650] shadow-sm" : "text-[#73819a]"}`}>EN</button>
               <button onClick={() => setLocale("fr")} className={`rounded-full px-2.5 py-1 text-[11px] font-bold transition ${locale === "fr" ? "bg-white text-[#172650] shadow-sm" : "text-[#73819a]"}`}>FR</button>
             </div>
@@ -152,15 +152,15 @@ export default function HomePage() {
               target="_blank"
               rel="noopener noreferrer"
               aria-label={c.whatsapp}
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-[#20b95a] p-2.5 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(32,185,90,0.2)] transition hover:-translate-y-0.5 hover:bg-[#18a64e] sm:px-4"
+              className="inline-flex min-w-0 flex-1 items-center justify-center gap-2 rounded-full bg-[#20b95a] px-3 py-2.5 text-[11px] font-semibold text-white shadow-[0_8px_20px_rgba(32,185,90,0.2)] transition hover:-translate-y-0.5 hover:bg-[#18a64e] sm:flex-none sm:px-4 sm:text-sm"
             >
               <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="h-4 w-4 shrink-0" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M20 11.5a8 8 0 0 1-11.8 7L4 20l1.5-4.1A8 8 0 1 1 20 11.5Z" />
                 <path d="M9 8.5c.4 2.4 2.1 4.1 4.5 4.5" />
               </svg>
-              <span className="hidden sm:inline">{c.whatsapp}</span>
+              <span className="max-w-[190px] text-center leading-tight sm:max-w-none">{c.whatsapp}</span>
             </a>
-            <Link href="/register" className="rounded-full bg-[#172650] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(23,38,80,0.18)] transition hover:-translate-y-0.5 hover:bg-[#2c66d7] sm:px-5">{c.getStarted}</Link>
+            <Link href="/register" className="hidden rounded-full bg-[#172650] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(23,38,80,0.18)] transition hover:-translate-y-0.5 hover:bg-[#2c66d7] sm:block sm:px-5">{c.getStarted}</Link>
           </div>
         </div>
       </header>
