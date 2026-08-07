@@ -133,7 +133,7 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen overflow-hidden bg-[#f8fbff] text-[#172650]">
-      <header className="relative z-20 border-b border-[#dbe6f5]/80 bg-white/85 backdrop-blur-xl">
+      <header className="sticky top-0 z-20 border-b border-[#dbe6f5]/80 bg-white/85 backdrop-blur-xl">
         <div className="mx-auto flex h-[76px] max-w-7xl items-center justify-between px-5 sm:px-8">
           <Link href="/" className="shrink-0"><CercoraMark /></Link>
           <nav className="hidden items-center gap-8 text-sm font-medium text-[#536481] md:flex">
@@ -147,6 +147,19 @@ export default function HomePage() {
               <button onClick={() => setLocale("fr")} className={`rounded-full px-2.5 py-1 text-[11px] font-bold transition ${locale === "fr" ? "bg-white text-[#172650] shadow-sm" : "text-[#73819a]"}`}>FR</button>
             </div>
             <Link href="/login" className="hidden px-2 py-2 text-sm font-semibold text-[#364868] transition hover:text-[#2c66d7] sm:block">{c.signIn}</Link>
+            <a
+              href={WHATSAPP_COMMUNITY_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={c.whatsapp}
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-[#20b95a] p-2.5 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(32,185,90,0.2)] transition hover:-translate-y-0.5 hover:bg-[#18a64e] sm:px-4"
+            >
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="h-4 w-4 shrink-0" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 11.5a8 8 0 0 1-11.8 7L4 20l1.5-4.1A8 8 0 1 1 20 11.5Z" />
+                <path d="M9 8.5c.4 2.4 2.1 4.1 4.5 4.5" />
+              </svg>
+              <span className="hidden sm:inline">{c.whatsapp}</span>
+            </a>
             <Link href="/register" className="rounded-full bg-[#172650] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(23,38,80,0.18)] transition hover:-translate-y-0.5 hover:bg-[#2c66d7] sm:px-5">{c.getStarted}</Link>
           </div>
         </div>
