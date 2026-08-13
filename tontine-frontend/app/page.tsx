@@ -5,6 +5,8 @@ import { useI18n } from "@/lib/i18n";
 import BrandLogo from "@/src/components/BrandLogo";
 
 const WHATSAPP_COMMUNITY_URL = "https://chat.whatsapp.com/FPkAMaDSwcDJeeSPObvY59";
+const APP_STORE_URL = "https://apps.apple.com/app/cercora/id6761357559";
+const PLAY_STORE_TEST_URL = "https://play.google.com/apps/testing/com.cercora.mobile";
 
 const copy = {
   en: {
@@ -17,6 +19,12 @@ const copy = {
     hero: "Cercora brings your tontine online—making contributions clear, payouts organized, and every member accountable.",
     start: "Start your tontine",
     explore: "See how it works",
+    appStoreLabel: "Download Cercora on the App Store",
+    appStoreEyebrow: "Download on the",
+    appStoreName: "App Store",
+    playStoreLabel: "Join the Cercora public test on Google Play",
+    playStoreEyebrow: "Public test on",
+    playStoreName: "Google Play",
     noCard: "Free to create an account · Set up in minutes",
     mockTitle: "Community Circle",
     active: "Active",
@@ -69,6 +77,12 @@ const copy = {
     hero: "Cercora met votre tontine en ligne : des cotisations claires, des paiements organisés et des membres responsables.",
     start: "Créer ma tontine",
     explore: "Découvrir le fonctionnement",
+    appStoreLabel: "Télécharger Cercora dans l’App Store",
+    appStoreEyebrow: "Télécharger dans",
+    appStoreName: "l’App Store",
+    playStoreLabel: "Rejoindre le test public Cercora sur Google Play",
+    playStoreEyebrow: "Test public sur",
+    playStoreName: "Google Play",
     noCard: "Compte gratuit · Configuration en quelques minutes",
     mockTitle: "Cercle Communauté",
     active: "Actif",
@@ -176,12 +190,45 @@ export default function HomePage() {
               {c.titleA}<br /><span className="bg-[linear-gradient(105deg,#15b9d2_5%,#2c66d7_48%,#8a37c9_92%)] bg-clip-text text-transparent">{c.titleB}</span>
             </h1>
             <p className="mt-7 max-w-xl text-lg leading-8 text-[#5d6c8f] sm:text-xl">{c.hero}</p>
-            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+            <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <Link href="/register" className="group inline-flex items-center justify-center gap-2 rounded-full bg-[linear-gradient(135deg,#24bfd5,#2c66d7_55%,#8438c7)] px-7 py-4 text-sm font-bold text-white shadow-[0_18px_36px_rgba(44,102,215,0.25)] transition hover:-translate-y-1 hover:shadow-[0_22px_44px_rgba(44,102,215,0.32)]">
                 {c.start}<span className="transition group-hover:translate-x-1">→</span>
               </Link>
               <a href="#how-it-works" className="inline-flex items-center justify-center gap-2 rounded-full border border-[#ccd9ec] bg-white/75 px-7 py-4 text-sm font-bold text-[#273a62] transition hover:border-[#8da8d6] hover:bg-white">
                 <span className="grid h-6 w-6 place-items-center rounded-full bg-[#e9f2ff] text-[10px] text-[#2c66d7]">▶</span>{c.explore}
+              </a>
+              <a
+                href={APP_STORE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={c.appStoreLabel}
+                className="inline-flex min-h-14 items-center justify-center gap-3 rounded-2xl bg-black px-5 py-2.5 text-left text-white shadow-[0_14px_30px_rgba(23,38,80,0.18)] transition hover:-translate-y-1 hover:bg-[#172650]"
+              >
+                <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor" className="h-7 w-7 shrink-0">
+                  <path d="M17.05 12.54c-.03-3.05 2.49-4.53 2.61-4.6a5.59 5.59 0 0 0-4.4-2.38c-1.85-.2-3.65 1.11-4.59 1.11-.96 0-2.41-1.09-3.98-1.05a5.84 5.84 0 0 0-4.92 3c-2.13 3.69-.54 9.12 1.5 12.1 1.02 1.45 2.2 3.08 3.77 3.02 1.53-.06 2.1-.97 3.95-.97 1.83 0 2.37.97 3.96.93 1.65-.02 2.69-1.46 3.67-2.92a12.1 12.1 0 0 0 1.68-3.42 5.27 5.27 0 0 1-3.25-4.82ZM14.05 3.6A5.36 5.36 0 0 0 15.28 0a5.47 5.47 0 0 0-3.53 1.71 5.11 5.11 0 0 0-1.27 3.45 4.52 4.52 0 0 0 3.57-1.56Z" />
+                </svg>
+                <span className="leading-none">
+                  <span className="block text-[10px] font-medium tracking-wide text-white/80">{c.appStoreEyebrow}</span>
+                  <span className="mt-0.5 block text-lg font-semibold tracking-tight">{c.appStoreName}</span>
+                </span>
+              </a>
+              <a
+                href={PLAY_STORE_TEST_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={c.playStoreLabel}
+                className="inline-flex min-h-14 items-center justify-center gap-3 rounded-2xl bg-black px-5 py-2.5 text-left text-white shadow-[0_14px_30px_rgba(23,38,80,0.18)] transition hover:-translate-y-1 hover:bg-[#172650]"
+              >
+                <svg aria-hidden="true" viewBox="0 0 24 24" className="h-7 w-7 shrink-0">
+                  <path fill="#00d1ff" d="M3.7 2.2 14.2 12 3.7 21.8a2.3 2.3 0 0 1-.7-1.7V3.9c0-.65.27-1.25.7-1.7Z" />
+                  <path fill="#00ef76" d="m3.7 2.2.03-.03A2.25 2.25 0 0 1 6.4 1.8l12.2 6.9-4.4 3.3L3.7 2.2Z" />
+                  <path fill="#ffdd00" d="m14.2 12 4.4 3.3-12.2 6.9a2.25 2.25 0 0 1-2.67-.37l-.03-.03L14.2 12Z" />
+                  <path fill="#ff3a44" d="m18.6 8.7 1.3.73a2.25 2.25 0 0 1 0 3.14l-1.3.73-4.4-3.3 4.4-3.3Z" />
+                </svg>
+                <span className="leading-none">
+                  <span className="block text-[10px] font-medium tracking-wide text-white/80">{c.playStoreEyebrow}</span>
+                  <span className="mt-0.5 block text-lg font-semibold tracking-tight">{c.playStoreName}</span>
+                </span>
               </a>
             </div>
             <p className="mt-5 flex items-center gap-2 text-xs font-medium text-[#7b89a2]"><span className="text-emerald-500">✓</span>{c.noCard}</p>
