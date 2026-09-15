@@ -1,12 +1,8 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
 import axios from "axios";
-import { Link } from "expo-router";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   View,
@@ -17,19 +13,10 @@ import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { BrandColors, BrandShadow } from "@/constants/brand";
 import { api } from "@/hooks/api-client";
-import {
-  disableNativePush,
-  enableNativePush,
-  getNativePushStatus,
-  NATIVE_PUSH_SUPPORTED,
-} from "@/hooks/native-push";
 import { useAuth } from "@/hooks/use-auth";
 import { getErrorMessage } from "@/hooks/error-utils";
 import { useResponsiveLayout } from "@/hooks/use-responsive-layout";
 import { getCurrentLocale, useI18n } from "@/hooks/use-i18n";
-
-const WEB_PUSH_VAPID_PUBLIC_KEY =
-  process.env.EXPO_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY ?? "";
 
 type Reminder = {
   cycle_id: number;
@@ -40,98 +27,6 @@ type Reminder = {
   hours_remaining: number;
   is_overdue: boolean;
   hours_overdue: number;
-};
-
-type AdminOverview = {
-  users: {
-    total: number;
-    new_last_7_days: number;
-    new_last_30_days: number;
-    global_admins: number;
-  };
-  tontines: {
-    total: number;
-    by_status: {
-      draft: number;
-      active: number;
-      completed: number;
-    };
-    created_last_7_days: number;
-    created_last_30_days: number;
-  };
-  financial: {
-    contributions_last_30_days: number;
-    contribution_volume_last_30_days: number;
-    payout_volume_last_30_days: number;
-    open_debts_count: number;
-    open_debts_amount: number;
-    repaid_debts_count: number;
-    repaid_debts_amount: number;
-  };
-  risk: {
-    cycles_blocked_count: number;
-    members_with_open_debt: number;
-    repeated_defaulters: number;
-  };
-};
-
-type AdminTontineStats = {
-  total: number;
-  by_status: {
-    draft: number;
-    active: number;
-    completed: number;
-  };
-  created_last_7_days: number;
-  created_last_30_days: number;
-};
-
-type AdminTontineDirectoryItem = {
-  id: number;
-  name: string;
-  status: string;
-  current_cycle: number;
-  total_cycles: number;
-  contribution_amount: number;
-  created_at: string;
-  owner_id: number;
-  owner_name: string;
-  active_members_count: number;
-};
-
-type AdminTontineDirectory = {
-  count: number;
-  items: AdminTontineDirectoryItem[];
-};
-
-type AdminReminderPreview = {
-  window_start: string;
-  window_end: string;
-  lookahead_hours: number;
-  cycles_count: number;
-  targets_count: number;
-  cycles: Array<{
-    cycle_id: number;
-    tontine_id: number;
-    tontine_name: string;
-    cycle_number: number;
-    deadline: string;
-    targets_count: number;
-    targets: Array<{
-      membership_id: number;
-      user_id: number;
-      name: string;
-      phone: string;
-    }>;
-  }>;
-};
-
-type AdminReminderSendResult = {
-  sms_configured: boolean;
-  cycles_checked: number;
-  cycles_marked: number;
-  sms_sent: number;
-  sms_failed: number;
 };
 
 function formatShortDate(value: string) {
@@ -146,19 +41,6 @@ function formatShortDate(value: string) {
   }).format(d);
 }
 
-function formatAmount(value: number) {
-  return new Intl.NumberFormat(getCurrentLocale(), {
-    maximumFractionDigits: 2,
-  }).format(value);
-}
-
-function formatCompactNumber(value: number) {
-  return new Intl.NumberFormat(getCurrentLocale(), {
-    notation: "compact",
-    maximumFractionDigits: 1,
-  }).format(value);
-}
-
 function isMissingReminderFeedError(error: unknown) {
   return (
     (axios.isAxiosError(error) && error.response?.status === 404) ||
@@ -171,7 +53,6 @@ export default function Dashboard() {
   const { user } = useAuth();
   const { t } = useI18n();
   const layout = useResponsiveLayout();
-  const nativePushSupported = NATIVE_PUSH_SUPPORTED;
 
   const [isChecking, setIsChecking] = useState(true);
   const [isHealthy, setIsHealthy] = useState<boolean | null>(null);
@@ -179,40 +60,6 @@ export default function Dashboard() {
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [remindersError, setRemindersError] = useState<string | null>(null);
   const [remindersLoading, setRemindersLoading] = useState(true);
-  const [adminOverview, setAdminOverview] = useState<AdminOverview | null>(null);
-  const [adminTontineStats, setAdminTontineStats] = useState<AdminTontineStats | null>(
-    null
-  );
-  const [adminTontineDirectory, setAdminTontineDirectory] =
-    useState<AdminTontineDirectory | null>(null);
-  const [adminReminderPreview, setAdminReminderPreview] =
-    useState<AdminReminderPreview | null>(null);
-  const [adminReminderResult, setAdminReminderResult] =
-    useState<AdminReminderSendResult | null>(null);
-  const [adminLoading, setAdminLoading] = useState(false);
-  const [adminActionBusy, setAdminActionBusy] = useState(false);
-  const [adminError, setAdminError] = useState<string | null>(null);
-
-  const webPushSupported = useMemo(() => {
-    if (Platform.OS !== "web") return false;
-    const w = globalThis as any;
-    const hasNotification = typeof w.Notification !== "undefined";
-    const hasServiceWorker = typeof w.navigator?.serviceWorker !== "undefined";
-    const hasPushManager = typeof w.PushManager !== "undefined";
-    const isSecure = Boolean(w.isSecureContext);
-    return hasNotification && hasServiceWorker && hasPushManager && isSecure;
-  }, []);
-
-  const [permission, setPermission] = useState<
-    "unsupported" | NotificationPermission
-  >(() => {
-    if (!webPushSupported) return "unsupported";
-    return (globalThis as any).Notification.permission as NotificationPermission;
-  });
-  const [pushSubscribed, setPushSubscribed] = useState(false);
-  const [pushBusy, setPushBusy] = useState(false);
-  const [pushError, setPushError] = useState<string | null>(null);
-
   const checkBackend = useCallback(async () => {
     setIsChecking(true);
     setBackendError(null);
@@ -248,90 +95,12 @@ export default function Dashboard() {
     }
   }, []);
 
-  const loadAdminData = useCallback(async () => {
-    if (!user?.is_global_admin) {
-      setAdminOverview(null);
-      setAdminTontineStats(null);
-      setAdminTontineDirectory(null);
-      setAdminReminderPreview(null);
-      setAdminReminderResult(null);
-      setAdminError(null);
-      setAdminLoading(false);
-      return;
-    }
-
-    setAdminLoading(true);
-    setAdminError(null);
-    try {
-      const [overviewRes, tontinesRes, previewRes] = await Promise.all([
-        api.get<AdminOverview>("/admin/stats/overview"),
-        api.get<AdminTontineStats>("/admin/stats/tontines"),
-        api.get<AdminReminderPreview>(
-          "/admin/stats/reminders/pre-deadline/preview"
-        ),
-      ]);
-      setAdminOverview(overviewRes.data);
-      setAdminTontineStats(tontinesRes.data);
-      setAdminReminderPreview(previewRes.data);
-      try {
-        const directoryRes = await api.get<AdminTontineDirectory>("/admin/stats/tontines/list");
-        setAdminTontineDirectory(directoryRes.data);
-      } catch {
-        setAdminTontineDirectory(null);
-      }
-    } catch (e) {
-      setAdminError(getErrorMessage(e));
-      setAdminOverview(null);
-      setAdminTontineStats(null);
-      setAdminTontineDirectory(null);
-      setAdminReminderPreview(null);
-    } finally {
-      setAdminLoading(false);
-    }
-  }, [user?.is_global_admin]);
-
   useFocusEffect(
     useCallback(() => {
       void checkBackend();
       void loadReminders();
-      void loadAdminData();
-    }, [checkBackend, loadAdminData, loadReminders])
+    }, [checkBackend, loadReminders])
   );
-
-  useEffect(() => {
-    if (nativePushSupported || !webPushSupported) return;
-    setPermission(
-      (globalThis as any).Notification.permission as NotificationPermission
-    );
-  }, [nativePushSupported, webPushSupported]);
-
-  const refreshPushSubscriptionState = useCallback(async () => {
-    if (nativePushSupported) {
-      try {
-        const status = await getNativePushStatus();
-        setPushSubscribed(status.subscribed);
-      } catch {
-        setPushSubscribed(false);
-      }
-      return;
-    }
-    if (!webPushSupported) return;
-    try {
-      const reg = await (globalThis as any).navigator.serviceWorker.getRegistration();
-      if (!reg) {
-        setPushSubscribed(false);
-        return;
-      }
-      const sub = await reg.pushManager.getSubscription();
-      setPushSubscribed(Boolean(sub));
-    } catch {
-      setPushSubscribed(false);
-    }
-  }, [nativePushSupported, webPushSupported]);
-
-  useEffect(() => {
-    void refreshPushSubscriptionState();
-  }, [refreshPushSubscriptionState]);
 
   const nextReminder = reminders[0] ?? null;
   const overdueCount = reminders.filter((reminder) => reminder.is_overdue).length;
@@ -367,108 +136,6 @@ export default function Dashboard() {
       return t("{{count}}h left", { count: reminder.hours_remaining });
     }
     return t("Due now");
-  }
-
-  function urlBase64ToUint8Array(base64String: string) {
-    const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-    const base64 = (base64String + padding)
-      .replace(/-/g, "+")
-      .replace(/_/g, "/");
-    const rawData = (globalThis as any).atob(base64);
-    const outputArray = new Uint8Array(rawData.length);
-    for (let i = 0; i < rawData.length; ++i) {
-      outputArray[i] = rawData.charCodeAt(i);
-    }
-    return outputArray;
-  }
-
-  async function enablePush() {
-    setPushBusy(true);
-    setPushError(null);
-    try {
-      if (nativePushSupported) {
-        const result = await enableNativePush();
-        setPushSubscribed(result.subscribed);
-        if (result.message) {
-          setPushError(t(result.message));
-        }
-        return;
-      }
-
-      if (!webPushSupported) return;
-      const next = (await (globalThis as any).Notification.requestPermission()) as NotificationPermission;
-      setPermission(next);
-      if (next !== "granted") {
-        setPushError("Notification permission not granted.");
-        return;
-      }
-      if (!WEB_PUSH_VAPID_PUBLIC_KEY) {
-        setPushError("Missing EXPO_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY");
-        return;
-      }
-      const navigatorAny = (globalThis as any).navigator;
-      const reg = await navigatorAny.serviceWorker.register("/service-worker.js");
-      await navigatorAny.serviceWorker.ready;
-      let sub = await reg.pushManager.getSubscription();
-      if (!sub) {
-        sub = await reg.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(WEB_PUSH_VAPID_PUBLIC_KEY),
-        });
-      }
-      await api.post("/push/subscribe", sub.toJSON());
-      await AsyncStorage.setItem("push.web.enabled", "true");
-      await refreshPushSubscriptionState();
-    } catch (e) {
-      setPushError(getErrorMessage(e));
-    } finally {
-      setPushBusy(false);
-    }
-  }
-
-  async function disablePush() {
-    setPushBusy(true);
-    setPushError(null);
-    try {
-      if (nativePushSupported) {
-        await disableNativePush();
-        setPushSubscribed(false);
-        return;
-      }
-
-      if (!webPushSupported) return;
-      const reg = await (globalThis as any).navigator.serviceWorker.getRegistration();
-      const sub = reg ? await reg.pushManager.getSubscription() : null;
-      if (!sub) {
-        setPushSubscribed(false);
-        return;
-      }
-      const endpoint = sub.endpoint;
-      await sub.unsubscribe();
-      await api.post("/push/unsubscribe", { endpoint });
-      await AsyncStorage.removeItem("push.web.enabled");
-      await refreshPushSubscriptionState();
-    } catch (e) {
-      setPushError(getErrorMessage(e));
-    } finally {
-      setPushBusy(false);
-    }
-  }
-
-  async function sendAdminReminders() {
-    setAdminActionBusy(true);
-    setAdminError(null);
-    try {
-      const res = await api.post<AdminReminderSendResult>(
-        "/admin/stats/reminders/pre-deadline/send"
-      );
-      setAdminReminderResult(res.data);
-      await loadAdminData();
-    } catch (e) {
-      setAdminError(getErrorMessage(e));
-    } finally {
-      setAdminActionBusy(false);
-    }
   }
 
   return (
@@ -513,20 +180,6 @@ export default function Dashboard() {
             </View>
             <View style={styles.heroStatCard}>
               <ThemedText style={styles.heroStatValue}>
-                {nativePushSupported
-                  ? pushSubscribed
-                    ? "On"
-                    : "Off"
-                  : permission === "unsupported"
-                  ? "Web only"
-                  : pushSubscribed
-                    ? "On"
-                    : "Off"}
-              </ThemedText>
-              <ThemedText style={styles.heroStatLabel}>Push status</ThemedText>
-            </View>
-            <View style={styles.heroStatCard}>
-              <ThemedText style={styles.heroStatValue}>
                 {nextReminder ? getReminderUrgencyText(nextReminder) : "Clear"}
               </ThemedText>
               <ThemedText style={styles.heroStatLabel}>Next deadline</ThemedText>
@@ -535,39 +188,6 @@ export default function Dashboard() {
         </View>
 
         <View style={[styles.tabletSectionGrid, layout.isTablet ? styles.tabletSectionGridOn : null]}>
-          <View style={[styles.section, layout.isTablet ? styles.tabletSectionColumn : null]}>
-            <View style={styles.card}>
-            <View style={styles.cardTopRow}>
-              <View>
-                <ThemedText style={styles.cardLabel}>Push notifications</ThemedText>
-                <ThemedText style={styles.supportText}>
-                  {nativePushSupported
-                    ? t("Native mobile delivery")
-                    : webPushSupported
-                    ? t("Permission: {{permission}}{{subscription}}", {
-                        permission,
-                        subscription: pushSubscribed ? ` - ${t("subscribed")}` : "",
-                      })
-                    : t("Available on secure web only.")}
-                </ThemedText>
-              </View>
-              <Pressable
-                style={styles.actionButtonGhost}
-                disabled={pushBusy || (!nativePushSupported && !webPushSupported)}
-                onPress={() =>
-                  void (pushSubscribed ? disablePush() : enablePush())
-                }
-              >
-                <ThemedText style={styles.actionButtonGhostText}>
-                  {pushBusy ? "..." : pushSubscribed ? "Disable" : "Enable"}
-                </ThemedText>
-              </Pressable>
-            </View>
-
-            {pushError ? <ThemedText style={styles.errorText}>{pushError}</ThemedText> : null}
-            </View>
-          </View>
-
           <View style={[styles.section, layout.isTablet ? styles.tabletSectionColumn : null]}>
             <View style={styles.card}>
             {remindersLoading ? (
@@ -624,254 +244,6 @@ export default function Dashboard() {
           </View>
         </View>
 
-        {user?.is_global_admin ? (
-          <View style={styles.section}>
-            <View style={[styles.card, styles.adminCard]}>
-              <View style={styles.cardTopRow}>
-                <View>
-                  <ThemedText style={styles.cardLabel}>Global admin session</ThemedText>
-                  <ThemedText style={styles.supportText}>
-                    Platform-wide risk, growth, and reminder controls
-                  </ThemedText>
-                </View>
-                <View style={[styles.statusBadge, styles.statusBadgeSuccess]}>
-                  <ThemedText
-                    style={[styles.statusBadgeText, styles.statusBadgeTextSuccess]}
-                  >
-                    Active
-                  </ThemedText>
-                </View>
-              </View>
-
-              {adminLoading ? (
-                <View style={styles.loadingRow}>
-                  <ActivityIndicator />
-                  <ThemedText style={styles.supportText}>Loading admin data...</ThemedText>
-                </View>
-              ) : adminError ? (
-                <ThemedText style={styles.errorText}>{adminError}</ThemedText>
-              ) : adminOverview ? (
-                <>
-                  <View style={styles.metricGrid}>
-                    <View style={styles.metricPanel}>
-                      <ThemedText style={styles.metricValue}>
-                        {formatCompactNumber(adminOverview.users.total)}
-                      </ThemedText>
-                      <ThemedText style={styles.metricLabel}>Users</ThemedText>
-                    </View>
-                    <View style={styles.metricPanel}>
-                      <ThemedText style={styles.metricValue}>
-                        {formatCompactNumber(adminOverview.tontines.total)}
-                      </ThemedText>
-                      <ThemedText style={styles.metricLabel}>Tontines</ThemedText>
-                    </View>
-                    <View style={styles.metricPanel}>
-                      <ThemedText style={styles.metricValue}>
-                        {formatCompactNumber(adminOverview.financial.open_debts_count)}
-                      </ThemedText>
-                      <ThemedText style={styles.metricLabel}>Open debts</ThemedText>
-                    </View>
-                    <View style={styles.metricPanel}>
-                      <ThemedText style={styles.metricValue}>
-                        {formatCompactNumber(adminOverview.risk.cycles_blocked_count)}
-                      </ThemedText>
-                      <ThemedText style={styles.metricLabel}>Blocked cycles</ThemedText>
-                    </View>
-                  </View>
-
-                  <View style={styles.adminFacts}>
-                    <ThemedText style={styles.supportText}>
-                      {t("New users 7d: {{count}}", { count: adminOverview.users.new_last_7_days })}
-                    </ThemedText>
-                    <ThemedText style={styles.supportText}>
-                      {t("New tontines 7d: {{count}}", {
-                        count: adminOverview.tontines.created_last_7_days,
-                      })}
-                    </ThemedText>
-                    <ThemedText style={styles.supportText}>
-                      {t("Contribution volume 30d: {{amount}}", {
-                        amount: formatAmount(adminOverview.financial.contribution_volume_last_30_days),
-                      })}
-                    </ThemedText>
-                    <ThemedText style={styles.supportText}>
-                      {t("Payout volume 30d: {{amount}}", {
-                        amount: formatAmount(adminOverview.financial.payout_volume_last_30_days),
-                      })}
-                    </ThemedText>
-                  </View>
-
-                  <View style={styles.actionsRow}>
-                    <Link href="/(tabs)/tontines" asChild>
-                      <Pressable style={styles.actionButtonGhost}>
-                        <ThemedText style={styles.actionButtonGhostText}>
-                          {t("Open all groups")}
-                        </ThemedText>
-                      </Pressable>
-                    </Link>
-                  </View>
-
-                  {adminTontineStats ? (
-                    <View style={styles.subsection}>
-                      <ThemedText style={styles.subsectionTitle}>Tontine status mix</ThemedText>
-                      <View style={styles.metricGrid}>
-                        <View style={styles.metricPanel}>
-                          <ThemedText style={styles.metricValue}>
-                            {adminTontineStats.by_status.draft}
-                          </ThemedText>
-                          <ThemedText style={styles.metricLabel}>Draft</ThemedText>
-                        </View>
-                        <View style={styles.metricPanel}>
-                          <ThemedText style={styles.metricValue}>
-                            {adminTontineStats.by_status.active}
-                          </ThemedText>
-                          <ThemedText style={styles.metricLabel}>Active</ThemedText>
-                        </View>
-                        <View style={styles.metricPanel}>
-                          <ThemedText style={styles.metricValue}>
-                            {adminTontineStats.by_status.completed}
-                          </ThemedText>
-                          <ThemedText style={styles.metricLabel}>Completed</ThemedText>
-                        </View>
-                      </View>
-                    </View>
-                  ) : null}
-
-                  <View style={styles.subsection}>
-                    <ThemedText style={styles.subsectionTitle}>Tontine directory</ThemedText>
-                    <ThemedText style={styles.supportText}>
-                      Browse and open user tontine groups from the admin dashboard
-                    </ThemedText>
-                    {adminTontineDirectory?.items?.length ? (
-                      adminTontineDirectory.items.slice(0, 6).map((item) => (
-                        <View key={item.id} style={styles.previewRow}>
-                          <View style={styles.cardTopRow}>
-                            <View style={styles.directoryText}>
-                              <ThemedText style={styles.previewTitle}>{item.name}</ThemedText>
-                              <ThemedText style={styles.supportText}>
-                                {t("Owner")}: {item.owner_name}
-                              </ThemedText>
-                              <ThemedText style={styles.supportText}>
-                                {t("Members")}: {item.active_members_count} | {t("Created")}: {formatShortDate(item.created_at)}
-                              </ThemedText>
-                              <ThemedText style={styles.supportText}>
-                                {t("Status")}: {item.status} | {t("Cycle")}: {item.current_cycle}/{item.total_cycles}
-                              </ThemedText>
-                            </View>
-                            <Link
-                              href={{
-                                pathname: "/(tabs)/tontines/[tontineId]",
-                                params: { tontineId: String(item.id) },
-                              }}
-                              asChild
-                            >
-                              <Pressable style={styles.actionButtonGhost}>
-                                <ThemedText style={styles.actionButtonGhostText}>
-                                  {t("Open group")}
-                                </ThemedText>
-                              </Pressable>
-                            </Link>
-                          </View>
-                        </View>
-                      ))
-                    ) : (
-                      <ThemedText style={styles.supportText}>No tontine groups available.</ThemedText>
-                    )}
-                  </View>
-
-                  <View style={styles.subsection}>
-                    <View style={styles.cardTopRow}>
-                      <View>
-                        <ThemedText style={styles.subsectionTitle}>Reminder operations</ThemedText>
-                        <ThemedText style={styles.supportText}>
-                          Preview and trigger pre-deadline SMS from mobile
-                        </ThemedText>
-                      </View>
-                      <View style={styles.actionsRow}>
-                        <Pressable
-                          style={styles.actionButtonGhost}
-                          disabled={adminLoading || adminActionBusy}
-                          onPress={() => void loadAdminData()}
-                        >
-                          <ThemedText style={styles.actionButtonGhostText}>
-                            {adminLoading ? "..." : "Refresh"}
-                          </ThemedText>
-                        </Pressable>
-                        <Pressable
-                          style={styles.actionButtonPrimary}
-                          disabled={adminActionBusy}
-                          onPress={() => void sendAdminReminders()}
-                        >
-                          <ThemedText style={styles.actionButtonPrimaryText}>
-                            {adminActionBusy ? "Sending..." : "Send now"}
-                          </ThemedText>
-                        </Pressable>
-                      </View>
-                    </View>
-
-                    {adminReminderPreview ? (
-                      <>
-                        <View style={styles.metricGrid}>
-                          <View style={styles.metricPanel}>
-                            <ThemedText style={styles.metricValue}>
-                              {adminReminderPreview.cycles_count}
-                            </ThemedText>
-                            <ThemedText style={styles.metricLabel}>Cycles in window</ThemedText>
-                          </View>
-                          <View style={styles.metricPanel}>
-                            <ThemedText style={styles.metricValue}>
-                              {adminReminderPreview.targets_count}
-                            </ThemedText>
-                            <ThemedText style={styles.metricLabel}>Targets</ThemedText>
-                          </View>
-                          <View style={styles.metricPanel}>
-                            <ThemedText style={styles.metricValue}>
-                              {adminReminderPreview.lookahead_hours}h
-                            </ThemedText>
-                            <ThemedText style={styles.metricLabel}>Lookahead</ThemedText>
-                          </View>
-                        </View>
-
-                        {adminReminderPreview.cycles.slice(0, 3).map((cycle) => (
-                          <View key={cycle.cycle_id} style={styles.previewRow}>
-                            <ThemedText style={styles.previewTitle}>
-                              {cycle.tontine_name} - Cycle {cycle.cycle_number}
-                            </ThemedText>
-                            <ThemedText style={styles.supportText}>
-                              Due {formatShortDate(cycle.deadline)}
-                            </ThemedText>
-                            <ThemedText style={styles.supportText}>
-                              {cycle.targets_count === 1
-                                ? t("1 recipient")
-                                : t("{{count}} recipients", { count: cycle.targets_count })}
-                            </ThemedText>
-                          </View>
-                        ))}
-                      </>
-                    ) : (
-                      <ThemedText style={styles.supportText}>
-                        No reminder preview available.
-                      </ThemedText>
-                    )}
-
-                    {adminReminderResult ? (
-                      <View style={styles.resultStrip}>
-                        <ThemedText style={styles.resultText}>
-                          {t("Last send: {{sent}} sent, {{failed}} failed, {{marked}} cycle(s) marked.", {
-                            sent: adminReminderResult.sms_sent,
-                            failed: adminReminderResult.sms_failed,
-                            marked: adminReminderResult.cycles_marked,
-                          })}
-                        </ThemedText>
-                      </View>
-                    ) : null}
-                  </View>
-                </>
-              ) : (
-                <ThemedText style={styles.supportText}>No admin overview available.</ThemedText>
-              )}
-            </View>
-          </View>
-        ) : null}
         </View>
       </ScrollView>
     </ThemedView>

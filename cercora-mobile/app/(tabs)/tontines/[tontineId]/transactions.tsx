@@ -46,6 +46,8 @@ type TransactionSummary = {
   last_transaction_date: string | null;
 };
 
+type TransactionFilter = "all" | "contribution" | "payout" | "fee" | "other";
+
 function formatAmount(value: string | number) {
   const n = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(n)) return String(value);
@@ -115,6 +117,7 @@ export default function TransactionsScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [filter, setFilter] = useState<TransactionFilter>("all");
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -178,6 +181,23 @@ export default function TransactionsScreen() {
   const contributionTotal = Number(summary?.total_contributions ?? 0);
   const payoutTotal = Number(summary?.total_payouts ?? 0);
   const balanceTone = Number(summary?.balance ?? 0) >= 0 ? styles.balanceGood : styles.balanceWarn;
+  const filteredItems = useMemo(() => {
+    if (filter === "all") return items;
+    if (filter === "other") {
+      return items.filter(
+        (item) => !["contribution", "payout", "fee"].includes(item.entry_type.toLowerCase())
+      );
+    }
+    return items.filter((item) => item.entry_type.toLowerCase() === filter);
+  }, [filter, items]);
+
+  const filters: { key: TransactionFilter; label: string }[] = [
+    { key: "all", label: t("All") },
+    { key: "contribution", label: t("Contributions") },
+    { key: "payout", label: t("Payouts") },
+    { key: "fee", label: t("Fees") },
+    { key: "other", label: t("Other") },
+  ];
 
   return (
     <ThemedView style={styles.container} lightColor={BrandColors.canvas}>
@@ -193,87 +213,42 @@ export default function TransactionsScreen() {
           contentContainerStyle={styles.content}
           refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />}
         >
-          <View style={styles.pageHeader}>
-            <ThemedText style={styles.pageTitle}>{t("Transaction ledger")}</ThemedText>
-            <ThemedText style={styles.pageSubtitle}>
-              {t("This view stays linked to the backend ledger routes while matching the newer tontine workspace structure.")}
-            </ThemedText>
-          </View>
-
-          <View style={styles.hero}>
-            <View style={styles.heroGlowTop} />
-            <View style={styles.heroGlowBottom} />
-
-            <ThemedText style={styles.eyebrow}>{t("Ledger")}</ThemedText>
-            <ThemedText style={styles.heroTitle}>{t("Transaction flow")}</ThemedText>
-            <ThemedText style={styles.heroSubtitle}>
-              {t("Follow every contribution, payout, fee, and adjustment moving through this tontine.")}
-            </ThemedText>
-
-            <View style={styles.balanceCard}>
-              <ThemedText style={styles.balanceLabel}>{t("Current balance")}</ThemedText>
-              <ThemedText style={[styles.balanceValue, balanceTone]}>
-                {formatAmount(summary?.balance ?? 0)}
-              </ThemedText>
+          <View style={styles.summaryCard}>
+            <View style={styles.summaryHeader}>
+              <View style={styles.summaryHeading}>
+                <ThemedText style={styles.summaryLabel}>{t("Current balance")}</ThemedText>
+                <ThemedText style={[styles.balanceValue, balanceTone]}>
+                  {formatAmount(summary?.balance ?? 0)}
+                </ThemedText>
+              </View>
+              <View style={styles.entryBadge}>
+                <ThemedText style={styles.entryBadgeText}>
+                  {t("{{count}} entries", { count: summary?.transaction_count ?? 0 })}
+                </ThemedText>
+              </View>
             </View>
 
-            <View style={styles.heroStats}>
-              <View style={styles.heroStat}>
-                <ThemedText style={styles.heroStatValue}>{summary?.transaction_count ?? 0}</ThemedText>
-                <ThemedText style={styles.heroStatLabel}>{t("Entries")}</ThemedText>
+            <View style={styles.summaryMetrics}>
+              <View style={styles.summaryMetric}>
+                <ThemedText style={styles.summaryMetricValue}>{formatAmount(contributionTotal)}</ThemedText>
+                <ThemedText style={styles.summaryMetricLabel}>{t("Contributions")}</ThemedText>
               </View>
-              <View style={styles.heroStat}>
-                <ThemedText style={styles.heroStatValue}>{formatAmount(contributionTotal)}</ThemedText>
-                <ThemedText style={styles.heroStatLabel}>{t("Contributions")}</ThemedText>
+              <View style={styles.summaryDivider} />
+              <View style={styles.summaryMetric}>
+                <ThemedText style={styles.summaryMetricValue}>{formatAmount(payoutTotal)}</ThemedText>
+                <ThemedText style={styles.summaryMetricLabel}>{t("Payouts")}</ThemedText>
               </View>
-              <View style={styles.heroStat}>
-                <ThemedText style={styles.heroStatValue}>{formatAmount(payoutTotal)}</ThemedText>
-                <ThemedText style={styles.heroStatLabel}>{t("Payouts")}</ThemedText>
+              <View style={styles.summaryDivider} />
+              <View style={styles.summaryMetric}>
+                <ThemedText style={styles.summaryMetricValue}>
+                  {formatAmount(summary?.total_fees ?? 0)}
+                </ThemedText>
+                <ThemedText style={styles.summaryMetricLabel}>{t("Fees")}</ThemedText>
               </View>
             </View>
           </View>
 
           {error ? <ThemedText style={styles.error}>{error}</ThemedText> : null}
-
-          <View style={styles.card}>
-            <ThemedText type="subtitle">{t("Ledger pulse")}</ThemedText>
-            <View style={styles.metricGrid}>
-              <View style={styles.metricTile}>
-                <ThemedText style={styles.metricValue}>
-                  {formatAmount(summary?.total_fees ?? 0)}
-                </ThemedText>
-                <ThemedText style={styles.metricLabel}>{t("Fees")}</ThemedText>
-              </View>
-              <View style={styles.metricTile}>
-                <ThemedText style={styles.metricValue}>
-                  {summary?.last_transaction_date
-                    ? formatShortDate(summary.last_transaction_date)
-                    : t("None")}
-                </ThemedText>
-                <ThemedText style={styles.metricLabel}>{t("Last entry")}</ThemedText>
-              </View>
-            </View>
-            <View style={styles.metricGrid}>
-              <View style={styles.metricTileCompact}>
-                <ThemedText style={styles.metricValueCompact}>
-                  {formatAmount(summary?.total_contributions ?? 0)}
-                </ThemedText>
-                <ThemedText style={styles.metricLabel}>{t("Contribution volume")}</ThemedText>
-              </View>
-              <View style={styles.metricTileCompact}>
-                <ThemedText style={styles.metricValueCompact}>
-                  {formatAmount(summary?.total_payouts ?? 0)}
-                </ThemedText>
-                <ThemedText style={styles.metricLabel}>{t("Payout volume")}</ThemedText>
-              </View>
-              <View style={styles.metricTileCompact}>
-                <ThemedText style={styles.metricValueCompact}>
-                  {formatAmount(summary?.total_fees ?? 0)}
-                </ThemedText>
-                <ThemedText style={styles.metricLabel}>{t("Fees")}</ThemedText>
-              </View>
-            </View>
-          </View>
 
           <View style={styles.card}>
             <View style={styles.cardHeader}>
@@ -288,19 +263,42 @@ export default function TransactionsScreen() {
                     {isExporting ? t("transactions.exporting") : t("transactions.export_csv")}
                   </ThemedText>
                 </Pressable>
-                <ThemedText style={styles.supportText}>{t("{{count}} transactions", { count: items.length })}</ThemedText>
+                <ThemedText style={styles.supportText}>
+                  {t("{{count}} transactions", { count: filteredItems.length })}
+                </ThemedText>
               </View>
             </View>
 
-            {items.length === 0 ? (
+            <View style={styles.filterRow} accessibilityRole="tablist">
+              {filters.map((option) => {
+                const isActive = option.key === filter;
+                return (
+                  <Pressable
+                    key={option.key}
+                    accessibilityRole="tab"
+                    accessibilityState={{ selected: isActive }}
+                    onPress={() => setFilter(option.key)}
+                    style={[styles.filterChip, isActive ? styles.filterChipActive : null]}
+                  >
+                    <ThemedText
+                      style={[styles.filterChipText, isActive ? styles.filterChipTextActive : null]}
+                    >
+                      {option.label}
+                    </ThemedText>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            {filteredItems.length === 0 ? (
               <View style={styles.emptyState}>
-                <ThemedText style={styles.emptyTitle}>{t("No transactions yet")}</ThemedText>
+                <ThemedText style={styles.emptyTitle}>{t("No matching transactions")}</ThemedText>
                 <ThemedText style={styles.supportText}>
-                  {t("Ledger activity will appear here as contributions, payouts, and fees are recorded.")}
+                  {t("Try another filter or check back when new ledger activity is recorded.")}
                 </ThemedText>
               </View>
             ) : (
-              items.map((item) => {
+              filteredItems.map((item) => {
                 const meta = getTypeMeta(item.entry_type);
                 return (
                   <View key={item.id} style={styles.transactionCard}>
@@ -370,117 +368,77 @@ const styles = StyleSheet.create({
     paddingBottom: 120,
     gap: 18,
   },
-  pageHeader: {
-    gap: 6,
-  },
-  pageTitle: {
-    color: BrandColors.ink,
-    fontSize: 28,
-    lineHeight: 32,
-    fontWeight: "800",
-  },
-  pageSubtitle: {
-    color: BrandColors.muted,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  hero: {
-    position: "relative",
-    overflow: "hidden",
-    borderRadius: 32,
-    backgroundColor: BrandColors.blueDeep,
-    padding: 22,
-    gap: 14,
+  summaryCard: {
+    borderRadius: 24,
+    backgroundColor: BrandColors.surface,
+    borderWidth: 1,
+    borderColor: BrandColors.border,
+    padding: 18,
+    gap: 18,
     ...BrandShadow,
   },
-  heroGlowTop: {
-    position: "absolute",
-    top: -34,
-    right: -24,
-    width: 150,
-    height: 150,
-    borderRadius: 999,
-    backgroundColor: BrandColors.blue,
-    opacity: 0.28,
+  summaryHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 12,
   },
-  heroGlowBottom: {
-    position: "absolute",
-    left: -10,
-    bottom: -52,
-    width: 145,
-    height: 145,
-    borderRadius: 999,
-    backgroundColor: BrandColors.violet,
-    opacity: 0.15,
+  summaryHeading: {
+    flex: 1,
+    gap: 3,
   },
-  eyebrow: {
-    color: "#D7E7FF",
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: "700",
-    textTransform: "uppercase",
-    letterSpacing: 1.1,
-  },
-  heroTitle: {
-    color: "#FFFFFF",
-    fontSize: 30,
-    lineHeight: 34,
-    fontWeight: "800",
-  },
-  heroSubtitle: {
-    color: "#E6EEFF",
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  balanceCard: {
-    borderRadius: 20,
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.12)",
-    padding: 16,
-    gap: 4,
-  },
-  balanceLabel: {
-    color: "#CFE0FF",
+  summaryLabel: {
+    color: BrandColors.muted,
     fontSize: 13,
     lineHeight: 18,
+    fontWeight: "700",
   },
   balanceValue: {
-    fontSize: 28,
-    lineHeight: 32,
+    fontSize: 27,
+    lineHeight: 31,
     fontWeight: "800",
   },
   balanceGood: {
-    color: "#FFFFFF",
+    color: BrandColors.ink,
   },
   balanceWarn: {
-    color: "#FFE7CC",
+    color: BrandColors.dangerText,
   },
-  heroStats: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
+  entryBadge: {
+    borderRadius: 999,
+    backgroundColor: "rgba(46,207,227,0.1)",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
   },
-  heroStat: {
-    minWidth: 100,
-    flexGrow: 1,
-    borderRadius: 18,
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.12)",
-    padding: 14,
-    gap: 4,
-  },
-  heroStatValue: {
-    color: "#FFFFFF",
-    fontSize: 22,
-    lineHeight: 26,
+  entryBadgeText: {
+    color: BrandColors.inkSoft,
+    fontSize: 12,
+    lineHeight: 16,
     fontWeight: "800",
   },
-  heroStatLabel: {
-    color: "#CFE0FF",
-    fontSize: 13,
-    lineHeight: 18,
+  summaryMetrics: {
+    flexDirection: "row",
+    alignItems: "stretch",
+  },
+  summaryMetric: {
+    flex: 1,
+    gap: 3,
+  },
+  summaryDivider: {
+    width: 1,
+    marginHorizontal: 10,
+    backgroundColor: BrandColors.border,
+  },
+  summaryMetricValue: {
+    color: BrandColors.ink,
+    fontSize: 15,
+    lineHeight: 19,
+    fontWeight: "800",
+  },
+  summaryMetricLabel: {
+    color: BrandColors.muted,
+    fontSize: 11,
+    lineHeight: 15,
   },
   card: {
     borderRadius: 28,
@@ -513,6 +471,32 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 16,
     fontWeight: "800",
+  },
+  filterRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  filterChip: {
+    borderRadius: 999,
+    backgroundColor: BrandColors.surfaceMuted,
+    borderWidth: 1,
+    borderColor: BrandColors.border,
+    paddingHorizontal: 13,
+    paddingVertical: 8,
+  },
+  filterChipActive: {
+    backgroundColor: BrandColors.blueDeep,
+    borderColor: BrandColors.blueDeep,
+  },
+  filterChipText: {
+    color: BrandColors.inkSoft,
+    fontSize: 13,
+    lineHeight: 16,
+    fontWeight: "700",
+  },
+  filterChipTextActive: {
+    color: "#FFFFFF",
   },
   metricGrid: {
     flexDirection: "row",

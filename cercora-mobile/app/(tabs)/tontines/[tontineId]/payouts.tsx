@@ -3,6 +3,7 @@ import { Stack, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -40,6 +41,8 @@ type PayoutSummary = {
   last_payout_date: string | null;
 };
 
+type PayoutFilter = "all" | "pending" | "processed";
+
 function formatAmount(value: string | number) {
   const n = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(n)) return String(value);
@@ -66,6 +69,7 @@ export default function PayoutsScreen() {
   const [summary, setSummary] = useState<PayoutSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [filter, setFilter] = useState<PayoutFilter>("all");
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -106,6 +110,19 @@ export default function PayoutsScreen() {
     return Math.round((summary.processed_count / summary.total_payouts) * 100);
   }, [summary]);
 
+  const filteredItems = useMemo(() => {
+    if (filter === "all") return items;
+    return items.filter((item) =>
+      filter === "processed" ? item.is_processed : !item.is_processed
+    );
+  }, [filter, items]);
+
+  const filters: { key: PayoutFilter; label: string }[] = [
+    { key: "all", label: t("All") },
+    { key: "pending", label: t("Pending") },
+    { key: "processed", label: t("Processed") },
+  ];
+
   return (
     <ThemedView style={styles.container} lightColor={BrandColors.canvas}>
       <BrandBackdrop />
@@ -120,50 +137,37 @@ export default function PayoutsScreen() {
           contentContainerStyle={styles.content}
           refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />}
         >
-          <View style={styles.pageHeader}>
-            <ThemedText style={styles.pageTitle}>{t("Payout ledger")}</ThemedText>
-            <ThemedText style={styles.pageSubtitle}>
-              {t("The mobile payout view now follows the rebuilt tontine workflow, with summary, processing state, and full payout history in one place.")}
-            </ThemedText>
-          </View>
-
-          <View style={styles.hero}>
-            <View style={styles.heroGlowTop} />
-            <View style={styles.heroGlowBottom} />
-
-            <ThemedText style={styles.eyebrow}>{t("Payout history")}</ThemedText>
-            <ThemedText style={styles.heroTitle}>{t("Member payouts")}</ThemedText>
-            <ThemedText style={styles.heroSubtitle}>
-              {t("Review who received each payout, what is still pending, and how much has moved out of the tontine.")}
-            </ThemedText>
-
-            <View style={styles.heroBadges}>
-              <View style={styles.heroBadgeCool}>
-                <ThemedText style={styles.heroBadgeCoolText}>
-                  {t("{{count}} processed", { count: summary?.processed_count ?? 0 })}
+          <View style={styles.summaryCard}>
+            <View style={styles.summaryHeader}>
+              <View style={styles.summaryHeading}>
+                <ThemedText style={styles.summaryLabel}>{t("Total payout value")}</ThemedText>
+                <ThemedText style={styles.summaryValue}>
+                  {formatAmount(summary?.total_amount ?? 0)}
                 </ThemedText>
               </View>
-              <View style={styles.heroBadgeWarm}>
-                <ThemedText style={styles.heroBadgeWarmText}>
-                  {t("{{count}} pending", { count: summary?.pending_count ?? 0 })}
+              <View style={styles.entryBadge}>
+                <ThemedText style={styles.entryBadgeText}>
+                  {t("{{count}} payouts", { count: summary?.total_payouts ?? 0 })}
                 </ThemedText>
               </View>
             </View>
 
-            <View style={styles.heroStats}>
-              <View style={styles.heroStat}>
-                <ThemedText style={styles.heroStatValue}>{summary?.total_payouts ?? 0}</ThemedText>
-                <ThemedText style={styles.heroStatLabel}>{t("Total payouts")}</ThemedText>
-              </View>
-              <View style={styles.heroStat}>
-                <ThemedText style={styles.heroStatValue}>
-                  {formatAmount(summary?.total_amount ?? 0)}
+            <View style={styles.summaryMetrics}>
+              <View style={styles.summaryMetric}>
+                <ThemedText style={styles.summaryMetricValue}>
+                  {summary?.processed_count ?? 0}
                 </ThemedText>
-                <ThemedText style={styles.heroStatLabel}>{t("Total value")}</ThemedText>
+                <ThemedText style={styles.summaryMetricLabel}>{t("Processed")}</ThemedText>
               </View>
-              <View style={styles.heroStat}>
-                <ThemedText style={styles.heroStatValue}>{processedRate}%</ThemedText>
-                <ThemedText style={styles.heroStatLabel}>{t("Processed rate")}</ThemedText>
+              <View style={styles.summaryDivider} />
+              <View style={styles.summaryMetric}>
+                <ThemedText style={styles.summaryMetricValue}>{summary?.pending_count ?? 0}</ThemedText>
+                <ThemedText style={styles.summaryMetricLabel}>{t("Pending")}</ThemedText>
+              </View>
+              <View style={styles.summaryDivider} />
+              <View style={styles.summaryMetric}>
+                <ThemedText style={styles.summaryMetricValue}>{processedRate}%</ThemedText>
+                <ThemedText style={styles.summaryMetricLabel}>{t("Processed rate")}</ThemedText>
               </View>
             </View>
           </View>
@@ -171,46 +175,43 @@ export default function PayoutsScreen() {
           {error ? <ThemedText style={styles.error}>{error}</ThemedText> : null}
 
           <View style={styles.card}>
-            <ThemedText type="subtitle">{t("Payout pulse")}</ThemedText>
-            <View style={styles.metricGrid}>
-              <View style={styles.metricTile}>
-                <ThemedText style={styles.metricValue}>
-                  {summary?.last_payout_date ? formatShortDate(summary.last_payout_date) : t("None")}
-                </ThemedText>
-                <ThemedText style={styles.metricLabel}>{t("Last payout")}</ThemedText>
-              </View>
-              <View style={styles.metricTile}>
-                <ThemedText style={styles.metricValue}>{summary?.pending_count ?? 0}</ThemedText>
-                <ThemedText style={styles.metricLabel}>{t("Still pending")}</ThemedText>
-              </View>
-            </View>
-            <View style={styles.metricGrid}>
-              <View style={styles.metricTileCompact}>
-                <ThemedText style={styles.metricValueCompact}>{summary?.processed_count ?? 0}</ThemedText>
-                <ThemedText style={styles.metricLabel}>{t("Processed entries")}</ThemedText>
-              </View>
-              <View style={styles.metricTileCompact}>
-                <ThemedText style={styles.metricValueCompact}>{summary?.pending_count ?? 0}</ThemedText>
-                <ThemedText style={styles.metricLabel}>{t("Awaiting processing")}</ThemedText>
-              </View>
-            </View>
-          </View>
-
-          <View style={styles.card}>
             <View style={styles.cardHeader}>
               <ThemedText type="subtitle">{t("History")}</ThemedText>
-              <ThemedText style={styles.supportText}>{t("{{count}} records", { count: items.length })}</ThemedText>
+              <ThemedText style={styles.supportText}>
+                {t("{{count}} records", { count: filteredItems.length })}
+              </ThemedText>
             </View>
 
-            {items.length === 0 ? (
+            <View style={styles.filterRow} accessibilityRole="tablist">
+              {filters.map((option) => {
+                const isActive = option.key === filter;
+                return (
+                  <Pressable
+                    key={option.key}
+                    accessibilityRole="tab"
+                    accessibilityState={{ selected: isActive }}
+                    onPress={() => setFilter(option.key)}
+                    style={[styles.filterChip, isActive ? styles.filterChipActive : null]}
+                  >
+                    <ThemedText
+                      style={[styles.filterChipText, isActive ? styles.filterChipTextActive : null]}
+                    >
+                      {option.label}
+                    </ThemedText>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            {filteredItems.length === 0 ? (
               <View style={styles.emptyState}>
-                <ThemedText style={styles.emptyTitle}>{t("No payouts yet")}</ThemedText>
+                <ThemedText style={styles.emptyTitle}>{t("No matching payouts")}</ThemedText>
                 <ThemedText style={styles.supportText}>
-                  {t("Payout records will appear here as cycles close and beneficiaries are processed.")}
+                  {t("Try another filter or check back as payout records are updated.")}
                 </ThemedText>
               </View>
             ) : (
-              items.map((item) => (
+              filteredItems.map((item) => (
                 <View key={item.id} style={styles.payoutCard}>
                   <View style={styles.payoutHeader}>
                     <View style={styles.payoutHeading}>
@@ -284,126 +285,72 @@ const styles = StyleSheet.create({
     paddingBottom: 120,
     gap: 18,
   },
-  pageHeader: {
-    gap: 6,
-  },
-  pageTitle: {
-    color: BrandColors.ink,
-    fontSize: 28,
-    lineHeight: 32,
-    fontWeight: "800",
-  },
-  pageSubtitle: {
-    color: BrandColors.muted,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  hero: {
-    position: "relative",
-    overflow: "hidden",
-    borderRadius: 32,
-    backgroundColor: BrandColors.blueDeep,
-    padding: 22,
-    gap: 14,
+  summaryCard: {
+    borderRadius: 24,
+    backgroundColor: BrandColors.surface,
+    borderWidth: 1,
+    borderColor: BrandColors.border,
+    padding: 18,
+    gap: 18,
     ...BrandShadow,
   },
-  heroGlowTop: {
-    position: "absolute",
-    top: -32,
-    right: -24,
-    width: 148,
-    height: 148,
-    borderRadius: 999,
-    backgroundColor: BrandColors.blue,
-    opacity: 0.25,
-  },
-  heroGlowBottom: {
-    position: "absolute",
-    left: -20,
-    bottom: -54,
-    width: 150,
-    height: 150,
-    borderRadius: 999,
-    backgroundColor: BrandColors.violet,
-    opacity: 0.14,
-  },
-  eyebrow: {
-    color: "#D7E7FF",
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: "700",
-    textTransform: "uppercase",
-    letterSpacing: 1.1,
-  },
-  heroTitle: {
-    color: "#FFFFFF",
-    fontSize: 30,
-    lineHeight: 34,
-    fontWeight: "800",
-  },
-  heroSubtitle: {
-    color: "#E6EEFF",
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  heroBadges: {
+  summaryHeader: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 12,
   },
-  heroBadgeCool: {
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: "rgba(171, 239, 198, 0.38)",
-    backgroundColor: "rgba(236, 253, 243, 0.12)",
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+  summaryHeading: {
+    flex: 1,
+    gap: 3,
   },
-  heroBadgeCoolText: {
-    color: "#D9FBE8",
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: "800",
-  },
-  heroBadgeWarm: {
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: "rgba(138, 55, 201, 0.36)",
-    backgroundColor: "rgba(138, 55, 201, 0.16)",
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-  },
-  heroBadgeWarmText: {
-    color: "#F0D9FF",
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: "800",
-  },
-  heroStats: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
-  heroStat: {
-    minWidth: 100,
-    flexGrow: 1,
-    borderRadius: 18,
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.12)",
-    padding: 14,
-    gap: 4,
-  },
-  heroStatValue: {
-    color: "#FFFFFF",
-    fontSize: 22,
-    lineHeight: 26,
-    fontWeight: "800",
-  },
-  heroStatLabel: {
-    color: "#CFE0FF",
+  summaryLabel: {
+    color: BrandColors.muted,
     fontSize: 13,
     lineHeight: 18,
+    fontWeight: "700",
+  },
+  summaryValue: {
+    color: BrandColors.ink,
+    fontSize: 27,
+    lineHeight: 31,
+    fontWeight: "800",
+  },
+  entryBadge: {
+    borderRadius: 999,
+    backgroundColor: "rgba(46,207,227,0.1)",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  entryBadgeText: {
+    color: BrandColors.inkSoft,
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: "800",
+  },
+  summaryMetrics: {
+    flexDirection: "row",
+    alignItems: "stretch",
+  },
+  summaryMetric: {
+    flex: 1,
+    gap: 3,
+  },
+  summaryDivider: {
+    width: 1,
+    marginHorizontal: 10,
+    backgroundColor: BrandColors.border,
+  },
+  summaryMetricValue: {
+    color: BrandColors.ink,
+    fontSize: 15,
+    lineHeight: 19,
+    fontWeight: "800",
+  },
+  summaryMetricLabel: {
+    color: BrandColors.muted,
+    fontSize: 11,
+    lineHeight: 15,
   },
   card: {
     borderRadius: 28,
@@ -419,6 +366,32 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     gap: 12,
+  },
+  filterRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  filterChip: {
+    borderRadius: 999,
+    backgroundColor: BrandColors.surfaceMuted,
+    borderWidth: 1,
+    borderColor: BrandColors.border,
+    paddingHorizontal: 13,
+    paddingVertical: 8,
+  },
+  filterChipActive: {
+    backgroundColor: BrandColors.blueDeep,
+    borderColor: BrandColors.blueDeep,
+  },
+  filterChipText: {
+    color: BrandColors.inkSoft,
+    fontSize: 13,
+    lineHeight: 16,
+    fontWeight: "700",
+  },
+  filterChipTextActive: {
+    color: "#FFFFFF",
   },
   metricGrid: {
     flexDirection: "row",

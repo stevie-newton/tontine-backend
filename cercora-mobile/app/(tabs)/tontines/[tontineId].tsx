@@ -1,3 +1,4 @@
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect } from "@react-navigation/native";
 import { Link, Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useMemo, useState } from "react";
@@ -101,39 +102,6 @@ type TransactionSummary = {
   last_transaction_date: string | null;
 };
 
-type MyReliabilityProfile = {
-  reliability_score_percent: number;
-  cycles_completed: number;
-  late_payments: number;
-  debts_repaid: number;
-};
-
-type MemberReliabilityProfile = {
-  membership_id: number;
-  user_id: number;
-  name: string;
-  reliability_score_percent: number;
-  cycles_completed: number;
-  late_payments: number;
-  debts_repaid: number;
-};
-
-type MemberReliabilityResponse = {
-  tontine_id: number;
-  count: number;
-  members: MemberReliabilityProfile[];
-};
-
-function formatShortDate(value: string) {
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return value;
-  return new Intl.DateTimeFormat(getCurrentLocale(), {
-    month: "short",
-    day: "2-digit",
-    year: "numeric",
-  }).format(d);
-}
-
 function formatAmount(value: string | number) {
   const n = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(n)) return String(value);
@@ -187,8 +155,6 @@ export default function TontineDetailScreen() {
   const [summary, setSummary] = useState<ContributionSummary | null>(null);
   const [transactionSummary, setTransactionSummary] = useState<TransactionSummary | null>(null);
   const [debts, setDebts] = useState<Debt[]>([]);
-  const [myReliability, setMyReliability] = useState<MyReliabilityProfile | null>(null);
-  const [memberReliability, setMemberReliability] = useState<MemberReliabilityProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isActivating, setIsActivating] = useState(false);
@@ -210,10 +176,6 @@ export default function TontineDetailScreen() {
         .get<DebtListResponse>(`/debts/tontine/${id}`)
         .then((r) => r.data.debts)
         .catch(() => [] as Debt[]);
-      const memberReliabilityReq = api
-        .get<MemberReliabilityResponse>(`/tontines/${id}/reliability`)
-        .then((r) => r.data.members)
-        .catch(() => [] as MemberReliabilityProfile[]);
       const transactionSummaryReq = api
         .get<TransactionSummary>(`/transactions/tontine/${id}/summary`)
         .then((r) => r.data)
@@ -225,7 +187,6 @@ export default function TontineDetailScreen() {
         cyclesRes,
         cycle,
         debtList,
-        reliabilityRows,
         ledgerSummary,
       ] = await Promise.all([
         tontineReq,
@@ -233,7 +194,6 @@ export default function TontineDetailScreen() {
         cyclesReq,
         currentCycleReq,
         debtsReq,
-        memberReliabilityReq,
         transactionSummaryReq,
       ]);
 
@@ -243,10 +203,6 @@ export default function TontineDetailScreen() {
       setCurrentCycle(cycle);
       setDebts(debtList);
       setTransactionSummary(ledgerSummary);
-      setMemberReliability(reliabilityRows);
-      setMyReliability(
-        (user ? reliabilityRows.find((row) => row.user_id === user.id) : null) ?? null
-      );
 
       if (cycle) {
         try {
@@ -266,7 +222,7 @@ export default function TontineDetailScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [id, user]);
+  }, [id]);
 
   useFocusEffect(
     useCallback(() => {
@@ -351,7 +307,6 @@ export default function TontineDetailScreen() {
   }
 
   const activeMembers = members.filter((member) => member.membership_status === "active");
-  const pendingMembers = members.filter((member) => member.membership_status !== "active");
   const myMembership = user ? members.find((member) => member.id === user.id) ?? null : null;
   const isOwner = !!user && !!tontine && tontine.owner_id === user.id;
   const isGlobalAdmin = !!user?.is_global_admin;
@@ -370,8 +325,6 @@ export default function TontineDetailScreen() {
   const shouldShowProtectedRecords = isOwner && hasFinancialActivity && !isGlobalAdmin;
   const tone = getStatusTone(tontine?.status ?? "draft");
   const openDebts = debts.filter((debt) => !debt.is_repaid);
-  const recentCycles = cycles.slice(0, 3);
-  const recentDebts = debts.slice(0, 3);
 
   return (
     <ThemedView style={styles.container} lightColor={BrandColors.canvas}>
@@ -392,72 +345,189 @@ export default function TontineDetailScreen() {
               layout.maxWidth ? { maxWidth: layout.maxWidth } : null,
             ]}
           >
-          <View style={styles.pageHeader}>
-            <ThemedText style={styles.pageTitle}>{tontine.name}</ThemedText>
-              <ThemedText style={styles.pageSubtitle}>
-                {t(
-                  "Review group performance, member activity, cycle progress, and debt status from one integrated workspace."
-                )}
-              </ThemedText>
-          </View>
-
-          <View style={styles.hero}>
-            <View style={styles.heroGlowTop} />
-            <View style={styles.heroGlowBottom} />
-
-            <ThemedText style={styles.eyebrow}>{t("Tontine workspace")}</ThemedText>
-            <ThemedText style={styles.heroTitle}>{tontine.name}</ThemedText>
-            <ThemedText style={styles.heroSubtitle}>
-              {t("Current cycle: {{current}}/{{total}}", {
-                current: tontine.current_cycle,
-                total: tontine.total_cycles,
-              })}
-            </ThemedText>
-
-            <View style={styles.heroBadges}>
-              <View style={[styles.heroBadge, { backgroundColor: tone.bg, borderColor: tone.border }]}>
-                <ThemedText style={[styles.heroBadgeText, { color: tone.text }]}>
+          <View style={styles.groupHeader}>
+            <View style={styles.groupHeaderTop}>
+              <View style={styles.groupIcon}>
+                <Ionicons name="people" size={22} color={BrandColors.blue} />
+              </View>
+              <View style={styles.groupIdentity}>
+                <ThemedText style={styles.groupEyebrow}>{t("Tontine group")}</ThemedText>
+                <ThemedText style={styles.groupName}>{tontine.name}</ThemedText>
+              </View>
+              <View
+                style={[
+                  styles.groupStatusBadge,
+                  { backgroundColor: tone.lightBg, borderColor: tone.lightBorder },
+                ]}
+              >
+                <ThemedText style={[styles.groupStatusText, { color: tone.lightText }]}>
                   {t(
                     tontine.status.charAt(0).toUpperCase() +
                       tontine.status.slice(1).toLowerCase()
                   )}
                 </ThemedText>
               </View>
-              <View style={styles.heroBadgeNeutral}>
-                <ThemedText style={styles.heroBadgeNeutralText}>
+            </View>
+
+            <View style={styles.groupMetaRow}>
+              <View style={styles.groupMetaItem}>
+                <ThemedText style={styles.groupMetaValue}>
+                  {formatAmount(tontine.contribution_amount)}
+                </ThemedText>
+                <ThemedText style={styles.groupMetaLabel}>{t("Contribution")}</ThemedText>
+              </View>
+              <View style={styles.groupMetaDivider} />
+              <View style={styles.groupMetaItem}>
+                <ThemedText style={styles.groupMetaValue}>
+                  {t("{{current}} of {{total}}", {
+                    current: tontine.current_cycle,
+                    total: tontine.total_cycles,
+                  })}
+                </ThemedText>
+                <ThemedText style={styles.groupMetaLabel}>{t("Current cycle")}</ThemedText>
+              </View>
+              <View style={styles.groupMetaDivider} />
+              <View style={styles.groupMetaItem}>
+                <ThemedText style={styles.groupMetaValue}>
                   {t(
                     tontine.frequency.charAt(0).toUpperCase() +
                       tontine.frequency.slice(1).toLowerCase()
                   )}
                 </ThemedText>
-              </View>
-              {canManage ? (
-                <View style={styles.heroBadgeAdmin}>
-                  <ThemedText style={styles.heroBadgeAdminText}>
-                    {isOwner ? t("Owner") : t("Admin")}
-                  </ThemedText>
-                </View>
-              ) : null}
-            </View>
-
-            <View style={styles.heroStats}>
-              <View style={styles.heroStat}>
-                <ThemedText style={styles.heroStatValue}>
-                  {formatAmount(tontine.contribution_amount)}
-                </ThemedText>
-                <ThemedText style={styles.heroStatLabel}>{t("Contribution")}</ThemedText>
-              </View>
-              <View style={styles.heroStat}>
-                <ThemedText style={styles.heroStatValue}>{activeMembers.length}</ThemedText>
-                <ThemedText style={styles.heroStatLabel}>{t("Active members")}</ThemedText>
-              </View>
-              <View style={styles.heroStat}>
-                <ThemedText style={styles.heroStatValue}>{openDebts.length}</ThemedText>
-                <ThemedText style={styles.heroStatLabel}>{t("Open debts")}</ThemedText>
+                <ThemedText style={styles.groupMetaLabel}>{t("Frequency")}</ThemedText>
               </View>
             </View>
           </View>
 
+          <View style={styles.navigationCard}>
+            <ThemedText style={styles.navigationLabel}>{t("Group activity")}</ThemedText>
+
+            <Link
+              href={{
+                pathname: "/(tabs)/tontines/[tontineId]/members",
+                params: { tontineId: String(tontine.id) },
+              }}
+              asChild
+            >
+              <Pressable
+                accessibilityRole="link"
+                style={[styles.navigationRow, styles.navigationRowBorder]}
+              >
+                <View style={styles.navigationIcon}>
+                  <Ionicons name="people-outline" size={21} color={BrandColors.blue} />
+                </View>
+                <View style={styles.navigationCopy}>
+                  <ThemedText style={styles.navigationTitle}>{t("Members")}</ThemedText>
+                  <ThemedText style={styles.navigationSubtitle}>
+                    {t("{{count}} active", { count: activeMembers.length })}
+                  </ThemedText>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={BrandColors.muted} />
+              </Pressable>
+            </Link>
+
+            <Link
+              href={{
+                pathname: "/(tabs)/tontines/[tontineId]/cycles",
+                params: { tontineId: String(tontine.id) },
+              }}
+              asChild
+            >
+              <Pressable
+                accessibilityRole="link"
+                style={[styles.navigationRow, styles.navigationRowBorder]}
+              >
+                <View style={styles.navigationIcon}>
+                  <Ionicons name="repeat-outline" size={21} color={BrandColors.blue} />
+                </View>
+                <View style={styles.navigationCopy}>
+                  <ThemedText style={styles.navigationTitle}>{t("Cycles")}</ThemedText>
+                  <ThemedText style={styles.navigationSubtitle}>
+                    {currentCycle
+                      ? t("Cycle {{current}} of {{total}}", {
+                          current: currentCycle.cycle_number,
+                          total: tontine.total_cycles,
+                        })
+                      : t("No cycles generated")}
+                  </ThemedText>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={BrandColors.muted} />
+              </Pressable>
+            </Link>
+
+            <Link
+              href={{
+                pathname: "/(tabs)/tontines/[tontineId]/transactions",
+                params: { tontineId: String(tontine.id) },
+              }}
+              asChild
+            >
+              <Pressable
+                accessibilityRole="link"
+                style={[styles.navigationRow, styles.navigationRowBorder]}
+              >
+                <View style={styles.navigationIcon}>
+                  <Ionicons name="swap-horizontal-outline" size={21} color={BrandColors.blue} />
+                </View>
+                <View style={styles.navigationCopy}>
+                  <ThemedText style={styles.navigationTitle}>{t("Transactions")}</ThemedText>
+                  <ThemedText style={styles.navigationSubtitle}>
+                    {t("{{count}} entries", {
+                      count: transactionSummary?.transaction_count ?? 0,
+                    })}
+                  </ThemedText>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={BrandColors.muted} />
+              </Pressable>
+            </Link>
+
+            <Link
+              href={{
+                pathname: "/(tabs)/tontines/[tontineId]/payouts",
+                params: { tontineId: String(tontine.id) },
+              }}
+              asChild
+            >
+              <Pressable
+                accessibilityRole="link"
+                style={[styles.navigationRow, styles.navigationRowBorder]}
+              >
+                <View style={styles.navigationIcon}>
+                  <Ionicons name="wallet-outline" size={21} color={BrandColors.blue} />
+                </View>
+                <View style={styles.navigationCopy}>
+                  <ThemedText style={styles.navigationTitle}>{t("Payouts")}</ThemedText>
+                  <ThemedText style={styles.navigationSubtitle}>
+                    {t("Review payout history")}
+                  </ThemedText>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={BrandColors.muted} />
+              </Pressable>
+            </Link>
+
+            <Link
+              href={{
+                pathname: "/(tabs)/tontines/[tontineId]/debts",
+                params: { tontineId: String(tontine.id) },
+              }}
+              asChild
+            >
+              <Pressable accessibilityRole="link" style={styles.navigationRow}>
+                <View style={styles.navigationIcon}>
+                  <Ionicons name="alert-circle-outline" size={21} color={BrandColors.blue} />
+                </View>
+                <View style={styles.navigationCopy}>
+                  <ThemedText style={styles.navigationTitle}>{t("Debts")}</ThemedText>
+                  <ThemedText style={styles.navigationSubtitle}>
+                    {t("{{count}} open", { count: openDebts.length })}
+                  </ThemedText>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={BrandColors.muted} />
+              </Pressable>
+            </Link>
+          </View>
+
+          {canManage ? (
           <View style={styles.actionGrid}>
             {canManage && tontine.status === "draft" ? (
               <Pressable
@@ -488,44 +558,19 @@ export default function TontineDetailScreen() {
               </Pressable>
             ) : null}
 
-            {canManage ? (
-              <Link
-                href={{
-                  pathname: "/(tabs)/tontines/[tontineId]/invite",
-                  params: { tontineId: String(tontine.id) },
-                }}
-                asChild
-              >
-                <Pressable style={styles.secondaryAction}>
-                  <ThemedText style={styles.secondaryActionText}>{t("Invite member")}</ThemedText>
-                </Pressable>
-              </Link>
-            ) : null}
-
             <Link
               href={{
-                pathname: "/(tabs)/tontines/[tontineId]/members",
+                pathname: "/(tabs)/tontines/[tontineId]/invite",
                 params: { tontineId: String(tontine.id) },
               }}
               asChild
             >
               <Pressable style={styles.secondaryAction}>
-                <ThemedText style={styles.secondaryActionText}>{t("Members")}</ThemedText>
-              </Pressable>
-            </Link>
-
-            <Link
-              href={{
-                pathname: "/(tabs)/tontines/[tontineId]/cycles",
-                params: { tontineId: String(tontine.id) },
-              }}
-              asChild
-            >
-              <Pressable style={styles.secondaryAction}>
-                <ThemedText style={styles.secondaryActionText}>{t("Cycles")}</ThemedText>
+                <ThemedText style={styles.secondaryActionText}>{t("Invite member")}</ThemedText>
               </Pressable>
             </Link>
           </View>
+          ) : null}
 
           {shouldShowProtectedRecords ? (
             <View style={styles.protectedCard}>
@@ -563,304 +608,6 @@ export default function TontineDetailScreen() {
             </View>
           ) : null}
 
-          <View style={[styles.sectionGrid, layout.isTablet ? styles.sectionGridTablet : null]}>
-          {myReliability ? (
-            <View style={[styles.cardShell, layout.isTablet ? styles.cardShellTablet : null]}>
-            <View style={styles.card}>
-              <ThemedText style={styles.cardTitle}>{t("Reliability")}</ThemedText>
-              <View style={styles.metricGrid}>
-                <View style={styles.metricTile}>
-                  <ThemedText style={styles.metricValue}>
-                    {myReliability.reliability_score_percent}%
-                  </ThemedText>
-                  <ThemedText style={styles.metricLabel}>{t("Score")}</ThemedText>
-                </View>
-                <View style={styles.metricTile}>
-                  <ThemedText style={styles.metricValue}>
-                    {myReliability.cycles_completed}
-                  </ThemedText>
-                  <ThemedText style={styles.metricLabel}>{t("Cycles completed")}</ThemedText>
-                </View>
-                <View style={styles.metricTile}>
-                  <ThemedText style={styles.metricValue}>{myReliability.late_payments}</ThemedText>
-                  <ThemedText style={styles.metricLabel}>{t("Late payments")}</ThemedText>
-                </View>
-                <View style={styles.metricTile}>
-                  <ThemedText style={styles.metricValue}>{myReliability.debts_repaid}</ThemedText>
-                  <ThemedText style={styles.metricLabel}>{t("Debts repaid")}</ThemedText>
-                </View>
-              </View>
-            </View>
-            </View>
-          ) : null}
-
-          <View style={[styles.cardShell, layout.isTablet ? styles.cardShellTablet : null]}>
-          <View style={styles.card}>
-            <ThemedText style={styles.cardTitle}>{t("Member reliability")}</ThemedText>
-            {memberReliability.length === 0 ? (
-              <ThemedText style={styles.supportText}>{t("No member reliability reports yet.")}</ThemedText>
-            ) : (
-              memberReliability.map((row) => (
-                <View key={row.membership_id} style={styles.rowCard}>
-                  <View style={styles.rowText}>
-                    <ThemedText style={styles.rowTitle}>{row.name}</ThemedText>
-                    <ThemedText style={styles.supportText}>
-                      {t("Cycles")}: {row.cycles_completed} · {t("Late payments")}: {row.late_payments} ·{" "}
-                      {t("Debts repaid")}: {row.debts_repaid}
-                    </ThemedText>
-                  </View>
-                  <View style={styles.reliabilityScoreBadge}>
-                    <ThemedText style={styles.reliabilityScoreText}>
-                      {row.reliability_score_percent}%
-                    </ThemedText>
-                  </View>
-                </View>
-              ))
-            )}
-          </View>
-          </View>
-
-          <View style={[styles.cardShell, layout.isTablet ? styles.cardShellTablet : null]}>
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <ThemedText style={styles.cardTitle}>{t("Current cycle")}</ThemedText>
-              <Link
-                href={{
-                  pathname: "/(tabs)/tontines/[tontineId]/cycles",
-                  params: { tontineId: String(tontine.id) },
-                }}
-                asChild
-              >
-                <Pressable style={styles.linkButton}>
-                  <ThemedText style={styles.linkText}>{t("View all")}</ThemedText>
-                </Pressable>
-              </Link>
-            </View>
-
-            {currentCycle ? (
-              <>
-                <View style={styles.currentCycleBanner}>
-                  <ThemedText style={styles.currentCycleLabel}>
-                    {t("Cycle {{number}}", { number: currentCycle.cycle_number })}
-                  </ThemedText>
-                  <ThemedText style={styles.currentCycleMeta}>
-                    {t("{{status}} - {{start}} to {{end}}", {
-                      status: currentCycle.is_closed ? t("Closed") : t("Open"),
-                      start: formatShortDate(currentCycle.start_date),
-                      end: formatShortDate(currentCycle.end_date),
-                    })}
-                  </ThemedText>
-                  {currentCycle.payout_member_name ? (
-                    <ThemedText style={styles.currentCycleMeta}>
-                      {t("Payout member: {{name}}", {
-                        name: currentCycle.payout_member_name,
-                      })}
-                    </ThemedText>
-                  ) : null}
-                </View>
-
-                {summary ? (
-                  <View style={styles.metricGrid}>
-                    <View style={styles.metricTile}>
-                      <ThemedText style={styles.metricValue}>
-                        {summary.total_contributions}/{summary.total_members}
-                      </ThemedText>
-                      <ThemedText style={styles.metricLabel}>{t("Submitted")}</ThemedText>
-                    </View>
-                    <View style={styles.metricTile}>
-                      <ThemedText style={styles.metricValue}>{summary.confirmed_contributions}</ThemedText>
-                      <ThemedText style={styles.metricLabel}>{t("Confirmed")}</ThemedText>
-                    </View>
-                    <View style={styles.metricTile}>
-                      <ThemedText style={styles.metricValue}>{formatAmount(summary.total_amount)}</ThemedText>
-                      <ThemedText style={styles.metricLabel}>{t("Collected")}</ThemedText>
-                    </View>
-                  </View>
-                ) : null}
-              </>
-            ) : (
-              <View style={styles.emptyState}>
-                <ThemedText style={styles.emptyTitle}>{t("No cycles generated yet")}</ThemedText>
-                <ThemedText style={styles.supportText}>
-                  {canManage
-                    ? t("Generate cycles to activate this tontine flow.")
-                    : t("Ask the owner to generate cycles to begin tracking payments.")}
-                </ThemedText>
-              </View>
-            )}
-          </View>
-          </View>
-
-          <View style={[styles.cardShell, layout.isTablet ? styles.cardShellTablet : null]}>
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <ThemedText style={styles.cardTitle}>{t("Members")}</ThemedText>
-              <Link
-                href={{
-                  pathname: "/(tabs)/tontines/[tontineId]/members",
-                  params: { tontineId: String(tontine.id) },
-                }}
-                asChild
-              >
-                <Pressable style={styles.linkButton}>
-                  <ThemedText style={styles.linkText}>{t("Open")}</ThemedText>
-                </Pressable>
-              </Link>
-            </View>
-
-            <View style={styles.memberSummaryRow}>
-              <View style={styles.memberSummaryTile}>
-                <ThemedText style={styles.memberSummaryValue}>{activeMembers.length}</ThemedText>
-                <ThemedText style={styles.memberSummaryLabel}>{t("Active")}</ThemedText>
-              </View>
-              <View style={styles.memberSummaryTile}>
-                <ThemedText style={styles.memberSummaryValue}>{pendingMembers.length}</ThemedText>
-                <ThemedText style={styles.memberSummaryLabel}>{t("Pending")}</ThemedText>
-              </View>
-              <View style={styles.memberSummaryTile}>
-                <ThemedText style={styles.memberSummaryValue}>{openDebts.length}</ThemedText>
-                <ThemedText style={styles.memberSummaryLabel}>{t("Debt flags")}</ThemedText>
-              </View>
-            </View>
-
-            {members.slice(0, 5).map((member) => {
-              const hasOpenDebt = openDebts.some((debt) => debt.debtor_user_id === member.id);
-
-              return (
-                <View key={member.membership_id} style={styles.memberRow}>
-                  <View style={styles.memberInfo}>
-                    <ThemedText style={styles.memberName}>{member.name}</ThemedText>
-                    <ThemedText style={styles.supportText}>
-                      {member.membership_role} · {member.membership_status}
-                    </ThemedText>
-                  </View>
-                  <View
-                    style={[
-                      styles.memberDebtBadge,
-                      hasOpenDebt ? styles.memberDebtBadgeOpen : styles.memberDebtBadgeClear,
-                    ]}
-                  >
-                    <ThemedText
-                      style={[
-                        styles.memberDebtBadgeText,
-                        hasOpenDebt ? styles.memberDebtBadgeTextOpen : styles.memberDebtBadgeTextClear,
-                      ]}
-                    >
-                      {hasOpenDebt ? t("Open debt") : t("Clear")}
-                    </ThemedText>
-                  </View>
-                </View>
-              );
-            })}
-          </View>
-          </View>
-
-          <View style={[styles.cardShell, layout.isTablet ? styles.cardShellTablet : null]}>
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <ThemedText style={styles.cardTitle}>{t("Cycles")}</ThemedText>
-              <Link
-                href={{
-                  pathname: "/(tabs)/tontines/[tontineId]/cycles",
-                  params: { tontineId: String(tontine.id) },
-                }}
-                asChild
-              >
-                <Pressable style={styles.linkButton}>
-                  <ThemedText style={styles.linkText}>{t("Open")}</ThemedText>
-                </Pressable>
-              </Link>
-            </View>
-
-            {recentCycles.length === 0 ? (
-              <ThemedText style={styles.supportText}>{t("No cycles created yet.")}</ThemedText>
-            ) : (
-              recentCycles.map((cycle) => (
-                <View key={cycle.id} style={styles.rowCard}>
-                  <View style={styles.rowText}>
-                    <ThemedText style={styles.rowTitle}>
-                      {t("Cycle #{{number}}", { number: cycle.cycle_number })}
-                    </ThemedText>
-                    <ThemedText style={styles.supportText}>
-                      {cycle.is_closed ? "Closed" : "Open"} · {formatShortDate(cycle.start_date)}
-                    </ThemedText>
-                  </View>
-                  <Link
-                    href={{
-                      pathname: "/(tabs)/tontines/[tontineId]/cycles/[cycleId]",
-                      params: {
-                        tontineId: String(tontine.id),
-                        cycleId: String(cycle.id),
-                      },
-                    }}
-                    asChild
-                  >
-                    <Pressable style={styles.inlineOpenButton}>
-                      <ThemedText style={styles.inlineOpenButtonText}>{t("Open")}</ThemedText>
-                    </Pressable>
-                  </Link>
-                </View>
-              ))
-            )}
-          </View>
-          </View>
-
-          <View style={[styles.cardShell, layout.isTablet ? styles.cardShellTablet : null]}>
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <ThemedText style={styles.cardTitle}>{t("Debts")}</ThemedText>
-              <Link
-                href={{
-                  pathname: "/(tabs)/tontines/[tontineId]/debts",
-                  params: { tontineId: String(tontine.id) },
-                }}
-                asChild
-              >
-                <Pressable style={styles.linkButton}>
-                  <ThemedText style={styles.linkText}>{t("Open")}</ThemedText>
-                </Pressable>
-              </Link>
-            </View>
-
-            {recentDebts.length === 0 ? (
-              <ThemedText style={styles.supportText}>
-                {t("No debts recorded for this tontine.")}
-              </ThemedText>
-            ) : (
-              recentDebts.map((debt) => (
-                <View key={debt.id} style={styles.rowCard}>
-                  <View style={styles.rowText}>
-                    <ThemedText style={styles.rowTitle}>
-                      {t("Cycle {{cycle}}: {{name}}", {
-                        cycle: debt.cycle_id,
-                        name: debt.debtor_name,
-                      })}
-                    </ThemedText>
-                    <ThemedText style={styles.supportText}>
-                      Covered by {debt.coverer_name} · {formatAmount(debt.amount)}
-                    </ThemedText>
-                  </View>
-                  <View
-                    style={[
-                      styles.statusPill,
-                      debt.is_repaid ? styles.statusPillClear : styles.statusPillOpen,
-                    ]}
-                  >
-                    <ThemedText
-                      style={[
-                        styles.statusPillText,
-                        debt.is_repaid ? styles.statusPillTextClear : styles.statusPillTextOpen,
-                      ]}
-                    >
-                      {debt.is_repaid ? t("Repaid") : t("Open")}
-                    </ThemedText>
-                  </View>
-                </View>
-              ))
-            )}
-          </View>
-          </View>
-          </View>
           </View>
         </ScrollView>
       ) : null}
@@ -886,140 +633,135 @@ const styles = StyleSheet.create({
     width: "100%",
     gap: 22,
   },
-  pageHeader: {
-    gap: 6,
-  },
-  pageTitle: {
-    color: BrandColors.ink,
-    fontSize: 31,
-    lineHeight: 35,
-    fontWeight: "800",
-    letterSpacing: -0.6,
-  },
-  pageSubtitle: {
-    color: BrandColors.muted,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  hero: {
-    position: "relative",
-    overflow: "hidden",
-    borderRadius: 34,
-    backgroundColor: BrandColors.blueNight,
-    padding: 24,
-    gap: 16,
+  groupHeader: {
+    borderRadius: 24,
+    backgroundColor: BrandColors.surface,
+    borderWidth: 1,
+    borderColor: BrandColors.border,
+    padding: 18,
+    gap: 18,
     ...BrandShadow,
   },
-  heroGlowTop: {
-    position: "absolute",
-    top: -34,
-    right: -24,
-    width: 150,
-    height: 150,
-    borderRadius: 999,
-    backgroundColor: BrandColors.blue,
-    opacity: 0.28,
+  groupHeaderTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
   },
-  heroGlowBottom: {
-    position: "absolute",
-    left: -10,
-    bottom: -52,
-    width: 145,
-    height: 145,
-    borderRadius: 999,
-    backgroundColor: BrandColors.violet,
-    opacity: 0.15,
+  groupIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(46, 207, 227, 0.12)",
   },
-  eyebrow: {
-    color: "#D7E7FF",
+  groupIdentity: {
+    flex: 1,
+    gap: 2,
+  },
+  groupEyebrow: {
+    color: BrandColors.muted,
+    fontSize: 11,
+    lineHeight: 15,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+  },
+  groupName: {
+    color: BrandColors.ink,
+    fontSize: 23,
+    lineHeight: 28,
+    fontWeight: "800",
+    letterSpacing: -0.4,
+  },
+  groupStatusBadge: {
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  groupStatusText: {
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: "800",
+  },
+  groupMetaRow: {
+    flexDirection: "row",
+    alignItems: "stretch",
+  },
+  groupMetaItem: {
+    flex: 1,
+    gap: 3,
+  },
+  groupMetaDivider: {
+    width: 1,
+    marginHorizontal: 10,
+    backgroundColor: BrandColors.border,
+  },
+  groupMetaValue: {
+    color: BrandColors.ink,
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: "800",
+  },
+  groupMetaLabel: {
+    color: BrandColors.muted,
+    fontSize: 11,
+    lineHeight: 15,
+  },
+  navigationCard: {
+    overflow: "hidden",
+    borderRadius: 24,
+    backgroundColor: BrandColors.surface,
+    borderWidth: 1,
+    borderColor: BrandColors.border,
+    ...BrandShadow,
+  },
+  navigationLabel: {
+    color: BrandColors.muted,
     fontSize: 12,
     lineHeight: 16,
     fontWeight: "700",
     textTransform: "uppercase",
-    letterSpacing: 1.1,
+    letterSpacing: 0.8,
+    paddingHorizontal: 18,
+    paddingTop: 16,
+    paddingBottom: 8,
   },
-  heroTitle: {
-    color: "#FFFFFF",
-    fontSize: 33,
-    lineHeight: 37,
-    fontWeight: "800",
-    letterSpacing: -0.8,
-  },
-  heroSubtitle: {
-    color: "#E6EEFF",
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  heroBadges: {
+  navigationRow: {
+    minHeight: 68,
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
+    alignItems: "center",
+    gap: 12,
+    marginHorizontal: 16,
+    paddingVertical: 11,
   },
-  heroBadge: {
-    borderRadius: 999,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+  navigationRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: BrandColors.border,
   },
-  heroBadgeText: {
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: "800",
-    textTransform: "capitalize",
+  navigationIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(46, 207, 227, 0.1)",
   },
-  heroBadgeNeutral: {
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.14)",
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+  navigationCopy: {
+    flex: 1,
+    gap: 2,
   },
-  heroBadgeNeutralText: {
-    color: "#EAF1FF",
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: "800",
+  navigationTitle: {
+    color: BrandColors.ink,
+    fontSize: 16,
+    lineHeight: 20,
+    fontWeight: "700",
   },
-  heroBadgeAdmin: {
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: "rgba(138, 55, 201, 0.36)",
-    backgroundColor: "rgba(138, 55, 201, 0.16)",
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-  },
-  heroBadgeAdminText: {
-    color: "#F0D9FF",
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: "800",
-  },
-  heroStats: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
-  heroStat: {
-    minWidth: 100,
-    flexGrow: 1,
-    borderRadius: 20,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.16)",
-    padding: 15,
-    gap: 4,
-  },
-  heroStatValue: {
-    color: "#FFFFFF",
-    fontSize: 24,
-    lineHeight: 28,
-    fontWeight: "800",
-  },
-  heroStatLabel: {
-    color: "#CFE0FF",
+  navigationSubtitle: {
+    color: BrandColors.muted,
     fontSize: 13,
-    lineHeight: 18,
+    lineHeight: 17,
   },
   actionGrid: {
     flexDirection: "row",

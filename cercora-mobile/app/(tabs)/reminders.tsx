@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect } from "@react-navigation/native";
 import axios from "axios";
 import { Stack } from "expo-router";
@@ -6,10 +7,10 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Platform,
-  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
+  Switch,
   View,
 } from "react-native";
 
@@ -24,7 +25,6 @@ import {
   getNativePushStatus,
   NATIVE_PUSH_SUPPORTED,
 } from "@/hooks/native-push";
-import { useAuth } from "@/hooks/use-auth";
 import { getErrorMessage } from "@/hooks/error-utils";
 import { getCurrentLocale, useI18n } from "@/hooks/use-i18n";
 
@@ -40,36 +40,6 @@ type Reminder = {
   hours_remaining: number;
   is_overdue: boolean;
   hours_overdue: number;
-};
-
-type AdminReminderPreview = {
-  window_start: string;
-  window_end: string;
-  lookahead_hours: number;
-  cycles_count: number;
-  targets_count: number;
-  cycles: Array<{
-    cycle_id: number;
-    tontine_id: number;
-    tontine_name: string;
-    cycle_number: number;
-    deadline: string;
-    targets_count: number;
-    targets: Array<{
-      membership_id: number;
-      user_id: number;
-      name: string;
-      phone: string;
-    }>;
-  }>;
-};
-
-type AdminReminderSendResult = {
-  sms_configured: boolean;
-  cycles_checked: number;
-  cycles_marked: number;
-  sms_sent: number;
-  sms_failed: number;
 };
 
 function formatShortDate(value: string) {
@@ -93,7 +63,6 @@ function isMissingReminderFeedError(error: unknown) {
 }
 
 export default function RemindersScreen() {
-  const { user } = useAuth();
   const { t } = useI18n();
   const nativePushSupported = NATIVE_PUSH_SUPPORTED;
 
@@ -101,14 +70,6 @@ export default function RemindersScreen() {
   const [remindersError, setRemindersError] = useState<string | null>(null);
   const [remindersLoading, setRemindersLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-
-  const [adminReminderPreview, setAdminReminderPreview] =
-    useState<AdminReminderPreview | null>(null);
-  const [adminReminderResult, setAdminReminderResult] =
-    useState<AdminReminderSendResult | null>(null);
-  const [adminLoading, setAdminLoading] = useState(false);
-  const [adminActionBusy, setAdminActionBusy] = useState(false);
-  const [adminError, setAdminError] = useState<string | null>(null);
 
   const webPushSupported = useMemo(() => {
     if (Platform.OS !== "web") return false;
@@ -150,35 +111,10 @@ export default function RemindersScreen() {
     }
   }, []);
 
-  const loadAdminData = useCallback(async () => {
-    if (!user?.is_global_admin) {
-      setAdminReminderPreview(null);
-      setAdminReminderResult(null);
-      setAdminError(null);
-      setAdminLoading(false);
-      return;
-    }
-
-    setAdminLoading(true);
-    setAdminError(null);
-    try {
-      const previewRes = await api.get<AdminReminderPreview>(
-        "/admin/stats/reminders/pre-deadline/preview"
-      );
-      setAdminReminderPreview(previewRes.data);
-    } catch (e) {
-      setAdminError(getErrorMessage(e));
-      setAdminReminderPreview(null);
-    } finally {
-      setAdminLoading(false);
-    }
-  }, [user?.is_global_admin]);
-
   useFocusEffect(
     useCallback(() => {
       void loadReminders();
-      void loadAdminData();
-    }, [loadAdminData, loadReminders])
+    }, [loadReminders])
   );
 
   useEffect(() => {
@@ -216,7 +152,6 @@ export default function RemindersScreen() {
     void refreshPushSubscriptionState();
   }, [refreshPushSubscriptionState]);
 
-  const nextReminder = reminders[0] ?? null;
   const overdueCount = reminders.filter((reminder) => reminder.is_overdue).length;
 
   function urlBase64ToUint8Array(base64String: string) {
@@ -234,7 +169,7 @@ export default function RemindersScreen() {
 
   async function onRefresh() {
     setIsRefreshing(true);
-    await Promise.all([loadReminders(), loadAdminData()]);
+    await loadReminders();
   }
 
   async function enablePush() {
@@ -310,22 +245,6 @@ export default function RemindersScreen() {
     }
   }
 
-  async function sendAdminReminders() {
-    setAdminActionBusy(true);
-    setAdminError(null);
-    try {
-      const res = await api.post<AdminReminderSendResult>(
-        "/admin/stats/reminders/pre-deadline/send"
-      );
-      setAdminReminderResult(res.data);
-      await loadAdminData();
-    } catch (e) {
-      setAdminError(getErrorMessage(e));
-    } finally {
-      setAdminActionBusy(false);
-    }
-  }
-
   function getReminderUrgencyText(reminder: Reminder) {
     if (reminder.is_overdue) {
       if (reminder.hours_overdue > 0) {
@@ -349,88 +268,60 @@ export default function RemindersScreen() {
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />}
       >
         <View style={styles.hero}>
-          <View style={styles.heroGlowTop} />
-          <View style={styles.heroGlowBottom} />
-
-          <ThemedText style={styles.eyebrow}>Reminder center</ThemedText>
-          <ThemedText style={styles.heroTitle}>Stay ahead of every deadline</ThemedText>
-          <ThemedText style={styles.heroSubtitle}>
-            Manage your upcoming contribution reminders, web push delivery, and platform reminder operations in one place.
-          </ThemedText>
-
-          <View style={styles.heroBadges}>
-            <View style={styles.heroBadgeWarm}>
-              <ThemedText style={styles.heroBadgeWarmText}>
-                {remindersLoading ? "Loading" : `${reminders.length} ${t("open")}`}
-              </ThemedText>
-            </View>
-            <View style={styles.heroBadgeCool}>
-              <ThemedText style={styles.heroBadgeCoolText}>
-                {nativePushSupported
-                  ? pushSubscribed
-                    ? "Push on"
-                    : "Push off"
-                  : permission === "unsupported"
-                  ? "Web only"
-                  : pushSubscribed
-                    ? "Push on"
-                    : "Push off"}
-              </ThemedText>
-            </View>
-            {user?.is_global_admin ? (
-              <View style={styles.heroBadgeNeutral}>
-                <ThemedText style={styles.heroBadgeNeutralText}>Global admin</ThemedText>
-              </View>
-            ) : null}
+          <View style={styles.heroIcon}>
+            <Ionicons name="notifications" size={22} color="#FFFFFF" />
           </View>
-
-          <View style={styles.heroStats}>
-            <View style={styles.heroStat}>
-              <ThemedText style={styles.heroStatValue}>
-                {nextReminder ? getReminderUrgencyText(nextReminder) : "Clear"}
-              </ThemedText>
-              <ThemedText style={styles.heroStatLabel}>Next urgency</ThemedText>
-            </View>
-            <View style={styles.heroStat}>
-              <ThemedText style={styles.heroStatValue}>
-                {nextReminder ? formatShortDate(nextReminder.deadline) : "No due date"}
-              </ThemedText>
-              <ThemedText style={styles.heroStatLabel}>Next deadline</ThemedText>
-            </View>
+          <View style={styles.heroCopy}>
+            <ThemedText style={styles.eyebrow}>{t("Reminder center")}</ThemedText>
+            <ThemedText style={styles.heroTitle}>{t("Your reminders")}</ThemedText>
+            <ThemedText style={styles.heroSubtitle}>
+              {remindersLoading
+                ? t("Checking upcoming deadlines...")
+                : overdueCount > 0
+                  ? t("{{count}} overdue reminder(s) need attention.", { count: overdueCount })
+                  : reminders.length > 0
+                    ? t("{{count}} upcoming reminder(s).", { count: reminders.length })
+                    : t("You are all caught up.")}
+            </ThemedText>
+          </View>
+          <View style={styles.heroCount}>
+            <ThemedText style={styles.heroCountValue}>
+              {remindersLoading ? "—" : reminders.length}
+            </ThemedText>
+            <ThemedText style={styles.heroCountLabel}>{t("Open")}</ThemedText>
           </View>
         </View>
 
         <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <ThemedText type="subtitle">Push notifications</ThemedText>
-            <ThemedText style={styles.supportText}>
-              {nativePushSupported
-                ? ""
-                : webPushSupported
-                  ? "Secure web delivery"
-                  : "Available on secure web only"}
-            </ThemedText>
-          </View>
-
-          <View style={styles.metricGrid}>
-            <View style={styles.metricTile}>
-              <ThemedText style={styles.metricValue}>
-                {permission === "unsupported" ? "N/A" : permission}
+          <View style={styles.notificationRow}>
+            <View style={styles.notificationCopy}>
+              <ThemedText style={styles.notificationTitle}>Push notifications</ThemedText>
+              <ThemedText style={styles.supportText}>
+                {nativePushSupported
+                  ? t("Get contribution reminders and important Cercora updates.")
+                  : webPushSupported
+                    ? t("Permission: {{permission}}{{subscription}}", {
+                        permission,
+                        subscription: pushSubscribed ? ` - ${t("subscribed")}` : "",
+                      })
+                    : t("Available on secure web only.")}
               </ThemedText>
-              <ThemedText style={styles.metricLabel}>Permission</ThemedText>
             </View>
-          </View>
-
-          <View style={styles.actionsRow}>
-            <Pressable
-              style={styles.secondaryButton}
-              disabled={pushBusy || (!nativePushSupported && !webPushSupported)}
-              onPress={() => void (pushSubscribed ? disablePush() : enablePush())}
-            >
-              <ThemedText style={styles.secondaryButtonText}>
-                {pushBusy ? "Working..." : pushSubscribed ? "Disable push" : "Enable push"}
+            <View style={styles.notificationControl}>
+              {pushBusy ? <ActivityIndicator size="small" color={BrandColors.blueDeep} /> : null}
+              <ThemedText style={styles.notificationStatus}>
+                {pushSubscribed ? t("On") : t("Off")}
               </ThemedText>
-            </Pressable>
+              <Switch
+                accessibilityLabel={t("Push notifications")}
+                accessibilityHint={t("Turns push notifications on or off")}
+                disabled={pushBusy || (!nativePushSupported && !webPushSupported)}
+                onValueChange={(enabled) => void (enabled ? enablePush() : disablePush())}
+                trackColor={{ false: BrandColors.borderStrong, true: BrandColors.blue }}
+                thumbColor="#FFFFFF"
+                value={pushSubscribed}
+              />
+            </View>
           </View>
 
           {pushError ? <ThemedText style={styles.errorText}>{pushError}</ThemedText> : null}
@@ -489,121 +380,17 @@ export default function RemindersScreen() {
                   </View>
                 </View>
 
-                <View style={styles.metricGrid}>
-                  <View style={styles.metricTileCompact}>
-                    <ThemedText style={styles.metricValueCompact}>
-                      {formatShortDate(reminder.deadline)}
-                    </ThemedText>
-                    <ThemedText style={styles.metricLabel}>Deadline</ThemedText>
-                  </View>
-                  <View style={styles.metricTileCompact}>
-                    <ThemedText style={styles.metricValueCompact}>{reminder.tontine_id}</ThemedText>
-                    <ThemedText style={styles.metricLabel}>Tontine ID</ThemedText>
-                  </View>
+                <View style={styles.deadlineRow}>
+                  <Ionicons name="calendar-outline" size={17} color={BrandColors.muted} />
+                  <ThemedText style={styles.deadlineText}>
+                    {t("Due {{date}}", { date: formatShortDate(reminder.deadline) })}
+                  </ThemedText>
                 </View>
               </View>
             ))
           )}
         </View>
 
-        {user?.is_global_admin ? (
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <ThemedText type="subtitle">Admin reminder operations</ThemedText>
-              <ThemedText style={styles.supportText}>Platform-wide delivery controls</ThemedText>
-            </View>
-
-            {adminLoading ? (
-              <View style={styles.loadingRow}>
-                <ActivityIndicator />
-                <ThemedText style={styles.supportText}>Loading admin reminder preview...</ThemedText>
-              </View>
-            ) : adminError ? (
-              <ThemedText style={styles.errorText}>{adminError}</ThemedText>
-            ) : adminReminderPreview ? (
-              <>
-                <View style={styles.metricGrid}>
-                  <View style={styles.metricTile}>
-                    <ThemedText style={styles.metricValue}>{adminReminderPreview.cycles_count}</ThemedText>
-                    <ThemedText style={styles.metricLabel}>Cycles in window</ThemedText>
-                  </View>
-                  <View style={styles.metricTile}>
-                    <ThemedText style={styles.metricValue}>{adminReminderPreview.targets_count}</ThemedText>
-                    <ThemedText style={styles.metricLabel}>Members targeted</ThemedText>
-                  </View>
-                </View>
-
-                <ThemedText style={styles.supportText}>
-                  Window {formatShortDate(adminReminderPreview.window_start)} to{" "}
-                  {formatShortDate(adminReminderPreview.window_end)}
-                </ThemedText>
-
-                <Pressable
-                  style={styles.primaryButton}
-                  disabled={adminActionBusy}
-                  onPress={() => void sendAdminReminders()}
-                >
-                  <ThemedText style={styles.primaryButtonText}>
-                    {adminActionBusy ? "Sending..." : "Send reminder batch"}
-                  </ThemedText>
-                </Pressable>
-
-                {adminReminderResult ? (
-                  <View style={styles.helperCard}>
-                    <ThemedText style={styles.helperTitle}>Last batch result</ThemedText>
-                    <ThemedText style={styles.supportText}>
-                      SMS configured: {adminReminderResult.sms_configured ? "Yes" : "No"}
-                    </ThemedText>
-                    <ThemedText style={styles.supportText}>
-                      Cycles checked: {adminReminderResult.cycles_checked}
-                    </ThemedText>
-                    <ThemedText style={styles.supportText}>
-                      Cycles marked: {adminReminderResult.cycles_marked}
-                    </ThemedText>
-                    <ThemedText style={styles.supportText}>
-                      SMS sent: {adminReminderResult.sms_sent}
-                    </ThemedText>
-                    <ThemedText style={styles.supportText}>
-                      SMS failed: {adminReminderResult.sms_failed}
-                    </ThemedText>
-                  </View>
-                ) : null}
-
-                {adminReminderPreview.cycles.length === 0 ? (
-                  <ThemedText style={styles.supportText}>No reminder preview available.</ThemedText>
-                ) : (
-                  adminReminderPreview.cycles.slice(0, 6).map((cycle) => (
-                    <View key={cycle.cycle_id} style={styles.previewCard}>
-                      <View style={styles.reminderMetaRow}>
-                        <View style={styles.reminderHeading}>
-                          <ThemedText style={styles.reminderTitle}>{cycle.tontine_name}</ThemedText>
-                          <ThemedText style={styles.supportText}>Cycle {cycle.cycle_number}</ThemedText>
-                        </View>
-                        <View style={styles.previewBadge}>
-                          <ThemedText style={styles.previewBadgeText}>
-                            {cycle.targets_count} targets
-                          </ThemedText>
-                        </View>
-                      </View>
-                      <ThemedText style={styles.supportText}>
-                        Due {formatShortDate(cycle.deadline)}
-                      </ThemedText>
-                      <ThemedText style={styles.supportText}>
-                        {cycle.targets
-                          .slice(0, 3)
-                          .map((target) => target.name)
-                          .join(", ")}
-                        {cycle.targets_count > 3 ? ` +${cycle.targets_count - 3} more` : ""}
-                      </ThemedText>
-                    </View>
-                  ))
-                )}
-              </>
-            ) : (
-              <ThemedText style={styles.supportText}>No preview data available.</ThemedText>
-            )}
-          </View>
-        ) : null}
       </ScrollView>
     </ThemedView>
   );
@@ -617,125 +404,66 @@ const styles = StyleSheet.create({
     gap: 18,
   },
   hero: {
-    position: "relative",
-    overflow: "hidden",
-    borderRadius: 28,
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 24,
     backgroundColor: BrandColors.blueDeep,
-    padding: 22,
-    gap: 14,
+    padding: 16,
+    gap: 12,
     ...BrandShadow,
   },
-  heroGlowTop: {
-    position: "absolute",
-    top: -30,
-    right: -18,
-    width: 148,
-    height: 148,
-    borderRadius: 999,
+  heroIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 15,
     backgroundColor: BrandColors.blue,
-    opacity: 0.26,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  heroGlowBottom: {
-    position: "absolute",
-    left: -12,
-    bottom: -56,
-    width: 148,
-    height: 148,
-    borderRadius: 999,
-    backgroundColor: BrandColors.violet,
-    opacity: 0.16,
+  heroCopy: {
+    flex: 1,
+    gap: 2,
   },
   eyebrow: {
     color: "#CDD7F2",
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 11,
+    lineHeight: 15,
     fontWeight: "700",
     textTransform: "uppercase",
-    letterSpacing: 1.1,
+    letterSpacing: 0.8,
   },
   heroTitle: {
     color: "#FFFFFF",
-    fontSize: 30,
-    lineHeight: 34,
+    fontSize: 21,
+    lineHeight: 26,
     fontWeight: "800",
   },
   heroSubtitle: {
     color: "#DEE6FA",
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  heroBadges: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  heroBadgeWarm: {
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: "rgba(254, 215, 170, 0.38)",
-    backgroundColor: "rgba(255, 247, 237, 0.12)",
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-  },
-  heroBadgeWarmText: {
-    color: "#FFE7CC",
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: "800",
-  },
-  heroBadgeCool: {
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: "rgba(171, 239, 198, 0.38)",
-    backgroundColor: "rgba(236, 253, 243, 0.12)",
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-  },
-  heroBadgeCoolText: {
-    color: "#D9FBE8",
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: "800",
-  },
-  heroBadgeNeutral: {
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.16)",
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-  },
-  heroBadgeNeutralText: {
-    color: "#EFF6FF",
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: "800",
-  },
-  heroStats: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
-  heroStat: {
-    minWidth: 100,
-    flexGrow: 1,
-    borderRadius: 18,
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.12)",
-    padding: 14,
-    gap: 4,
-  },
-  heroStatValue: {
-    color: "#FFFFFF",
-    fontSize: 22,
-    lineHeight: 26,
-    fontWeight: "800",
-  },
-  heroStatLabel: {
-    color: "#D6E0FA",
     fontSize: 13,
     lineHeight: 18,
+  },
+  heroCount: {
+    minWidth: 52,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.14)",
+    backgroundColor: "rgba(255,255,255,0.08)",
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    alignItems: "center",
+  },
+  heroCountValue: {
+    color: "#FFFFFF",
+    fontSize: 18,
+    lineHeight: 22,
+    fontWeight: "800",
+  },
+  heroCountLabel: {
+    color: "#D6E0FA",
+    fontSize: 10,
+    lineHeight: 14,
+    fontWeight: "700",
   },
   card: {
     borderRadius: 28,
@@ -752,10 +480,48 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: 12,
   },
+  notificationRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 16,
+  },
+  notificationCopy: {
+    flex: 1,
+    gap: 5,
+  },
+  notificationTitle: {
+    color: BrandColors.ink,
+    fontSize: 17,
+    lineHeight: 23,
+    fontWeight: "700",
+  },
+  notificationControl: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  notificationStatus: {
+    color: BrandColors.inkSoft,
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "700",
+  },
   supportText: {
     color: BrandColors.muted,
     fontSize: 14,
     lineHeight: 20,
+  },
+  deadlineRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+  },
+  deadlineText: {
+    color: BrandColors.inkSoft,
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "600",
   },
   metricGrid: {
     flexDirection: "row",

@@ -1,6 +1,7 @@
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect } from "@react-navigation/native";
 import { Link } from "expo-router";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -27,20 +28,6 @@ type Tontine = {
   current_cycle: number;
   status: string;
   frequency?: string | null;
-};
-
-type PendingInvite = {
-  membership_id: number;
-  tontine_id: number;
-  tontine_name: string;
-  invited_at: string;
-};
-
-type ReliabilityProfile = {
-  reliability_score_percent: number;
-  cycles_completed: number;
-  late_payments: number;
-  debts_repaid: number;
 };
 
 function formatAmount(value: number | string) {
@@ -76,27 +63,15 @@ export default function TontinesListScreen() {
   const layout = useResponsiveLayout();
   const { t } = useI18n();
   const [items, setItems] = useState<Tontine[]>([]);
-  const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
-  const [reliability, setReliability] = useState<ReliabilityProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [acceptingInviteId, setAcceptingInviteId] = useState<number | null>(null);
-  const [rejectingInviteId, setRejectingInviteId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
     try {
-      const [tontines, invites, reliabilityProfile] = await Promise.all([
-        api.get<Tontine[]>("/tontines/"),
-        api.get<PendingInvite[]>("/tontine-memberships/pending/me"),
-        api.get<ReliabilityProfile>("/users/me/reliability"),
-      ]);
-
-      setItems(tontines.data);
-      setPendingInvites(invites.data);
-      setReliability(reliabilityProfile.data);
+      const response = await api.get<Tontine[]>("/tontines/");
+      setItems(response.data);
     } catch (e) {
       setError(getErrorMessage(e));
     } finally {
@@ -115,46 +90,6 @@ export default function TontinesListScreen() {
     setIsRefreshing(true);
     await load();
   }
-
-  async function onAcceptInvite(membershipId: number) {
-    setAcceptingInviteId(membershipId);
-    setError(null);
-    setMessage(null);
-    try {
-      await api.post(`/tontine-memberships/${membershipId}/accept`);
-      setMessage(t("Invite accepted."));
-      await load();
-    } catch (e) {
-      setError(getErrorMessage(e));
-    } finally {
-      setAcceptingInviteId(null);
-    }
-  }
-
-  async function onRejectInvite(membershipId: number) {
-    setRejectingInviteId(membershipId);
-    setError(null);
-    setMessage(null);
-    try {
-      await api.post(`/tontine-memberships/${membershipId}/reject`);
-      setMessage(t("Invite rejected."));
-      await load();
-    } catch (e) {
-      setError(getErrorMessage(e));
-    } finally {
-      setRejectingInviteId(null);
-    }
-  }
-
-  const summary = useMemo(() => {
-    const active = items.filter((item) => item.status === "active").length;
-    return {
-      total: items.length,
-      active,
-      pendingInvites: pendingInvites.length,
-      reliability: reliability?.reliability_score_percent ?? null,
-    };
-  }, [items, pendingInvites.length, reliability?.reliability_score_percent]);
 
   return (
     <ThemedView style={styles.container} lightColor={BrandColors.canvas}>
@@ -179,154 +114,33 @@ export default function TontinesListScreen() {
               <View style={styles.pageHeaderText}>
                 <ThemedText style={styles.pageTitle}>{t("Your tontines")}</ThemedText>
                 <ThemedText style={styles.pageSubtitle}>
-                  {t("Manage invites, track your reliability, and open every savings group from one place.")}
+                  {t("Open a group or create a new savings circle.")}
                 </ThemedText>
               </View>
-            </View>
-
-            {error ? <ThemedText style={styles.error}>{error}</ThemedText> : null}
-            {message ? <ThemedText style={styles.success}>{message}</ThemedText> : null}
-
-            <View style={styles.overviewCard}>
-              <View style={styles.overviewGlowA} />
-              <View style={styles.overviewGlowB} />
-              <ThemedText style={styles.eyebrow}>{t("Tontine workspace")}</ThemedText>
-              <ThemedText style={styles.overviewTitle}>{t("Keep your groups and invites in sync")}</ThemedText>
-              <ThemedText style={styles.overviewSubtitle}>
-                {t("Access your reliability profile, pending invites, creation tools, and active groups from one streamlined workspace.")}
-              </ThemedText>
-
-              <View style={styles.summaryGrid}>
-                <View style={styles.summaryTile}>
-                  <ThemedText style={styles.summaryValue}>
-                    {isLoading ? "..." : String(summary.total)}
-                  </ThemedText>
-                  <ThemedText style={styles.summaryLabel}>{t("Groups")}</ThemedText>
-                </View>
-                <View style={styles.summaryTile}>
-                  <ThemedText style={styles.summaryValue}>
-                    {isLoading ? "..." : String(summary.active)}
-                  </ThemedText>
-                  <ThemedText style={styles.summaryLabel}>{t("Active")}</ThemedText>
-                </View>
-                <View style={styles.summaryTile}>
-                  <ThemedText style={styles.summaryValue}>
-                    {isLoading ? "..." : String(summary.pendingInvites)}
-                  </ThemedText>
-                  <ThemedText style={styles.summaryLabel}>{t("Invites")}</ThemedText>
-                </View>
-                <View style={styles.summaryTile}>
-                  <ThemedText style={styles.summaryValue}>
-                    {isLoading
-                      ? "..."
-                      : summary.reliability === null
-                        ? "--"
-                        : `${summary.reliability}%`}
-                  </ThemedText>
-                  <ThemedText style={styles.summaryLabel}>{t("Reliability")}</ThemedText>
-                </View>
-              </View>
-            </View>
-
-            {reliability ? (
-              <View style={styles.sectionCard}>
-                <ThemedText style={styles.sectionTitle}>{t("Reliability profile")}</ThemedText>
-                <ThemedText style={styles.sectionSubtitle}>
-                  {t("The same score summary from the web tontines page, adapted for mobile.")}
-                </ThemedText>
-                <View style={styles.metricGrid}>
-                  <View style={styles.metricTile}>
-                    <ThemedText style={styles.metricValue}>
-                      {reliability.reliability_score_percent}%
-                    </ThemedText>
-                    <ThemedText style={styles.metricLabel}>{t("Score")}</ThemedText>
-                  </View>
-                  <View style={styles.metricTile}>
-                    <ThemedText style={styles.metricValue}>
-                      {reliability.cycles_completed}
-                    </ThemedText>
-                    <ThemedText style={styles.metricLabel}>{t("Cycles completed")}</ThemedText>
-                  </View>
-                  <View style={styles.metricTile}>
-                    <ThemedText style={styles.metricValue}>
-                      {reliability.late_payments}
-                    </ThemedText>
-                    <ThemedText style={styles.metricLabel}>{t("Late payments")}</ThemedText>
-                  </View>
-                  <View style={styles.metricTile}>
-                    <ThemedText style={styles.metricValue}>
-                      {reliability.debts_repaid}
-                    </ThemedText>
-                    <ThemedText style={styles.metricLabel}>{t("Debts repaid")}</ThemedText>
-                  </View>
-                </View>
-              </View>
-            ) : null}
-
-            {pendingInvites.length > 0 ? (
-              <View style={styles.invitesCard}>
-                <ThemedText style={styles.sectionTitle}>{t("Pending invites")}</ThemedText>
-                <ThemedText style={styles.sectionSubtitle}>
-                  {t("Accept or reject invitations without leaving the tontines home screen.")}
-                </ThemedText>
-                <View style={styles.invitesList}>
-                  {pendingInvites.map((invite) => (
-                    <View key={invite.membership_id} style={styles.inviteItem}>
-                      <View style={styles.inviteText}>
-                        <ThemedText style={styles.inviteTitle}>{invite.tontine_name}</ThemedText>
-                        <ThemedText style={styles.inviteMeta}>
-                          {t("Tontine ID #{{id}}", { id: invite.tontine_id })}
-                        </ThemedText>
-                      </View>
-                      <View style={styles.inviteActions}>
-                        <Pressable
-                          style={styles.acceptButton}
-                          disabled={
-                            acceptingInviteId === invite.membership_id ||
-                            rejectingInviteId === invite.membership_id
-                          }
-                          onPress={() => void onAcceptInvite(invite.membership_id)}
-                        >
-                          {acceptingInviteId === invite.membership_id ? (
-                            <ActivityIndicator color="#FFFFFF" />
-                          ) : (
-                            <ThemedText style={styles.acceptButtonText}>{t("Accept")}</ThemedText>
-                          )}
-                        </Pressable>
-                        <Pressable
-                          style={styles.rejectButton}
-                          disabled={
-                            rejectingInviteId === invite.membership_id ||
-                            acceptingInviteId === invite.membership_id
-                          }
-                          onPress={() => void onRejectInvite(invite.membership_id)}
-                        >
-                          {rejectingInviteId === invite.membership_id ? (
-                            <ActivityIndicator color={BrandColors.dangerText} />
-                          ) : (
-                            <ThemedText style={styles.rejectButtonText}>{t("Reject")}</ThemedText>
-                          )}
-                        </Pressable>
-                      </View>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            ) : null}
-
-            <View style={styles.sectionCard}>
-              <ThemedText style={styles.sectionTitle}>{t("Create a new tontine")}</ThemedText>
-              <ThemedText style={styles.sectionSubtitle}>
-                {t("Start a new savings group, then invite members and generate cycles from its workspace.")}
-              </ThemedText>
               <Link href="/(tabs)/tontines/create" asChild>
-                <Pressable style={styles.inlineLink}>
-                  <ThemedText style={styles.inlineLinkText}>{t("Go to create form")}</ThemedText>
+                <Pressable
+                  accessibilityRole="button"
+                  style={({ pressed }) => [
+                    styles.createButton,
+                    pressed ? styles.createButtonPressed : null,
+                  ]}
+                >
+                  <Ionicons name="add" size={20} color="#FFFFFF" />
+                  <ThemedText style={styles.createButtonText}>{t("Create tontine")}</ThemedText>
                 </Pressable>
               </Link>
             </View>
 
-            <ThemedText style={styles.listHeading}>{t("Your groups")}</ThemedText>
+            {error ? <ThemedText style={styles.error}>{error}</ThemedText> : null}
+
+            <View style={styles.listHeaderRow}>
+              <ThemedText style={styles.listHeading}>{t("Your groups")}</ThemedText>
+              {!isLoading ? (
+                <ThemedText style={styles.groupCount}>
+                  {t("{{count}} group(s)", { count: items.length })}
+                </ThemedText>
+              ) : null}
+            </View>
           </View>
         }
         ListEmptyComponent={
@@ -451,7 +265,8 @@ const styles = StyleSheet.create({
   },
   pageHeader: {
     flexDirection: "row",
-    alignItems: "flex-end",
+    flexWrap: "wrap",
+    alignItems: "center",
     justifyContent: "space-between",
     gap: 12,
   },
@@ -470,6 +285,39 @@ const styles = StyleSheet.create({
     color: BrandColors.muted,
     fontSize: 14,
     lineHeight: 20,
+  },
+  createButton: {
+    minHeight: 48,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderRadius: 16,
+    backgroundColor: BrandColors.blueDeep,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    ...BrandShadow,
+  },
+  createButtonPressed: {
+    opacity: 0.84,
+  },
+  createButtonText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    lineHeight: 19,
+    fontWeight: "800",
+  },
+  listHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  groupCount: {
+    color: BrandColors.muted,
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "700",
   },
   overviewCard: {
     position: "relative",

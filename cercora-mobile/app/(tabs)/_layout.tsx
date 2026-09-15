@@ -4,10 +4,12 @@ import { Tabs } from "expo-router";
 import { HapticTab } from "@/components/haptic-tab";
 import { BrandColors, BrandShadow } from "@/constants/brand";
 import { Fonts } from "@/constants/theme";
+import { useAuth } from "@/hooks/use-auth";
 import { useI18n } from "@/hooks/use-i18n";
 
 export default function TabLayout() {
   const { t } = useI18n();
+  const { user } = useAuth();
 
   return (
     <Tabs
@@ -86,6 +88,17 @@ export default function TabLayout() {
           title: t("Profile"),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person-outline" size={size} color={color} />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
+        name="admin"
+        options={{
+          href: user?.is_global_admin ? undefined : null,
+          title: t("Admin"),
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="shield-checkmark-outline" size={size} color={color} />
           ),
         }}
       />
