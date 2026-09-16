@@ -102,7 +102,9 @@ export default function Dashboard() {
           </View>
           <View style={styles.section}>
             <View style={styles.row}>
-              <ThemedText style={[AppTypography.section, styles.flex]}>{t("Your tontines")}</ThemedText>
+              <Pressable accessibilityRole="button" onPress={() => router.push("/(tabs)/tontines")} style={[styles.flex, styles.textButton]}>
+                <ThemedText style={AppTypography.section}>{t("Your tontines")}</ThemedText>
+              </Pressable>
               <Pressable accessibilityRole="button" onPress={() => router.push("/(tabs)/tontines")} style={styles.textButton}><ThemedText style={{ color: colors.accent, fontWeight: "700" }}>{t("View all")}</ThemedText></Pressable>
             </View>
             {groupError ? <AppCard><ThemedText>{t("Could not refresh your tontines.")}</ThemedText><AppButton secondary label={t("Try again")} onPress={() => { void load(); }} /></AppCard> : null}

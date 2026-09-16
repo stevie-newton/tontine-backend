@@ -426,7 +426,7 @@ export default function TontineDetailScreen() {
             >
               <Pressable
                 accessibilityRole="link"
-                style={[styles.navigationRow, styles.navigationRowBorder]}
+                style={StyleSheet.flatten([styles.navigationRow, styles.navigationRowBorder])}
               >
                 <View style={styles.navigationIcon}>
                   <Ionicons name="people-outline" size={21} color={BrandColors.blue} />
@@ -450,7 +450,7 @@ export default function TontineDetailScreen() {
             >
               <Pressable
                 accessibilityRole="link"
-                style={[styles.navigationRow, styles.navigationRowBorder]}
+                style={StyleSheet.flatten([styles.navigationRow, styles.navigationRowBorder])}
               >
                 <View style={styles.navigationIcon}>
                   <Ionicons name="repeat-outline" size={21} color={BrandColors.blue} />
@@ -479,7 +479,7 @@ export default function TontineDetailScreen() {
             >
               <Pressable
                 accessibilityRole="link"
-                style={[styles.navigationRow, styles.navigationRowBorder]}
+                style={StyleSheet.flatten([styles.navigationRow, styles.navigationRowBorder])}
               >
                 <View style={styles.navigationIcon}>
                   <Ionicons name="swap-horizontal-outline" size={21} color={BrandColors.blue} />
@@ -505,7 +505,7 @@ export default function TontineDetailScreen() {
             >
               <Pressable
                 accessibilityRole="link"
-                style={[styles.navigationRow, styles.navigationRowBorder]}
+                style={StyleSheet.flatten([styles.navigationRow, styles.navigationRowBorder])}
               >
                 <View style={styles.navigationIcon}>
                   <Ionicons name="wallet-outline" size={21} color={BrandColors.blue} />

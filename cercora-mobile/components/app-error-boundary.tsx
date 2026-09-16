@@ -1,5 +1,5 @@
 import React from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
@@ -10,15 +10,17 @@ type Props = {
 
 type State = {
   hasError: boolean;
+  detail: string;
 };
 
 export class AppErrorBoundary extends React.Component<Props, State> {
   state: State = {
     hasError: false,
+    detail: "",
   };
 
-  static getDerivedStateFromError() {
-    return { hasError: true };
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, detail: error.message || String(error) };
   }
 
   componentDidCatch(error: Error) {
@@ -26,7 +28,7 @@ export class AppErrorBoundary extends React.Component<Props, State> {
   }
 
   private reset = () => {
-    this.setState({ hasError: false });
+    this.setState({ hasError: false, detail: "" });
   };
 
   render() {
@@ -35,10 +37,13 @@ export class AppErrorBoundary extends React.Component<Props, State> {
         <ThemedView style={styles.container} lightColor="#F4F7FB">
           <View style={styles.card}>
             <ThemedText style={styles.eyebrow}>Something went wrong</ThemedText>
-            <ThemedText type="title">The app hit an unexpected error</ThemedText>
+            <ThemedText type="title" style={{ color: "#10213F" }}>The app hit an unexpected error</ThemedText>
             <ThemedText style={styles.supportText}>
               Try reloading this view. If the problem keeps happening, sign in again or retry the action a little later.
             </ThemedText>
+            {__DEV__ && this.state.detail ? (
+              <Text selectable style={styles.errorDetail}>{this.state.detail}</Text>
+            ) : null}
             <Pressable style={styles.button} onPress={this.reset}>
               <ThemedText style={styles.buttonText}>Try again</ThemedText>
             </Pressable>
@@ -52,6 +57,7 @@ export class AppErrorBoundary extends React.Component<Props, State> {
 }
 
 const styles = StyleSheet.create({
+  errorDetail: { color: "#B42318", backgroundColor: "#FEF3F2", padding: 12, borderRadius: 8, fontSize: 14, lineHeight: 20 },
   container: {
     flex: 1,
     padding: 18,
