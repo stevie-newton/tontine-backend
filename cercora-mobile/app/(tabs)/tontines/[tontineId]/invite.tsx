@@ -18,6 +18,8 @@ import { BrandColors, BrandShadow } from "@/constants/brand";
 import { api } from "@/hooks/api-client";
 import { getErrorMessage } from "@/hooks/error-utils";
 import { useI18n } from "@/hooks/use-i18n";
+import { InvitationShare } from "@/components/invitation-share";
+import { AppButton } from "@/components/ui/app-surface";
 
 type Role = "member" | "admin";
 
@@ -32,8 +34,14 @@ export default function InviteMemberScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
 
   async function onSubmit() {
+    if (isSubmitting) return;
+    if (!phone.trim() || !Number.isSafeInteger(id) || id <= 0) {
+      setError(t("Enter a phone number and open a valid tontine before inviting."));
+      return;
+    }
     setError(null);
     setMessage(null);
     setIsSubmitting(true);
@@ -47,7 +55,7 @@ export default function InviteMemberScreen() {
       const msg = res.data?.message;
       setMessage(typeof msg === "string" ? t(msg) : t("Invite sent."));
       setPhone("");
-      router.back();
+      setSent(true);
     } catch (e) {
       setError(getErrorMessage(e));
     } finally {
@@ -96,7 +104,12 @@ export default function InviteMemberScreen() {
             </View>
           </View>
 
-          <View style={styles.card}>
+          {sent ? <>
+            {message ? <ThemedText style={styles.message}>{message}</ThemedText> : null}
+            <InvitationShare tontineId={id} />
+            <AppButton secondary label={t("Invite another person")} onPress={() => { setSent(false); setMessage(null); setError(null); }} />
+            <AppButton secondary label={t("Back to group")} onPress={() => router.replace({ pathname: "/(tabs)/tontines/[tontineId]", params: { tontineId: String(id) } })} />
+          </> : <View style={styles.card}>
             <ThemedText type="subtitle">{t("Invite details")}</ThemedText>
             <ThemedText style={styles.supportText}>
               {t("The invited person will see a pending invite after they sign in with this phone number.")}
@@ -173,7 +186,7 @@ export default function InviteMemberScreen() {
                 <ThemedText style={styles.primaryButtonText}>{t("Send invite")}</ThemedText>
               )}
             </Pressable>
-          </View>
+          </View>}
         </ScrollView>
       </ThemedView>
     </KeyboardAvoidingView>

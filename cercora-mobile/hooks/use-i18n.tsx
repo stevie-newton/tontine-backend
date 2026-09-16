@@ -13,6 +13,23 @@ const enTranslations: Record<string, string> = {
 };
 
 const frTranslations: Record<string, string> = {
+  "Enter a phone number and open a valid tontine before inviting.": "Saisissez un numéro de téléphone et ouvrez une tontine valide avant d’inviter.",
+  "Invite another person": "Inviter une autre personne",
+  "Back to group": "Retour au groupe",
+  "Tontine invitation": "Invitation à une tontine",
+  "This invitation link is invalid.": "Ce lien d’invitation est invalide.",
+  "Sign in with the invited phone number to review this invitation.": "Connectez-vous avec le numéro invité pour consulter cette invitation.",
+  "Accept this invitation to join the group with your current account.": "Acceptez cette invitation pour rejoindre le groupe avec votre compte actuel.",
+  "Joining...": "Adhésion en cours...",
+  "Accept invitation": "Accepter l’invitation",
+  "No pending invitation for this group was found for your account.": "Aucune invitation en attente pour ce groupe n’a été trouvée pour votre compte.",
+  "If you already accepted, open Your tontines. Otherwise, ask the inviter to check your phone number.": "Si vous avez déjà accepté, ouvrez Vos tontines. Sinon, demandez à la personne qui vous invite de vérifier votre numéro.",
+  "Open your Cercora invitation: {{link}}": "Ouvrez votre invitation Cercora : {{link}}",
+  "Share this invitation": "Partager cette invitation",
+  "Only the invited phone number can accept. Sharing this code does not grant access to anyone else.": "Seul le numéro invité peut accepter. Partager ce code ne donne accès à personne d’autre.",
+  "Invitation QR code": "Code QR d’invitation",
+  "Share invitation link": "Partager le lien d’invitation",
+  "You can also select and copy the link above.": "Vous pouvez aussi sélectionner et copier le lien ci-dessus.",
   "Enter your phone number.": "Saisissez votre numéro de téléphone.",
   "Enter your password.": "Saisissez votre mot de passe.",
   "Use {{label}} next time": "Utiliser {{label}} la prochaine fois",

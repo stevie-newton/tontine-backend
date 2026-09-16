@@ -13,6 +13,7 @@ import { subscribeToSessionExpired } from "@/hooks/auth-session";
 import { api, setApiAccessToken } from "@/hooks/api-client";
 import { getErrorMessage } from "@/hooks/error-utils";
 import { translateText } from "@/hooks/use-i18n";
+import { PENDING_INVITATION_KEY, parseInvitationId } from "@/hooks/invitation-links";
 
 type User = {
   id: number;
@@ -160,12 +161,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (state.isLoading) return;
 
     const inAuthGroup = segments[0] === "(auth)";
+    if (segments[0] === "invitation") return;
     if (!state.accessToken && !inAuthGroup) {
       router.replace("/(auth)/login");
       return;
     }
     if (state.accessToken && inAuthGroup) {
-      router.replace("/(tabs)/dashboard");
+      let active = true;
+      void AsyncStorage.getItem(PENDING_INVITATION_KEY).then(async value => {
+        if (!active) return;
+        const invitationId = parseInvitationId(value);
+        await AsyncStorage.removeItem(PENDING_INVITATION_KEY);
+        if (!active) return;
+        if (invitationId !== null) {
+          router.replace({ pathname: "/invitation", params: { tontineId: String(invitationId) } });
+        } else router.replace("/(tabs)/dashboard");
+      }).catch(() => { if (active) router.replace("/(tabs)/dashboard"); });
+      return () => { active = false; };
     }
   }, [router, segments, state.accessToken, state.isLoading]);
 

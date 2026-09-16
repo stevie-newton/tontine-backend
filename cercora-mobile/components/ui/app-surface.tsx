@@ -26,9 +26,9 @@ export function AppCard({ style, ...props }: ViewProps) {
   const colors = useSurfaceColors();
   return <View {...props} style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }, style]} />;
 }
-export function AppButton({ label, onPress, secondary = false }: { label: string; onPress: () => void; secondary?: boolean }) {
+export function AppButton({ label, onPress, secondary = false, disabled = false }: { label: string; onPress: () => void; secondary?: boolean; disabled?: boolean }) {
   const colors = useSurfaceColors();
-  return <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.button, { backgroundColor: secondary ? colors.track : BrandColors.blue, opacity: pressed ? 0.75 : 1 }]}><ThemedText style={[styles.buttonText, { color: secondary ? colors.accent : "#FFFFFF" }]}>{label}</ThemedText></Pressable>;
+  return <Pressable accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.button, { backgroundColor: secondary ? colors.track : BrandColors.blue, opacity: disabled ? 0.5 : pressed ? 0.75 : 1 }]}><ThemedText style={[styles.buttonText, { color: secondary ? colors.accent : "#FFFFFF" }]}>{label}</ThemedText></Pressable>;
 }
 const styles = StyleSheet.create({
   card: { borderRadius: 22, borderWidth: 1, padding: 20, gap: 14 },
