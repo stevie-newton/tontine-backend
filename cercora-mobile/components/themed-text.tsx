@@ -2,7 +2,7 @@ import React from "react";
 import { StyleSheet, Text, type TextProps } from "react-native";
 
 import { Fonts } from "@/constants/theme";
-import { translateText, useI18n } from "@/hooks/use-i18n";
+import { useI18n } from "@/hooks/use-i18n";
 import { useThemeColor } from "@/hooks/use-theme-color";
 
 export type ThemedTextProps = TextProps & {
@@ -11,10 +11,10 @@ export type ThemedTextProps = TextProps & {
   type?: "default" | "title" | "defaultSemiBold" | "subtitle" | "link";
 };
 
-function translateChildren(children: React.ReactNode): React.ReactNode {
+function translateChildren(children: React.ReactNode, t: (key: string) => string): React.ReactNode {
   return React.Children.map(children, (child) => {
-    if (typeof child === "string") return translateText(child);
-    if (Array.isArray(child)) return translateChildren(child);
+    if (typeof child === "string") return t(child);
+    if (Array.isArray(child)) return translateChildren(child, t);
     return child;
   });
 }
@@ -26,9 +26,8 @@ export function ThemedText({
   type = "default",
   ...rest
 }: ThemedTextProps) {
-  const { locale } = useI18n();
+  const { t } = useI18n();
   const color = useThemeColor({ light: lightColor, dark: darkColor }, "text");
-  void locale;
 
   return (
     <Text
@@ -43,7 +42,7 @@ export function ThemedText({
       ]}
       {...rest}
     >
-      {translateChildren(rest.children)}
+      {translateChildren(rest.children, t)}
     </Text>
   );
 }

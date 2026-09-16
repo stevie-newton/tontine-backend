@@ -1,11 +1,11 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect } from "@react-navigation/native";
-import axios from "axios";
-import { Stack } from "expo-router";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, Stack } from "expo-router";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Pressable,
   Platform,
   RefreshControl,
   ScrollView,
@@ -14,10 +14,11 @@ import {
   View,
 } from "react-native";
 
-import { BrandBackdrop } from "@/components/brand-backdrop";
+import { AppButton, AppCard, AppTypography, useSurfaceColors } from "@/components/ui/app-surface";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useResponsiveLayout } from "@/hooks/use-responsive-layout";
 import { ThemedText } from "@/components/themed-text";
-import { ThemedView } from "@/components/themed-view";
-import { BrandColors, BrandShadow } from "@/constants/brand";
+import { BrandColors } from "@/constants/brand";
 import { api } from "@/hooks/api-client";
 import {
   disableNativePush,
@@ -54,16 +55,12 @@ function formatShortDate(value: string) {
   }).format(d);
 }
 
-function isMissingReminderFeedError(error: unknown) {
-  return (
-    (axios.isAxiosError(error) && error.response?.status === 404) ||
-    (error instanceof Error && error.message.trim().toLowerCase() === "not found") ||
-    (typeof error === "string" && error.trim().toLowerCase() === "not found")
-  );
-}
-
 export default function RemindersScreen() {
   const { t } = useI18n();
+  const colors = useSurfaceColors();
+  const insets = useSafeAreaInsets();
+  const layout = useResponsiveLayout();
+  const request = useRef(0);
   const nativePushSupported = NATIVE_PUSH_SUPPORTED;
 
   const [reminders, setReminders] = useState<Reminder[]>([]);
@@ -92,30 +89,25 @@ export default function RemindersScreen() {
   const [pushError, setPushError] = useState<string | null>(null);
 
   const loadReminders = useCallback(async () => {
-    setRemindersLoading(true);
-    setRemindersError(null);
+    const version = ++request.current;
     try {
       const res = await api.get<{ reminders: Reminder[] }>("/reminders/pre-deadline/me");
+      if (version !== request.current) return;
       setReminders(res.data.reminders ?? []);
+      setRemindersError(null);
     } catch (e) {
-      if (isMissingReminderFeedError(e)) {
-        setRemindersError(null);
-        setReminders([]);
-        return;
-      }
-      setRemindersError(getErrorMessage(e));
-      setReminders([]);
+      if (version === request.current) setRemindersError(getErrorMessage(e));
     } finally {
-      setRemindersLoading(false);
-      setIsRefreshing(false);
+      if (version === request.current) {
+        setRemindersLoading(false);
+        setIsRefreshing(false);
+      }
     }
   }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      void loadReminders();
-    }, [loadReminders])
-  );
+  useFocusEffect(useCallback(() => {
+    void loadReminders();
+    return () => { request.current += 1; };
+  }, [loadReminders]));
 
   useEffect(() => {
     if (nativePushSupported || !webPushSupported) return;
@@ -258,454 +250,66 @@ export default function RemindersScreen() {
     return t("Due now");
   }
 
+  const sections = [
+    { title: t("Overdue"), items: reminders.filter(item => item.is_overdue) },
+    { title: t("Upcoming"), items: reminders.filter(item => !item.is_overdue) },
+  ].map(section => ({ ...section, items: section.items.sort((a, b) => Date.parse(a.deadline) - Date.parse(b.deadline)) }));
+
   return (
-    <ThemedView style={styles.container} lightColor={BrandColors.canvas}>
-      <BrandBackdrop />
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Stack.Screen options={{ title: t("Reminders") }} />
-
-      <ScrollView
-        contentContainerStyle={styles.content}
-        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />}
-      >
-        <View style={styles.hero}>
-          <View style={styles.heroIcon}>
-            <Ionicons name="notifications" size={22} color="#FFFFFF" />
-          </View>
-          <View style={styles.heroCopy}>
-            <ThemedText style={styles.eyebrow}>{t("Reminder center")}</ThemedText>
-            <ThemedText style={styles.heroTitle}>{t("Your reminders")}</ThemedText>
-            <ThemedText style={styles.heroSubtitle}>
-              {remindersLoading
-                ? t("Checking upcoming deadlines...")
-                : overdueCount > 0
-                  ? t("{{count}} overdue reminder(s) need attention.", { count: overdueCount })
-                  : reminders.length > 0
-                    ? t("{{count}} upcoming reminder(s).", { count: reminders.length })
-                    : t("You are all caught up.")}
-            </ThemedText>
-          </View>
-          <View style={styles.heroCount}>
-            <ThemedText style={styles.heroCountValue}>
-              {remindersLoading ? "—" : reminders.length}
-            </ThemedText>
-            <ThemedText style={styles.heroCountLabel}>{t("Open")}</ThemedText>
-          </View>
+      <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 120, maxWidth: layout.maxWidth || 640 }]} refreshControl={<RefreshControl refreshing={isRefreshing} tintColor={colors.accent} onRefresh={onRefresh} />}>
+        <View style={styles.heading}>
+          <ThemedText style={AppTypography.heading}>{t("Your reminders")}</ThemedText>
+          <ThemedText style={{ color: colors.muted }}>{t("Stay on top of your contributions.")}</ThemedText>
         </View>
-
-        <View style={styles.card}>
-          <View style={styles.notificationRow}>
-            <View style={styles.notificationCopy}>
-              <ThemedText style={styles.notificationTitle}>Push notifications</ThemedText>
-              <ThemedText style={styles.supportText}>
-                {nativePushSupported
-                  ? t("Get contribution reminders and important Cercora updates.")
-                  : webPushSupported
-                    ? t("Permission: {{permission}}{{subscription}}", {
-                        permission,
-                        subscription: pushSubscribed ? ` - ${t("subscribed")}` : "",
-                      })
-                    : t("Available on secure web only.")}
-              </ThemedText>
-            </View>
-            <View style={styles.notificationControl}>
-              {pushBusy ? <ActivityIndicator size="small" color={BrandColors.blueDeep} /> : null}
-              <ThemedText style={styles.notificationStatus}>
-                {pushSubscribed ? t("On") : t("Off")}
-              </ThemedText>
-              <Switch
-                accessibilityLabel={t("Push notifications")}
-                accessibilityHint={t("Turns push notifications on or off")}
-                disabled={pushBusy || (!nativePushSupported && !webPushSupported)}
-                onValueChange={(enabled) => void (enabled ? enablePush() : disablePush())}
-                trackColor={{ false: BrandColors.borderStrong, true: BrandColors.blue }}
-                thumbColor="#FFFFFF"
-                value={pushSubscribed}
-              />
-            </View>
+        {!remindersLoading && !remindersError && reminders.length > 0 ? <AppCard>
+          <View style={styles.row}>
+            <Ionicons name={overdueCount ? "alert-circle-outline" : "calendar-outline"} size={28} color={colors.accent} />
+            <ThemedText style={[AppTypography.section, styles.flex]}>{overdueCount ? t("{{count}} overdue reminder(s) need attention.", { count: overdueCount }) : t("{{count}} upcoming reminder(s).", { count: reminders.length })}</ThemedText>
           </View>
-
-          {pushError ? <ThemedText style={styles.errorText}>{pushError}</ThemedText> : null}
-        </View>
-
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <ThemedText type="subtitle">Your reminders</ThemedText>
-            <ThemedText style={styles.supportText}>
-              {remindersLoading
-                ? "Checking feed"
-                : overdueCount > 0
-                  ? `${overdueCount} ${t("Overdue").toLowerCase()}`
-                  : `${reminders.length} ${t("open")}`}
-            </ThemedText>
+        </AppCard> : null}
+        {remindersLoading ? <AppCard><ActivityIndicator color={colors.accent} /><ThemedText>{t("Loading reminder feed...")}</ThemedText></AppCard> : remindersError ? <AppCard>
+          <ThemedText style={AppTypography.section}>{t("Reminders are unavailable")}</ThemedText>
+          <ThemedText style={{ color: colors.muted }}>{t("Pull down to try again.")}</ThemedText>
+          <AppButton secondary label={t("Try again")} onPress={() => void onRefresh()} />
+        </AppCard> : reminders.length === 0 ? <AppCard>
+          <Ionicons name="checkmark-circle-outline" size={40} color={colors.accent} />
+          <ThemedText style={AppTypography.section}>{t("You are all caught up.")}</ThemedText>
+          <ThemedText style={{ color: colors.muted }}>{t("No contribution reminders right now.")}</ThemedText>
+        </AppCard> : null}
+        {!remindersLoading && sections.map(section => section.items.length ? <View key={section.title} style={styles.section}>
+          <View style={styles.row}><ThemedText style={[AppTypography.section, styles.flex]}>{section.title}</ThemedText><ThemedText style={{ color: colors.muted }}>{section.items.length}</ThemedText></View>
+          {remindersError ? <ThemedText style={[AppTypography.caption, { color: colors.muted }]}>{t("Showing previously loaded reminders.")}</ThemedText> : null}
+          {section.items.map(reminder => <Link key={`${reminder.tontine_id}-${reminder.cycle_id}`} href={{ pathname: "/(tabs)/tontines/[tontineId]/cycles/[cycleId]", params: { tontineId: String(reminder.tontine_id), cycleId: String(reminder.cycle_id) } }} asChild>
+            <Pressable accessibilityRole="link" accessibilityHint={t("View cycle details")} style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1 })}>
+              <AppCard>
+                <ThemedText style={AppTypography.section}>{reminder.tontine_name}</ThemedText>
+                <View style={[styles.badge, { backgroundColor: reminder.is_overdue ? "#FEF3F2" : colors.track }]}><Ionicons name={reminder.is_overdue ? "alert-circle-outline" : "time-outline"} size={16} color={reminder.is_overdue ? "#B42318" : colors.accent} /><ThemedText style={[AppTypography.caption, { color: reminder.is_overdue ? "#B42318" : colors.accent }]}>{getReminderUrgencyText(reminder)}</ThemedText></View>
+                <ThemedText style={[AppTypography.caption, { color: colors.muted }]}>{t("Reminder cycle {{number}}", { number: reminder.cycle_number })}</ThemedText>
+                <View style={styles.row}><Ionicons name="calendar-outline" size={18} color={colors.muted} /><ThemedText style={[styles.flex, { color: colors.muted }]}>{t("Due {{date}}", { date: formatShortDate(reminder.deadline) })}</ThemedText></View>
+                <View style={styles.row}><ThemedText style={[styles.flex, { color: colors.accent, fontWeight: "700" }]}>{t("View cycle details")}</ThemedText><Ionicons name="arrow-forward" size={20} color={colors.accent} /></View>
+              </AppCard>
+            </Pressable>
+          </Link>)}
+        </View> : null)}
+        <AppCard>
+          <View style={styles.row}>
+            <View style={styles.flex}><ThemedText style={AppTypography.section}>{t("Push notifications")}</ThemedText><ThemedText style={[AppTypography.caption, { color: colors.muted }]}>{t("Get contribution reminders and important Cercora updates.")}</ThemedText></View>
+            <Switch accessibilityLabel={t("Push notifications")} accessibilityHint={t("Turns push notifications on or off")} disabled={pushBusy || (!nativePushSupported && !webPushSupported)} onValueChange={enabled => void (enabled ? enablePush() : disablePush())} trackColor={{ false: colors.border, true: BrandColors.blue }} thumbColor="#FFFFFF" value={pushSubscribed} />
           </View>
-
-          {remindersLoading ? (
-            <View style={styles.loadingRow}>
-              <ActivityIndicator />
-              <ThemedText style={styles.supportText}>Loading reminder feed...</ThemedText>
-            </View>
-          ) : remindersError ? (
-            <ThemedText style={styles.errorText}>{remindersError}</ThemedText>
-          ) : reminders.length === 0 ? (
-            <ThemedText style={styles.supportText}>{t("No reminder")}</ThemedText>
-          ) : (
-            reminders.map((reminder, index) => (
-              <View
-                key={`${reminder.cycle_id}-${reminder.tontine_id}`}
-                style={[
-                  styles.reminderCard,
-                  index === 0 ? styles.reminderCardPriority : null,
-                  reminder.is_overdue ? styles.reminderCardOverdue : null,
-                ]}
-              >
-                <View style={styles.reminderMetaRow}>
-                  <View style={styles.reminderHeading}>
-                    <ThemedText style={styles.reminderTitle}>{reminder.tontine_name}</ThemedText>
-                    <ThemedText style={styles.supportText}>Cycle {reminder.cycle_number}</ThemedText>
-                  </View>
-                  <View
-                    style={[
-                      styles.reminderHoursBadge,
-                      reminder.is_overdue ? styles.reminderHoursBadgeOverdue : null,
-                    ]}
-                  >
-                    <ThemedText
-                      style={[
-                        styles.reminderHoursText,
-                        reminder.is_overdue ? styles.reminderHoursTextOverdue : null,
-                      ]}
-                    >
-                      {getReminderUrgencyText(reminder)}
-                    </ThemedText>
-                  </View>
-                </View>
-
-                <View style={styles.deadlineRow}>
-                  <Ionicons name="calendar-outline" size={17} color={BrandColors.muted} />
-                  <ThemedText style={styles.deadlineText}>
-                    {t("Due {{date}}", { date: formatShortDate(reminder.deadline) })}
-                  </ThemedText>
-                </View>
-              </View>
-            ))
-          )}
-        </View>
-
+          {pushBusy ? <ActivityIndicator color={colors.accent} /> : <ThemedText style={[AppTypography.caption, { color: colors.muted }]}>{!nativePushSupported && !webPushSupported ? t("Notifications are unavailable on this device.") : permission === "denied" && !nativePushSupported ? t("Notifications are blocked in your browser settings.") : pushSubscribed ? t("On") : t("Off")}</ThemedText>}
+          {pushError ? <ThemedText accessibilityRole="alert">{t(pushError)}</ThemedText> : null}
+        </AppCard>
       </ScrollView>
-    </ThemedView>
+    </View>
   );
 }
-
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: {
-    padding: 18,
-    paddingBottom: 120,
-    gap: 18,
-  },
-  hero: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderRadius: 24,
-    backgroundColor: BrandColors.blueDeep,
-    padding: 16,
-    gap: 12,
-    ...BrandShadow,
-  },
-  heroIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 15,
-    backgroundColor: BrandColors.blue,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  heroCopy: {
-    flex: 1,
-    gap: 2,
-  },
-  eyebrow: {
-    color: "#CDD7F2",
-    fontSize: 11,
-    lineHeight: 15,
-    fontWeight: "700",
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-  },
-  heroTitle: {
-    color: "#FFFFFF",
-    fontSize: 21,
-    lineHeight: 26,
-    fontWeight: "800",
-  },
-  heroSubtitle: {
-    color: "#DEE6FA",
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  heroCount: {
-    minWidth: 52,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.14)",
-    backgroundColor: "rgba(255,255,255,0.08)",
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    alignItems: "center",
-  },
-  heroCountValue: {
-    color: "#FFFFFF",
-    fontSize: 18,
-    lineHeight: 22,
-    fontWeight: "800",
-  },
-  heroCountLabel: {
-    color: "#D6E0FA",
-    fontSize: 10,
-    lineHeight: 14,
-    fontWeight: "700",
-  },
-  card: {
-    borderRadius: 28,
-    backgroundColor: BrandColors.surface,
-    borderWidth: 1,
-    borderColor: BrandColors.border,
-    padding: 18,
-    gap: 14,
-    ...BrandShadow,
-  },
-  cardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-  },
-  notificationRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 16,
-  },
-  notificationCopy: {
-    flex: 1,
-    gap: 5,
-  },
-  notificationTitle: {
-    color: BrandColors.ink,
-    fontSize: 17,
-    lineHeight: 23,
-    fontWeight: "700",
-  },
-  notificationControl: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  notificationStatus: {
-    color: BrandColors.inkSoft,
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: "700",
-  },
-  supportText: {
-    color: BrandColors.muted,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  deadlineRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 7,
-  },
-  deadlineText: {
-    color: BrandColors.inkSoft,
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: "600",
-  },
-  metricGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
-  metricTile: {
-    minWidth: 110,
-    flexGrow: 1,
-    borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.88)",
-    borderWidth: 1,
-    borderColor: BrandColors.border,
-    padding: 14,
-    gap: 4,
-  },
-  metricTileCompact: {
-    minWidth: 110,
-    flexGrow: 1,
-    borderRadius: 16,
-    backgroundColor: "rgba(255,255,255,0.78)",
-    borderWidth: 1,
-    borderColor: BrandColors.border,
-    padding: 12,
-    gap: 2,
-  },
-  metricValue: {
-    color: BrandColors.ink,
-    fontSize: 20,
-    lineHeight: 24,
-    fontWeight: "800",
-    textTransform: "capitalize",
-  },
-  metricValueCompact: {
-    color: BrandColors.ink,
-    fontSize: 16,
-    lineHeight: 20,
-    fontWeight: "800",
-  },
-  metricLabel: {
-    color: BrandColors.muted,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  actionsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
-  primaryButton: {
-    flex: 1,
-    minWidth: 150,
-    borderRadius: 16,
-    backgroundColor: BrandColors.blueDeep,
-    paddingVertical: 14,
-    alignItems: "center",
-    ...BrandShadow,
-  },
-  primaryButtonText: {
-    color: "#FFFFFF",
-    fontWeight: "800",
-    fontSize: 14,
-  },
-  secondaryButton: {
-    flex: 1,
-    minWidth: 150,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: BrandColors.borderStrong,
-    backgroundColor: BrandColors.surfaceStrong,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  secondaryButtonText: {
-    color: BrandColors.inkSoft,
-    fontWeight: "800",
-    fontSize: 14,
-  },
-  loadingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  emptyState: {
-    gap: 8,
-  },
-  emptyTitle: {
-    color: BrandColors.ink,
-    fontSize: 18,
-    lineHeight: 24,
-    fontWeight: "800",
-  },
-  reminderCard: {
-    borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.74)",
-    borderWidth: 1,
-    borderColor: BrandColors.border,
-    padding: 14,
-    gap: 10,
-  },
-  reminderCardPriority: {
-    backgroundColor: "rgba(46,207,227,0.08)",
-    borderColor: BrandColors.borderStrong,
-  },
-  reminderCardOverdue: {
-    backgroundColor: BrandColors.dangerBg,
-    borderColor: BrandColors.dangerBorder,
-  },
-  reminderMetaRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: 12,
-  },
-  reminderHeading: {
-    flex: 1,
-    gap: 2,
-  },
-  reminderTitle: {
-    color: BrandColors.ink,
-    fontSize: 16,
-    lineHeight: 22,
-    fontWeight: "800",
-  },
-  reminderHoursBadge: {
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: BrandColors.borderStrong,
-    backgroundColor: "rgba(16,36,72,0.92)",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  reminderHoursText: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: "800",
-  },
-  reminderHoursBadgeOverdue: {
-    borderColor: BrandColors.dangerBorder,
-    backgroundColor: "#FFFFFF",
-  },
-  reminderHoursTextOverdue: {
-    color: BrandColors.dangerText,
-  },
-  helperCard: {
-    borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.8)",
-    borderWidth: 1,
-    borderColor: BrandColors.borderStrong,
-    padding: 14,
-    gap: 4,
-  },
-  helperTitle: {
-    color: BrandColors.ink,
-    fontSize: 15,
-    lineHeight: 20,
-    fontWeight: "800",
-  },
-  previewCard: {
-    borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.78)",
-    borderWidth: 1,
-    borderColor: BrandColors.border,
-    padding: 14,
-    gap: 8,
-  },
-  previewBadge: {
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: BrandColors.borderStrong,
-    backgroundColor: "rgba(46,207,227,0.12)",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  previewBadgeText: {
-    color: BrandColors.blue,
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: "800",
-  },
-  errorText: {
-    color: "#B42318",
-    fontWeight: "700",
-    fontSize: 14,
-  },
+  content: { paddingHorizontal: 20, gap: 24, width: "100%", alignSelf: "center" },
+  heading: { gap: 8 }, section: { gap: 12 },
+  row: { flexDirection: "row", alignItems: "center", gap: 12 },
+  flex: { flex: 1, minWidth: 0 },
+  badge: { flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start", borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 },
 });

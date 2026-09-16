@@ -4,12 +4,18 @@ import {
   ActivityIndicator,
   Alert,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
+  Switch,
   View,
 } from "react-native";
 
-import { BrandBackdrop } from "@/components/brand-backdrop";
+import { SafeAreaView } from "react-native-safe-area-context";
+import Ionicons from "@expo/vector-icons/Ionicons";
+
+import { AppButton, AppCard, AppTypography, useSurfaceColors } from "@/components/ui/app-surface";
+import { useRouter } from "expo-router";
 import { PasswordInput } from "@/components/password-input";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
@@ -94,6 +100,11 @@ export default function ProfileScreen() {
   const { biometric, disableBiometricSignIn, enableBiometricSignIn, isLoading, user, signOut } = useAuth();
   const { locale, setLocale, t } = useI18n();
   const layout = useResponsiveLayout();
+  const colors = useSurfaceColors();
+  const router = useRouter();
+  const [refreshing, setRefreshing] = useState(false);
+  const [showReliabilityDetails, setShowReliabilityDetails] = useState(false);
+  const [showBiometricSetup, setShowBiometricSetup] = useState(false);
   const [reliability, setReliability] = useState<Reliability | null>(null);
   const [reliabilityLoading, setReliabilityLoading] = useState(true);
   const [reliabilityError, setReliabilityError] = useState<string | null>(null);
@@ -157,7 +168,7 @@ export default function ProfileScreen() {
   async function confirmDeleteAccount() {
     Alert.alert(
       t("Delete account"),
-      t("This will permanently delete your account if the backend allows it. Continue?"),
+      t("Account deletion is permanent. Active tontines or protected financial records may prevent deletion."),
       [
         { text: t("Cancel"), style: "cancel" },
         {
@@ -212,6 +223,7 @@ export default function ProfileScreen() {
     try {
       await enableBiometricSignIn({ phone: user.phone, password: cleanPassword });
       setBiometricPassword("");
+      setShowBiometricSetup(false);
     } catch (e) {
       setBiometricError(getErrorMessage(e));
     } finally {
@@ -229,403 +241,327 @@ export default function ProfileScreen() {
   }, [user?.name]);
 
   return (
-    <ThemedView style={styles.container} lightColor={BrandColors.canvas}>
-      <BrandBackdrop />
-      <ScrollView contentContainerStyle={styles.content}>
-        <View
-          style={[
-            styles.page,
-            layout.maxWidth ? { maxWidth: layout.maxWidth } : null,
-          ]}
-        >
-        <View style={styles.hero}>
-          <View style={styles.heroGlowTop} />
-          <View style={styles.heroGlowBottom} />
+    <ThemedView style={[styles.container, { backgroundColor: colors.background }]}>
+      <SafeAreaView edges={["top", "left", "right"]} style={styles.container}>
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={refreshing} tintColor={colors.accent} onRefresh={() => { setRefreshing(true); void loadProfileData().finally(() => setRefreshing(false)); }} />}>
+          <View
+            style={[
+              styles.page,
+              { maxWidth: Math.min(layout.maxWidth ?? 760, 760) },
+            ]}
+          >
+            <ThemedText style={AppTypography.heading}>{t("Profile")}</ThemedText>
+            <View style={[styles.hero, { borderRadius: 22, backgroundColor: "#132D52", shadowOpacity: 0, elevation: 0 }]}>
 
-          <View style={styles.profileRow}>
-            <View style={styles.avatar}>
-              <ThemedText style={styles.avatarText}>{userInitial}</ThemedText>
+              <View style={styles.profileRow}>
+                <View style={styles.avatar}>
+                  <ThemedText style={styles.avatarText}>{userInitial}</ThemedText>
+                </View>
+                <View style={styles.identityWrap}>
+                  <ThemedText style={styles.eyebrow}>{t("Profile")}</ThemedText>
+                  {isLoading ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <ThemedText style={styles.heroTitle}>{user?.name ?? t("Cercora member")}</ThemedText>
+                      <ThemedText style={styles.heroSubtitle}>{user?.phone ?? "-"}</ThemedText>
+                      <View style={styles.heroBadges}>
+                        <View
+                          style={[
+                            styles.heroBadge,
+                            user?.is_phone_verified
+                              ? styles.heroBadgeSuccess
+                              : styles.heroBadgeMuted,
+                          ]}
+                        >
+                          <ThemedText
+                            style={[
+                              styles.heroBadgeText,
+                              user?.is_phone_verified
+                                ? styles.heroBadgeTextSuccess
+                                : styles.heroBadgeTextMuted,
+                            ]}
+                          >
+                            {user?.is_phone_verified ? t("Phone verified") : t("Phone unverified")}
+                          </ThemedText>
+                        </View>
+                        {user?.is_global_admin ? (
+                          <View style={[styles.heroBadge, styles.heroBadgeAdmin]}>
+                            <ThemedText style={[styles.heroBadgeText, styles.heroBadgeTextAdmin]}>
+                              {t("Global admin")}
+                            </ThemedText>
+                          </View>
+                        ) : null}
+                      </View>
+                    </>
+                  )}
+                </View>
+              </View>
             </View>
-            <View style={styles.identityWrap}>
-              <ThemedText style={styles.eyebrow}>{t("Profile")}</ThemedText>
-              {isLoading ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <>
-                  <ThemedText style={styles.heroTitle}>{user?.name ?? t("Cercora member")}</ThemedText>
-                  <ThemedText style={styles.heroSubtitle}>{user?.phone ?? "-"}</ThemedText>
-                  <View style={styles.heroBadges}>
-                    <View
-                      style={[
-                        styles.heroBadge,
-                        user?.is_phone_verified
-                          ? styles.heroBadgeSuccess
-                          : styles.heroBadgeMuted,
-                      ]}
-                    >
-                      <ThemedText
-                        style={[
-                          styles.heroBadgeText,
-                          user?.is_phone_verified
-                            ? styles.heroBadgeTextSuccess
-                            : styles.heroBadgeTextMuted,
-                        ]}
-                      >
-                        {user?.is_phone_verified ? t("Phone verified") : t("Phone unverified")}
-                      </ThemedText>
+
+            {invitesLoading || invitesError || invites.length > 0 ? (
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <ThemedText type="subtitle">{t("Pending invitations")}</ThemedText>
+
+                </View>
+
+                <AppCard>
+                  {invitesLoading ? (
+                    <View style={styles.loadingRow}>
+                      <ActivityIndicator />
+                      <ThemedText style={[styles.supportText, { color: colors.muted }]}>{t("Loading invites...")}</ThemedText>
                     </View>
-                    {user?.is_global_admin ? (
-                      <View style={[styles.heroBadge, styles.heroBadgeAdmin]}>
-                        <ThemedText style={[styles.heroBadgeText, styles.heroBadgeTextAdmin]}>
-                          {t("Global admin")}
+                  ) : invitesError ? (
+                    <ThemedText style={[styles.errorText, { color: colors.accent }]}>{invitesError}</ThemedText>
+                  ) : (
+                    invites.map((invite) => (
+                      <View key={invite.membership_id} style={[styles.inviteCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                        <View style={styles.inviteInfo}>
+                          <ThemedText style={[styles.inviteTitle, { color: colors.accent }]}>{invite.tontine_name}</ThemedText>
+                          <ThemedText style={[styles.supportText, { color: colors.muted }]}>{t("Pending invitation")}</ThemedText>
+                        </View>
+                        <View style={styles.inviteActions}>
+                          <Pressable
+                            style={styles.acceptButton}
+                            onPress={() => void acceptInvite(invite.membership_id)}
+                          >
+                            <ThemedText style={styles.acceptButtonText}>{t("Accept")}</ThemedText>
+                          </Pressable>
+                          <Pressable
+                            style={styles.rejectButton}
+                            onPress={() => void rejectInvite(invite.membership_id)}
+                          >
+                            <ThemedText style={styles.rejectButtonText}>{t("Reject")}</ThemedText>
+                          </Pressable>
+                        </View>
+                      </View>
+                    ))
+                  )}
+                </AppCard>
+              </View>
+            ) : null}
+
+            <View style={styles.section}>
+              <ThemedText type="subtitle">{t("Language")}</ThemedText>
+              <AppCard>
+                <ThemedText style={{ color: colors.muted }}>{t("Choose your app language.")}</ThemedText>
+                <View style={styles.inviteActions}>
+                  {(["en", "fr"] as const).map((language) => (
+                    <Pressable
+                      key={language}
+                      accessibilityRole="radio"
+                      accessibilityState={{ checked: locale === language }}
+                      style={[styles.rejectButton, { backgroundColor: colors.track }, locale === language ? styles.languageButtonActive : null]}
+                      onPress={() => void setLocale(language)}
+                    >
+                      <ThemedText style={[styles.rejectButtonText, { color: colors.accent }, locale === language ? styles.languageButtonTextActive : null]}>
+                        {language === "en" ? t("English") : t("French")}
+                      </ThemedText>
+                    </Pressable>
+                  ))}
+                </View>
+              </AppCard>
+            </View>
+
+            <View style={styles.section}>
+              <ThemedText style={AppTypography.section}>{t("Notifications")}</ThemedText>
+              <AppCard>
+                <View style={styles.securityRow}>
+                  <Ionicons name="notifications-outline" size={24} color={colors.accent} />
+                  <View style={styles.securityCopy}>
+                    <ThemedText type="defaultSemiBold">{t("Contribution reminders")}</ThemedText>
+                    <ThemedText style={{ color: colors.muted }}>{t("Manage alerts and notification permissions.")}</ThemedText>
+                  </View>
+                </View>
+                <AppButton secondary label={t("Manage notifications")} onPress={() => router.push("/(tabs)/reminders")} />
+              </AppCard>
+            </View>
+
+            <View style={styles.section}>
+              <ThemedText type="subtitle">{t("Security")}</ThemedText>
+              <AppCard>
+                <View style={styles.securityRow}>
+                  <View style={styles.securityCopy}>
+                    <ThemedText style={[styles.accountTitle, { color: colors.accent }]}>{t("Biometric sign in")}</ThemedText>
+                    <ThemedText style={[styles.supportText, { color: colors.muted }]}>
+                      {biometric.isAvailable
+                        ? t("Use {{label}}", { label: t(biometric.label) })
+                        : t("Biometric sign in is not available on this device.")}
+                    </ThemedText>
+                  </View>
+                  {biometricBusy ? <ActivityIndicator color={BrandColors.blue} /> : null}
+                  <Switch
+                    accessibilityLabel={t("Biometric sign in")}
+                    disabled={!biometric.isAvailable || biometricBusy}
+                    value={biometric.isEnabled}
+                    onValueChange={(enabled) => {
+                      setBiometricError(null);
+                      if (enabled) setShowBiometricSetup(true);
+                      else if (biometric.isEnabled) void turnOffBiometricSignIn();
+                      else {
+                        setShowBiometricSetup(false);
+                        setBiometricPassword("");
+                      }
+                    }}
+                    trackColor={{ false: BrandColors.borderStrong, true: BrandColors.blue }}
+                  />
+                </View>
+                {biometricError ? <ThemedText style={[styles.errorText, { color: colors.accent }]}>{biometricError}</ThemedText> : null}
+                {biometric.isAvailable && !biometric.isEnabled && showBiometricSetup ? (
+                  <View style={styles.biometricSetupForm}>
+                    <ThemedText style={[styles.supportText, { color: colors.muted }]}>
+                      {t("Confirm your password to turn on biometric sign-in for this device.")}
+                    </ThemedText>
+                    <PasswordInput value={biometricPassword} onChangeText={setBiometricPassword} placeholder={t("Enter your password")} />
+                    <Pressable
+                      accessibilityRole="button"
+                      style={[styles.biometricButton, { backgroundColor: colors.track }]}
+                      disabled={biometricBusy}
+                      onPress={() => void turnOnBiometricSignIn()}
+                    >
+                      <ThemedText style={[styles.biometricButtonText, { color: colors.accent }]}>
+                        {t("Enable {{label}}", { label: t(biometric.label) })}
+                      </ThemedText>
+                    </Pressable>
+                    <Pressable
+                      accessibilityRole="button"
+                      disabled={biometricBusy}
+                      style={styles.detailsButton}
+                      onPress={() => {
+                        setShowBiometricSetup(false);
+                        setBiometricPassword("");
+                        setBiometricError(null);
+                      }}
+                    >
+                      <ThemedText style={[styles.supportText, { color: colors.muted }]}>{t("Cancel")}</ThemedText>
+                    </Pressable>
+                  </View>
+                ) : null}
+              </AppCard>
+            </View>
+
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <ThemedText type="subtitle">{t("Reliability")}</ThemedText>
+              </View>
+
+              <AppCard>
+                {reliabilityLoading ? (
+                  <View style={styles.loadingRow}>
+                    <ActivityIndicator />
+                    <ThemedText style={[styles.supportText, { color: colors.muted }]}>{t("Loading your score...")}</ThemedText>
+                  </View>
+                ) : reliabilityError ? (
+                  <ThemedText style={[styles.errorText, { color: colors.accent }]}>{reliabilityError}</ThemedText>
+                ) : reliability ? (
+                  <>
+                    <View style={styles.scoreHero}>
+                      <View style={[styles.scoreRing, { borderColor: scoreTone.ring }]}>
+                        <ThemedText style={styles.scoreValue}>
+                          {reliability.reliability_score_percent}%
                         </ThemedText>
                       </View>
-                    ) : null}
-                  </View>
-                </>
-              )}
-            </View>
-          </View>
-        </View>
-
-        <View style={[styles.sectionGrid, layout.isTablet ? styles.sectionGridTablet : null]}>
-          <View style={[styles.section, layout.isTablet ? styles.sectionColumn : null]}>
-            <View style={styles.sectionHeader}>
-              <ThemedText type="subtitle">{t("Reliability")}</ThemedText>
-              <ThemedText style={styles.sectionCaption}>
-                {t("Your current contribution and repayment posture")}
-              </ThemedText>
-            </View>
-
-            <View style={styles.card}>
-            {reliabilityLoading ? (
-              <View style={styles.loadingRow}>
-                <ActivityIndicator />
-                <ThemedText style={styles.supportText}>{t("Loading your score...")}</ThemedText>
-              </View>
-            ) : reliabilityError ? (
-              <ThemedText style={styles.errorText}>{reliabilityError}</ThemedText>
-            ) : reliability ? (
-              <>
-                <View style={styles.scoreHero}>
-                  <View style={[styles.scoreRing, { borderColor: scoreTone.ring }]}>
-                    <ThemedText style={styles.scoreValue}>
-                      {reliability.reliability_score_percent}%
-                    </ThemedText>
-                  </View>
-                  <View style={styles.scoreMeta}>
-                    <View
-                      style={[
-                        styles.scoreBadge,
-                        {
-                          backgroundColor: scoreTone.badgeBg,
-                          borderColor: scoreTone.badgeBorder,
-                        },
-                      ]}
-                    >
-                      <ThemedText style={[styles.scoreBadgeText, { color: scoreTone.badgeText }]}>
-                        {scoreLabel}
-                      </ThemedText>
-                    </View>
-                    <ThemedText style={styles.supportText}>
-                      {t("Based on on-time contributions, completed due cycles, and debt repayment behavior.")}
-                    </ThemedText>
-                  </View>
-                </View>
-
-                <View style={styles.metricsGrid}>
-                  <View style={styles.metricTile}>
-                    <ThemedText style={styles.metricValue}>
-                      {reliability.on_time_contributions}
-                    </ThemedText>
-                    <ThemedText style={styles.metricLabel}>{t("On time")}</ThemedText>
-                  </View>
-                  <View style={styles.metricTile}>
-                    <ThemedText style={styles.metricValue}>
-                      {reliability.late_payments}
-                    </ThemedText>
-                    <ThemedText style={styles.metricLabel}>{t("Late")}</ThemedText>
-                  </View>
-                  <View style={styles.metricTile}>
-                    <ThemedText style={styles.metricValue}>
-                      {reliability.missed_payments}
-                    </ThemedText>
-                    <ThemedText style={styles.metricLabel}>{t("Missed")}</ThemedText>
-                  </View>
-                  <View style={styles.metricTile}>
-                    <ThemedText style={styles.metricValue}>
-                      {reliability.open_debts}
-                    </ThemedText>
-                    <ThemedText style={styles.metricLabel}>{t("Open debts")}</ThemedText>
-                  </View>
-                </View>
-              </>
-            ) : (
-              <ThemedText style={styles.supportText}>{t("No score available yet.")}</ThemedText>
-            )}
-            </View>
-          </View>
-
-          <View style={[styles.section, layout.isTablet ? styles.sectionColumn : null]}>
-            <View style={styles.sectionHeader}>
-              <ThemedText type="subtitle">{t("Invites")}</ThemedText>
-              <ThemedText style={styles.sectionCaption}>
-                {t("Join new circles directly from your profile")}
-              </ThemedText>
-            </View>
-
-            <View style={styles.card}>
-            {invitesLoading ? (
-              <View style={styles.loadingRow}>
-                <ActivityIndicator />
-                <ThemedText style={styles.supportText}>{t("Loading invites...")}</ThemedText>
-              </View>
-            ) : invitesError ? (
-              <ThemedText style={styles.errorText}>{invitesError}</ThemedText>
-            ) : invites.length === 0 ? (
-              <View style={styles.emptyState}>
-                <ThemedText style={styles.emptyTitle}>{t("No pending invites")}</ThemedText>
-                <ThemedText style={styles.supportText}>
-                  {t("New tontine invitations will appear here with quick accept and reject actions.")}
-                </ThemedText>
-              </View>
-            ) : (
-              invites.map((invite) => (
-                <View key={invite.membership_id} style={styles.inviteCard}>
-                  <View style={styles.inviteInfo}>
-                    <ThemedText style={styles.inviteTitle}>{invite.tontine_name}</ThemedText>
-                    <ThemedText style={styles.supportText}>{t("Pending invitation")}</ThemedText>
-                  </View>
-                  <View style={styles.inviteActions}>
-                    <Pressable
-                      style={styles.acceptButton}
-                      onPress={() => void acceptInvite(invite.membership_id)}
-                    >
-                      <ThemedText style={styles.acceptButtonText}>{t("Accept")}</ThemedText>
-                    </Pressable>
-                    <Pressable
-                      style={styles.rejectButton}
-                      onPress={() => void rejectInvite(invite.membership_id)}
-                    >
-                      <ThemedText style={styles.rejectButtonText}>{t("Reject")}</ThemedText>
-                    </Pressable>
-                  </View>
-                </View>
-              ))
-            )}
-            </View>
-          </View>
-        </View>
-
-        <View style={[styles.sectionGrid, layout.isTablet ? styles.sectionGridTablet : null]}>
-          <View style={[styles.section, layout.isTablet ? styles.sectionColumn : null]}>
-            <View style={styles.sectionHeader}>
-              <ThemedText type="subtitle">{t("Language")}</ThemedText>
-            </View>
-
-            <View style={styles.card}>
-            <ThemedText style={styles.accountTitle}>{t("Choose your app language")}</ThemedText>
-            <View style={styles.inviteActions}>
-              <Pressable
-                style={[
-                  styles.rejectButton,
-                  locale === "en" ? styles.languageButtonActive : null,
-                ]}
-                onPress={() => void setLocale("en")}
-              >
-                <ThemedText
-                  style={[
-                    styles.rejectButtonText,
-                    locale === "en" ? styles.languageButtonTextActive : null,
-                  ]}
-                >
-                  {t("English")}
-                </ThemedText>
-              </Pressable>
-              <Pressable
-                style={[
-                  styles.rejectButton,
-                  locale === "fr" ? styles.languageButtonActive : null,
-                ]}
-                onPress={() => void setLocale("fr")}
-              >
-                <ThemedText
-                  style={[
-                    styles.rejectButtonText,
-                    locale === "fr" ? styles.languageButtonTextActive : null,
-                  ]}
-                >
-                  {t("French")}
-                </ThemedText>
-              </Pressable>
-            </View>
-            </View>
-          </View>
-
-          <View style={[styles.section, layout.isTablet ? styles.sectionColumn : null]}>
-            <View style={styles.sectionHeader}>
-              <ThemedText type="subtitle">{t("Account")}</ThemedText>
-              <ThemedText style={styles.sectionCaption}>
-                {t("Manage session access and irreversible account actions")}
-              </ThemedText>
-            </View>
-
-            <View style={styles.card}>
-            <View style={styles.accountPanel}>
-              <ThemedText style={styles.accountTitle}>{biometric.label}</ThemedText>
-              <ThemedText style={styles.supportText}>
-                {biometric.isAvailable
-                  ? t("Your phone decides whether that means Face ID, fingerprint, or another enrolled biometric.")
-                  : t("Biometric sign in is not available on this device.")}
-              </ThemedText>
-              {biometricError ? <ThemedText style={styles.errorText}>{biometricError}</ThemedText> : null}
-              {biometric.isAvailable ? (
-                <>
-                  <View style={styles.biometricChoiceActions}>
-                    <View
-                      style={[
-                        styles.biometricChoiceButton,
-                        !biometric.isEnabled ? styles.biometricChoiceButtonActive : null,
-                      ]}
-                    >
-                      <ThemedText
-                        style={[
-                          styles.biometricChoiceButtonText,
-                          !biometric.isEnabled ? styles.biometricChoiceButtonTextActive : null,
-                        ]}
-                      >
-                        {t("Use password")}
-                      </ThemedText>
-                    </View>
-                    <View
-                      style={[
-                        styles.biometricChoiceButton,
-                        biometric.isEnabled ? styles.biometricChoiceButtonActive : null,
-                      ]}
-                    >
-                      <ThemedText
-                        style={[
-                          styles.biometricChoiceButtonText,
-                          biometric.isEnabled ? styles.biometricChoiceButtonTextActive : null,
-                        ]}
-                      >
-                        {t("Use {{label}}", { label: biometric.label })}
-                      </ThemedText>
-                    </View>
-                  </View>
-
-                  <View
-                    style={[
-                      styles.biometricOption,
-                      biometric.isEnabled ? styles.biometricOptionActive : null,
-                    ]}
-                  >
-                    <View
-                      style={[
-                        styles.biometricCheck,
-                        biometric.isEnabled ? styles.biometricCheckActive : null,
-                      ]}
-                    >
-                      {biometric.isEnabled ? <View style={styles.biometricCheckInner} /> : null}
-                    </View>
-                    <View style={styles.biometricOptionCopy}>
-                      <ThemedText style={styles.biometricOptionTitle}>
-                        {biometric.isEnabled
-                          ? t("Biometric sign-in is active on this device")
-                          : t("Password sign-in is active on this device")}
-                      </ThemedText>
-                      <ThemedText style={styles.biometricOptionText}>
-                        {biometric.isEnabled
-                          ? t("You can use {{label}} from the sign-in screen instead of typing your password.", {
-                              label: biometric.label,
-                            })
-                          : t("Confirm your password to turn on biometric sign-in for this device.")}
-                      </ThemedText>
-                    </View>
-                  </View>
-
-                  {!biometric.isEnabled ? (
-                    <View style={styles.biometricSetupForm}>
-                      <ThemedText style={styles.supportText}>{t("Enter your current password to enable biometric sign-in.")}</ThemedText>
-                      <PasswordInput
-                        value={biometricPassword}
-                        onChangeText={setBiometricPassword}
-                        placeholder={t("Enter your password")}
-                      />
-                      <Pressable
-                        style={({ pressed }) => [
-                          styles.biometricButton,
-                          pressed ? styles.biometricButtonPressed : null,
-                        ]}
-                        disabled={biometricBusy}
-                        onPress={() => void turnOnBiometricSignIn()}
-                      >
-                        {biometricBusy ? (
-                          <ActivityIndicator color={BrandColors.blueDeep} />
-                        ) : (
-                          <ThemedText style={styles.biometricButtonText}>
-                            {t("Enable {{label}}", { label: biometric.label })}
+                      <View style={styles.scoreMeta}>
+                        <View
+                          style={[
+                            styles.scoreBadge,
+                            {
+                              backgroundColor: scoreTone.badgeBg,
+                              borderColor: scoreTone.badgeBorder,
+                            },
+                          ]}
+                        >
+                          <ThemedText style={[styles.scoreBadgeText, { color: scoreTone.badgeText }]}>
+                            {scoreLabel}
                           </ThemedText>
-                        )}
-                      </Pressable>
+                        </View>
+
+                      </View>
                     </View>
-                  ) : (
+
                     <Pressable
-                      style={({ pressed }) => [
-                        styles.biometricButton,
-                        pressed ? styles.biometricButtonPressed : null,
-                      ]}
-                      disabled={biometricBusy}
-                      onPress={() => void turnOffBiometricSignIn()}
+                      accessibilityRole="button"
+                      accessibilityState={{ expanded: showReliabilityDetails }}
+                      onPress={() => setShowReliabilityDetails((current) => !current)}
+                      style={styles.detailsButton}
                     >
-                      {biometricBusy ? (
-                        <ActivityIndicator color={BrandColors.blueDeep} />
-                      ) : (
-                        <ThemedText style={styles.biometricButtonText}>
-                          {t("Turn off {{label}}", { label: biometric.label })}
-                        </ThemedText>
-                      )}
+                      <ThemedText style={[styles.biometricButtonText, { color: colors.accent }]}>
+                        {showReliabilityDetails ? t("Hide details") : t("View details")}
+                      </ThemedText>
+                      <Ionicons name={showReliabilityDetails ? "chevron-up" : "chevron-down"} size={18} color={colors.accent} />
                     </Pressable>
-                  )}
-                </>
-              ) : null}
+                    {showReliabilityDetails ? (
+                      <View style={styles.section}>
+                        <ThemedText style={[styles.supportText, { color: colors.muted }]}>
+                          {t("Based on on-time contributions, completed due cycles, and debt repayment behavior.")}
+                        </ThemedText>
+                        <View style={styles.metricsGrid}>
+                          <View style={[styles.metricTile, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                            <ThemedText style={[styles.metricValue, { color: colors.accent }]}>
+                              {reliability.on_time_contributions}
+                            </ThemedText>
+                            <ThemedText style={[styles.metricLabel, { color: colors.muted }]}>{t("On time")}</ThemedText>
+                          </View>
+                          <View style={[styles.metricTile, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                            <ThemedText style={[styles.metricValue, { color: colors.accent }]}>
+                              {reliability.late_payments}
+                            </ThemedText>
+                            <ThemedText style={[styles.metricLabel, { color: colors.muted }]}>{t("Late")}</ThemedText>
+                          </View>
+                          <View style={[styles.metricTile, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                            <ThemedText style={[styles.metricValue, { color: colors.accent }]}>
+                              {reliability.missed_payments}
+                            </ThemedText>
+                            <ThemedText style={[styles.metricLabel, { color: colors.muted }]}>{t("Missed")}</ThemedText>
+                          </View>
+                          <View style={[styles.metricTile, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                            <ThemedText style={[styles.metricValue, { color: colors.accent }]}>
+                              {reliability.open_debts}
+                            </ThemedText>
+                            <ThemedText style={[styles.metricLabel, { color: colors.muted }]}>{t("Open debts")}</ThemedText>
+                          </View>
+                        </View>
+                      </View>
+                    ) : null}
+                  </>
+                ) : (
+                  <ThemedText style={[styles.supportText, { color: colors.muted }]}>{t("No score available yet.")}</ThemedText>
+                )}
+              </AppCard>
             </View>
 
-            <View style={styles.accountPanel}>
-              <ThemedText style={styles.accountTitle}>{t("Delete account")}</ThemedText>
-              <ThemedText style={styles.supportText}>
-                {t("This only succeeds if you do not own or belong to an active tontine and no protected financial records block removal.")}
-              </ThemedText>
-              {deleteError ? <ThemedText style={styles.errorText}>{deleteError}</ThemedText> : null}
+
+            <AppButton secondary label={t("Sign out")} onPress={() => void signOut()} />
+
+            <View style={styles.deleteSection}>
+              <ThemedText style={[AppTypography.caption, { color: colors.muted }]}>{t("Account deletion is permanent. Active tontines or protected financial records may prevent deletion.")}</ThemedText>
+              {deleteError ? <ThemedText style={[styles.errorText, { color: colors.accent }]}>{deleteError}</ThemedText> : null}
               <Pressable
-                style={({ pressed }) => [
-                  styles.deleteButton,
-                  pressed ? styles.deleteButtonPressed : null,
-                ]}
+                accessibilityRole="button"
+                accessibilityLabel={t("Delete account")}
+                accessibilityState={{ disabled: deleteBusy, busy: deleteBusy }}
+                style={({ pressed }) => [styles.deleteButton, pressed ? styles.deleteButtonPressed : null]}
                 disabled={deleteBusy}
                 onPress={() => void confirmDeleteAccount()}
               >
-                {deleteBusy ? (
-                  <ActivityIndicator color={BrandColors.dangerText} />
-                ) : (
-                  <ThemedText style={styles.deleteButtonText}>{t("Delete account")}</ThemedText>
+                {deleteBusy ? <ActivityIndicator color={BrandColors.muted} /> : (
+                  <ThemedText style={[styles.deleteButtonText, { color: colors.accent }]}>{t("Delete account")}</ThemedText>
                 )}
               </Pressable>
             </View>
-
-            <Pressable style={styles.signOutButton} onPress={() => void signOut()}>
-              <ThemedText style={styles.signOutButtonText}>{t("Sign out")}</ThemedText>
-            </Pressable>
-            </View>
           </View>
-        </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </SafeAreaView>
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
+  securityRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  securityCopy: { flex: 1, gap: 4 },
+  detailsButton: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 44 },
+  deleteSection: { alignItems: "center", gap: 8 },
   container: {
     flex: 1,
   },
@@ -752,25 +688,9 @@ const styles = StyleSheet.create({
   section: {
     gap: 14,
   },
-  sectionGrid: {
-    width: "100%",
-    gap: 16,
-  },
-  sectionGridTablet: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-  },
-  sectionColumn: {
-    flex: 1,
-  },
   sectionHeader: {
     gap: 4,
     paddingHorizontal: 2,
-  },
-  sectionCaption: {
-    color: BrandColors.muted,
-    fontSize: 14,
-    lineHeight: 20,
   },
   card: {
     borderRadius: 30,
@@ -803,10 +723,10 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   scoreRing: {
-    width: 110,
-    height: 110,
+    width: 72,
+    height: 72,
     borderRadius: 999,
-    borderWidth: 7,
+    borderWidth: 4,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(255,255,255,0.8)",
@@ -859,15 +779,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
   },
-  emptyState: {
-    gap: 8,
-  },
-  emptyTitle: {
-    color: BrandColors.ink,
-    fontSize: 18,
-    lineHeight: 24,
-    fontWeight: "700",
-  },
   inviteCard: {
     borderRadius: 22,
     backgroundColor: "rgba(255,255,255,0.84)",
@@ -914,9 +825,6 @@ const styles = StyleSheet.create({
     color: BrandColors.inkSoft,
     fontWeight: "700",
   },
-  accountPanel: {
-    gap: 8,
-  },
   accountTitle: {
     color: BrandColors.ink,
     fontSize: 18,
@@ -924,15 +832,11 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
   deleteButton: {
-    alignSelf: "flex-start",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "rgba(180, 35, 24, 0.18)",
-    backgroundColor: "rgba(180, 35, 24, 0.06)",
+    minHeight: 48,
     paddingHorizontal: 14,
     paddingVertical: 10,
     alignItems: "center",
-    marginTop: 6,
+    justifyContent: "center",
   },
   deleteButtonPressed: {
     opacity: 0.82,
@@ -948,98 +852,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 6,
   },
-  biometricButtonPressed: {
-    opacity: 0.82,
-  },
   biometricButtonText: {
     color: BrandColors.blueDeep,
     fontWeight: "700",
     fontSize: 14,
   },
-  biometricChoiceActions: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  biometricChoiceButton: {
-    flex: 1,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#D0D5DD",
-    backgroundColor: "#FFFFFF",
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    alignItems: "center",
-  },
-  biometricChoiceButtonActive: {
-    borderColor: "#1D4ED8",
-    backgroundColor: "#EFF6FF",
-  },
-  biometricChoiceButtonText: {
-    color: "#344054",
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: "700",
-  },
-  biometricChoiceButtonTextActive: {
-    color: "#1D4ED8",
-  },
-  biometricOption: {
-    flexDirection: "row",
-    gap: 12,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#D0D5DD",
-    backgroundColor: "#F8FAFC",
-    padding: 14,
-    alignItems: "flex-start",
-  },
-  biometricOptionActive: {
-    borderColor: "#1D4ED8",
-    backgroundColor: "#EFF6FF",
-  },
-  biometricCheck: {
-    width: 24,
-    height: 24,
-    borderRadius: 999,
-    borderWidth: 1.5,
-    borderColor: "#98A2B3",
-    backgroundColor: "#FFFFFF",
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 2,
-  },
-  biometricCheckActive: {
-    borderColor: "#1D4ED8",
-    backgroundColor: "#1D4ED8",
-  },
-  biometricCheckInner: {
-    width: 10,
-    height: 10,
-    borderRadius: 999,
-    backgroundColor: "#FFFFFF",
-  },
-  biometricOptionCopy: {
-    flex: 1,
-    gap: 2,
-  },
-  biometricOptionTitle: {
-    color: "#101828",
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: "800",
-  },
-  biometricOptionText: {
-    color: "#475467",
-    fontSize: 13,
-    lineHeight: 18,
-  },
   biometricSetupForm: {
     gap: 10,
   },
   deleteButtonText: {
-    color: BrandColors.dangerText,
-    fontWeight: "700",
-    fontSize: 14,
+    color: BrandColors.muted,
+    fontWeight: "400",
+    fontSize: 13,
+    textDecorationLine: "underline",
   },
   signOutButton: {
     borderRadius: 20,

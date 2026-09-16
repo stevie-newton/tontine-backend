@@ -1,6 +1,6 @@
 import { Link, Stack } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Switch, View } from "react-native";
 
 import { AuthScreenShell, authStyles } from "@/components/auth-shell";
 import { PasswordInput } from "@/components/password-input";
@@ -18,6 +18,7 @@ export default function LoginScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isBiometricSubmitting, setIsBiometricSubmitting] = useState(false);
   const [useBiometricNextTime, setUseBiometricNextTime] = useState(false);
+  const [attempted, setAttempted] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -29,6 +30,9 @@ export default function LoginScreen() {
   }, [biometric.isAvailable, biometric.isEnabled]);
 
   async function onSubmit() {
+    if (isSubmitting || isBiometricSubmitting) return;
+    setAttempted(true);
+    if (!phone.trim() || !password) return;
     const cleanPhone = phone.trim();
     const shouldEnableBiometric =
       biometric.isAvailable && !biometric.isEnabled && useBiometricNextTime;
@@ -48,6 +52,7 @@ export default function LoginScreen() {
   }
 
   async function onBiometricSubmit() {
+    if (isSubmitting || isBiometricSubmitting) return;
     setError(null);
     setIsBiometricSubmitting(true);
     try {
@@ -67,22 +72,17 @@ export default function LoginScreen() {
         title={t("Sign in to Cercora")}
         subtitle={t("Pick up where you left off with your phone number and password.")}
         tone="midnight"
-        stats={[
-          { label: t("Phone"), value: phone.trim() ? t("Ready") : t("Needed") },
-          { label: t("Password"), value: password ? t("Entered") : t("Needed") },
-        ]}
+        compact
       >
-        <ThemedText type="subtitle">{t("Your account")}</ThemedText>
-        <ThemedText style={authStyles.sectionText}>
-          {t("Use the same phone number you registered with to access your tontines, reminders, and profile.")}
-        </ThemedText>
 
         <View style={styles.form}>
           {biometric.isAvailable && biometric.isEnabled ? (
             <>
               <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ busy: isBiometricSubmitting, disabled: isBiometricSubmitting || isSubmitting }}
                 style={({ pressed }) => [
-                  authStyles.secondaryButton,
+                  authStyles.primaryButton,
                   pressed ? authStyles.secondaryButtonPressed : null,
                 ]}
                 disabled={isBiometricSubmitting || isSubmitting}
@@ -91,13 +91,13 @@ export default function LoginScreen() {
                 {isBiometricSubmitting ? (
                   <ActivityIndicator />
                 ) : (
-                  <ThemedText style={authStyles.secondaryButtonText}>
-                    {t("Sign in with {{label}}", { label: biometric.label })}
+                  <ThemedText style={authStyles.primaryButtonText}>
+                    {t("Sign in with {{label}}", { label: t(biometric.label) })}
                   </ThemedText>
                 )}
               </Pressable>
               <ThemedText style={styles.biometricHint}>
-                {t("Your device will use its enrolled biometric method automatically. You can still sign in with your phone number and password below.")}
+                {t("Or sign in with your phone and password.")}
               </ThemedText>
             </>
           ) : null}
@@ -107,7 +107,9 @@ export default function LoginScreen() {
             value={phone}
             onChangeText={setPhone}
             placeholder={t("Local phone number")}
+            editable={!isSubmitting}
           />
+          {attempted && !phone.trim() ? <ThemedText accessibilityRole="alert" style={authStyles.error}>{t("Enter your phone number.")}</ThemedText> : null}
 
           <ThemedText style={authStyles.label}>{t("Password")}</ThemedText>
           <PasswordInput
@@ -116,92 +118,28 @@ export default function LoginScreen() {
             placeholder={t("Enter your password")}
           />
 
-          {error ? <ThemedText style={authStyles.error}>{error}</ThemedText> : null}
+          {attempted && !password ? <ThemedText accessibilityRole="alert" style={authStyles.error}>{t("Enter your password.")}</ThemedText> : null}
+
+          {error ? <ThemedText accessibilityRole="alert" style={authStyles.error}>{error}</ThemedText> : null}
 
           {biometric.isAvailable && !biometric.isEnabled ? (
-            <View style={styles.biometricChoiceGroup}>
-              <ThemedText style={styles.biometricChoiceTitle}>
-                {t("Choose how you want to sign in next time")}
-              </ThemedText>
-              <ThemedText style={styles.biometricChoiceText}>
-                {t("Your phone decides whether that means Face ID, fingerprint, or another enrolled biometric.")}
-              </ThemedText>
-
-              <View style={styles.biometricChoiceActions}>
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.biometricChoiceButton,
-                    !useBiometricNextTime ? styles.biometricChoiceButtonActive : null,
-                    pressed ? styles.biometricOptionPressed : null,
-                  ]}
-                  onPress={() => setUseBiometricNextTime(false)}
-                >
-                  <ThemedText
-                    style={[
-                      styles.biometricChoiceButtonText,
-                      !useBiometricNextTime ? styles.biometricChoiceButtonTextActive : null,
-                    ]}
-                  >
-                    {t("Use password")}
-                  </ThemedText>
-                </Pressable>
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.biometricChoiceButton,
-                    useBiometricNextTime ? styles.biometricChoiceButtonActive : null,
-                    pressed ? styles.biometricOptionPressed : null,
-                  ]}
-                  onPress={() => setUseBiometricNextTime(true)}
-                >
-                  <ThemedText
-                    style={[
-                      styles.biometricChoiceButtonText,
-                      useBiometricNextTime ? styles.biometricChoiceButtonTextActive : null,
-                    ]}
-                  >
-                    {t("Use {{label}}", { label: biometric.label })}
-                  </ThemedText>
-                </Pressable>
+            <View style={styles.biometricOption}>
+              <View style={styles.biometricOptionCopy}>
+                <ThemedText style={styles.biometricOptionTitle}>{t("Use {{label}} next time", { label: t(biometric.label) })}</ThemedText>
+                <ThemedText style={styles.biometricOptionText}>{t("Enable faster sign-in on this device.")}</ThemedText>
               </View>
-
-              <View
-                style={[
-                  styles.biometricOption,
-                  useBiometricNextTime ? styles.biometricOptionActive : null,
-                ]}
-              >
-                <View
-                  style={[
-                    styles.biometricCheck,
-                    useBiometricNextTime ? styles.biometricCheckActive : null,
-                  ]}
-                >
-                  {useBiometricNextTime ? <View style={styles.biometricCheckInner} /> : null}
-                </View>
-                <View style={styles.biometricOptionCopy}>
-                  <ThemedText style={styles.biometricOptionTitle}>
-                    {useBiometricNextTime
-                      ? t("Biometric sign-in will be ready after this login")
-                      : t("Password sign-in stays as your default")}
-                  </ThemedText>
-                  <ThemedText style={styles.biometricOptionText}>
-                    {useBiometricNextTime
-                      ? t("We will securely save this login so your device can unlock Cercora with {{label}} next time.", {
-                          label: biometric.label,
-                        })
-                      : t("You can still turn on biometric sign-in later whenever you are ready.")}
-                  </ThemedText>
-                </View>
-              </View>
+              <Switch accessibilityLabel={t("Use {{label}} next time", { label: t(biometric.label) })} value={useBiometricNextTime} onValueChange={setUseBiometricNextTime} disabled={isSubmitting || isBiometricSubmitting} />
             </View>
           ) : null}
 
           <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ busy: isSubmitting, disabled: isSubmitting || isBiometricSubmitting }}
             style={({ pressed }) => [
               authStyles.primaryButton,
               pressed ? authStyles.primaryButtonPressed : null,
             ]}
-            disabled={isSubmitting}
+            disabled={isSubmitting || isBiometricSubmitting}
             onPress={() => void onSubmit()}
           >
             {isSubmitting ? (
@@ -210,13 +148,6 @@ export default function LoginScreen() {
               <ThemedText style={authStyles.primaryButtonText}>{t("Sign in")}</ThemedText>
             )}
           </Pressable>
-        </View>
-
-        <View style={authStyles.helperBox}>
-          <ThemedText style={authStyles.helperTitle}>{t("Need help getting in?")}</ThemedText>
-          <ThemedText style={authStyles.sectionText}>
-            {t("Reset your password if you forgot it, or create a new account if this is your first time.")}
-          </ThemedText>
         </View>
 
         <View style={authStyles.inlineLinks}>
@@ -238,7 +169,7 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   form: {
-    gap: 10,
+    gap: 14,
   },
   biometricHint: {
     color: "#475467",

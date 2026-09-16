@@ -8,7 +8,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "expo lint app components constants hooks"
+    "lint": "expo lint app components constants hooks",
+    "check:translations": "node scripts/check-translations.cjs"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",

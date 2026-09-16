@@ -1,5 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Tabs } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSurfaceColors } from "@/components/ui/app-surface";
 
 import { HapticTab } from "@/components/haptic-tab";
 import { BrandColors, BrandShadow } from "@/constants/brand";
@@ -10,14 +12,16 @@ import { useI18n } from "@/hooks/use-i18n";
 export default function TabLayout() {
   const { t } = useI18n();
   const { user } = useAuth();
+  const colors = useSurfaceColors();
+  const insets = useSafeAreaInsets();
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         headerTitleAlign: "center",
-        tabBarActiveTintColor: BrandColors.blue,
-        tabBarInactiveTintColor: BrandColors.muted,
+        tabBarActiveTintColor: colors.accent,
+        tabBarInactiveTintColor: colors.muted,
         tabBarButton: HapticTab,
         headerStyle: {
           backgroundColor: "rgba(255,255,255,0.9)",
@@ -31,14 +35,14 @@ export default function TabLayout() {
           letterSpacing: -0.3,
         },
         tabBarStyle: {
-          backgroundColor: "rgba(255,255,255,0.96)",
+          backgroundColor: colors.surface,
           borderTopColor: "rgba(255,255,255,0.2)",
           borderTopWidth: 0,
           height: 78,
           paddingTop: 8,
           paddingBottom: 12,
           marginHorizontal: 14,
-          marginBottom: 14,
+          marginBottom: Math.max(insets.bottom, 14),
           borderRadius: 26,
           position: "absolute",
           ...BrandShadow,
@@ -55,7 +59,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="dashboard"
         options={{
-          title: t("Dashboard"),
+          title: t("Home"),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home-outline" size={size} color={color} />
           ),

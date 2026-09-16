@@ -20,6 +20,7 @@ export default function RegisterScreen() {
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [attempted, setAttempted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const cleanName = name.trim().replace(/\s+/g, " ");
   const nameParts = cleanName ? cleanName.split(" ").filter(Boolean) : [];
@@ -34,6 +35,9 @@ export default function RegisterScreen() {
     !cleanName ? "neutral" : cleanName.length < 2 ? "warning" : "success";
 
   async function onSubmit() {
+    if (isSubmitting) return;
+    setAttempted(true);
+    if (!phone.trim() || !password || cleanName.length < 2) return;
     setError(null);
     setIsSubmitting(true);
     try {
@@ -55,13 +59,8 @@ export default function RegisterScreen() {
         title={t("Create your Cercora account")}
         subtitle={t("Set up your profile, confirm your phone number, and get ready to join or manage a tontine.")}
         tone="slate"
-        stats={[
-          { label: t("Name"), value: name.trim() ? t("Ready") : t("Needed") },
-          { label: t("Phone"), value: phone.trim() ? t("Ready") : t("Needed") },
-          { label: t("Password"), value: password ? t("Ready") : t("Needed") },
-        ]}
+        compact
       >
-        <ThemedText type="subtitle">Registration details</ThemedText>
         <ThemedText style={authStyles.sectionText}>
           We will send a one-time verification code to your phone after registration.
         </ThemedText>
@@ -76,12 +75,16 @@ export default function RegisterScreen() {
             statusTone={nameStatusTone}
           />
 
+          {attempted && cleanName.length < 2 ? <ThemedText accessibilityRole="alert" style={authStyles.error}>{t("Enter at least 2 characters.")}</ThemedText> : null}
+
           <ThemedText style={authStyles.label}>Phone number</ThemedText>
           <PhoneInput
             value={phone}
             onChangeText={setPhone}
             placeholder={t("Local phone number")}
+            editable={!isSubmitting}
           />
+          {attempted && !phone.trim() ? <ThemedText accessibilityRole="alert" style={authStyles.error}>{t("Enter your phone number.")}</ThemedText> : null}
 
           <ThemedText style={authStyles.label}>Password</ThemedText>
           <PasswordInput
@@ -91,9 +94,13 @@ export default function RegisterScreen() {
             mode="create"
           />
 
-          {error ? <ThemedText style={authStyles.error}>{error}</ThemedText> : null}
+          {attempted && !password ? <ThemedText accessibilityRole="alert" style={authStyles.error}>{t("Enter your password.")}</ThemedText> : null}
+
+          {error ? <ThemedText accessibilityRole="alert" style={authStyles.error}>{error}</ThemedText> : null}
 
           <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ busy: isSubmitting, disabled: isSubmitting }}
             style={({ pressed }) => [
               authStyles.primaryButton,
               pressed ? authStyles.primaryButtonPressed : null,
@@ -121,6 +128,6 @@ export default function RegisterScreen() {
 
 const styles = StyleSheet.create({
   form: {
-    gap: 10,
+    gap: 14,
   },
 });

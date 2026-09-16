@@ -6,12 +6,13 @@ import {
   ActivityIndicator,
   Alert,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   View,
 } from "react-native";
 
-import { BrandBackdrop } from "@/components/brand-backdrop";
+import { AppButton, AppCard, AppTypography, useSurfaceColors } from "@/components/ui/app-surface";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { BrandColors, BrandShadow } from "@/constants/brand";
@@ -147,6 +148,8 @@ export default function TontineDetailScreen() {
   const id = useMemo(() => Number(tontineId), [tontineId]);
   const { user } = useAuth();
   const { t } = useI18n();
+  const colors = useSurfaceColors();
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const [tontine, setTontine] = useState<Tontine | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
@@ -163,7 +166,6 @@ export default function TontineDetailScreen() {
 
   const load = useCallback(async () => {
     setError(null);
-    setIsLoading(true);
     try {
       const tontineReq = api.get<Tontine>(`/tontines/${id}`);
       const membersReq = api.get<Member[]>(`/tontine-memberships/tontine/${id}/members`);
@@ -221,6 +223,7 @@ export default function TontineDetailScreen() {
       setError(getErrorMessage(e));
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   }, [id]);
 
@@ -327,32 +330,33 @@ export default function TontineDetailScreen() {
   const openDebts = debts.filter((debt) => !debt.is_repaid);
 
   return (
-    <ThemedView style={styles.container} lightColor={BrandColors.canvas}>
-      <BrandBackdrop />
+    <ThemedView style={[styles.container, { backgroundColor: colors.background }]}>
       <Stack.Screen options={{ title: tontine?.name ?? t("Tontine") }} />
 
       {isLoading ? (
         <View style={styles.center}>
           <ActivityIndicator />
         </View>
-      ) : error ? (
-        <ThemedText style={styles.error}>{error}</ThemedText>
+      ) : error && !tontine ? (
+        <AppCard><ThemedText>{error}</ThemedText><AppButton label={t("Try again")} onPress={() => void load()} /></AppCard>
       ) : tontine ? (
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={isRefreshing} tintColor={colors.accent} onRefresh={() => { setIsRefreshing(true); void load(); }} />}>
           <View
             style={[
               styles.page,
               layout.maxWidth ? { maxWidth: layout.maxWidth } : null,
             ]}
           >
-          <View style={styles.groupHeader}>
+          <AppButton secondary label={t("Your tontines")} onPress={() => router.replace("/(tabs)/tontines")} />
+          {error ? <AppCard><ThemedText>{error}</ThemedText><AppButton secondary label={t("Try again")} onPress={() => void load()} /></AppCard> : null}
+          <AppCard>
             <View style={styles.groupHeaderTop}>
               <View style={styles.groupIcon}>
                 <Ionicons name="people" size={22} color={BrandColors.blue} />
               </View>
               <View style={styles.groupIdentity}>
-                <ThemedText style={styles.groupEyebrow}>{t("Tontine group")}</ThemedText>
-                <ThemedText style={styles.groupName}>{tontine.name}</ThemedText>
+                <ThemedText style={[styles.groupEyebrow, { color: colors.muted }]}>{t("Tontine group")}</ThemedText>
+                <ThemedText style={AppTypography.heading}>{tontine.name}</ThemedText>
               </View>
               <View
                 style={[
@@ -371,36 +375,47 @@ export default function TontineDetailScreen() {
 
             <View style={styles.groupMetaRow}>
               <View style={styles.groupMetaItem}>
-                <ThemedText style={styles.groupMetaValue}>
+                <ThemedText style={[styles.groupMetaValue, { color: colors.accent }]}>
                   {formatAmount(tontine.contribution_amount)}
                 </ThemedText>
-                <ThemedText style={styles.groupMetaLabel}>{t("Contribution")}</ThemedText>
+                <ThemedText style={[styles.groupMetaLabel, { color: colors.muted }]}>{t("Contribution")}</ThemedText>
               </View>
               <View style={styles.groupMetaDivider} />
               <View style={styles.groupMetaItem}>
-                <ThemedText style={styles.groupMetaValue}>
+                <ThemedText style={[styles.groupMetaValue, { color: colors.accent }]}>
                   {t("{{current}} of {{total}}", {
                     current: tontine.current_cycle,
                     total: tontine.total_cycles,
                   })}
                 </ThemedText>
-                <ThemedText style={styles.groupMetaLabel}>{t("Current cycle")}</ThemedText>
+                <ThemedText style={[styles.groupMetaLabel, { color: colors.muted }]}>{t("Current cycle")}</ThemedText>
               </View>
               <View style={styles.groupMetaDivider} />
               <View style={styles.groupMetaItem}>
-                <ThemedText style={styles.groupMetaValue}>
+                <ThemedText style={[styles.groupMetaValue, { color: colors.accent }]}>
                   {t(
                     tontine.frequency.charAt(0).toUpperCase() +
                       tontine.frequency.slice(1).toLowerCase()
                   )}
                 </ThemedText>
-                <ThemedText style={styles.groupMetaLabel}>{t("Frequency")}</ThemedText>
+                <ThemedText style={[styles.groupMetaLabel, { color: colors.muted }]}>{t("Frequency")}</ThemedText>
               </View>
             </View>
-          </View>
+          </AppCard>
 
-          <View style={styles.navigationCard}>
-            <ThemedText style={styles.navigationLabel}>{t("Group activity")}</ThemedText>
+          <AppCard style={{ backgroundColor: "#132D52", borderColor: "#132D52" }}>
+            <ThemedText style={[AppTypography.caption, { color: "#CCDAEE" }]}>{t("Current cycle")}</ThemedText>
+            <ThemedText style={[AppTypography.heading, { color: "#FFFFFF" }]}>
+              {currentCycle ? t("Cycle {{current}} of {{total}}", { current: currentCycle.cycle_number, total: tontine.total_cycles }) : t(tontine.status === "completed" ? "Completed" : "No current cycle")}
+            </ThemedText>
+            {currentCycle ? <>
+              <ThemedText style={{ color: "#CCDAEE" }}>{t("Due {{date}}", { date: Number.isNaN(Date.parse(currentCycle.end_date)) ? currentCycle.end_date : new Intl.DateTimeFormat(getCurrentLocale(), { month: "short", day: "numeric", year: "numeric" }).format(new Date(currentCycle.end_date)) })}</ThemedText>
+              <AppButton label={t("View cycle details")} onPress={() => router.push({ pathname: "/(tabs)/tontines/[tontineId]/cycles/[cycleId]", params: { tontineId: String(tontine.id), cycleId: String(currentCycle.id) } })} />
+            </> : <AppButton label={t("View cycles")} onPress={() => router.push({ pathname: "/(tabs)/tontines/[tontineId]/cycles", params: { tontineId: String(tontine.id) } })} />}
+          </AppCard>
+
+          <AppCard>
+            <ThemedText style={AppTypography.section}>{t("Group activity")}</ThemedText>
 
             <Link
               href={{
@@ -417,8 +432,8 @@ export default function TontineDetailScreen() {
                   <Ionicons name="people-outline" size={21} color={BrandColors.blue} />
                 </View>
                 <View style={styles.navigationCopy}>
-                  <ThemedText style={styles.navigationTitle}>{t("Members")}</ThemedText>
-                  <ThemedText style={styles.navigationSubtitle}>
+                  <ThemedText style={[styles.navigationTitle, { color: colors.accent }]}>{t("Members")}</ThemedText>
+                  <ThemedText style={[styles.navigationSubtitle, { color: colors.muted }]}>
                     {t("{{count}} active", { count: activeMembers.length })}
                   </ThemedText>
                 </View>
@@ -441,8 +456,8 @@ export default function TontineDetailScreen() {
                   <Ionicons name="repeat-outline" size={21} color={BrandColors.blue} />
                 </View>
                 <View style={styles.navigationCopy}>
-                  <ThemedText style={styles.navigationTitle}>{t("Cycles")}</ThemedText>
-                  <ThemedText style={styles.navigationSubtitle}>
+                  <ThemedText style={[styles.navigationTitle, { color: colors.accent }]}>{t("Cycles")}</ThemedText>
+                  <ThemedText style={[styles.navigationSubtitle, { color: colors.muted }]}>
                     {currentCycle
                       ? t("Cycle {{current}} of {{total}}", {
                           current: currentCycle.cycle_number,
@@ -470,8 +485,8 @@ export default function TontineDetailScreen() {
                   <Ionicons name="swap-horizontal-outline" size={21} color={BrandColors.blue} />
                 </View>
                 <View style={styles.navigationCopy}>
-                  <ThemedText style={styles.navigationTitle}>{t("Transactions")}</ThemedText>
-                  <ThemedText style={styles.navigationSubtitle}>
+                  <ThemedText style={[styles.navigationTitle, { color: colors.accent }]}>{t("Transactions")}</ThemedText>
+                  <ThemedText style={[styles.navigationSubtitle, { color: colors.muted }]}>
                     {t("{{count}} entries", {
                       count: transactionSummary?.transaction_count ?? 0,
                     })}
@@ -496,8 +511,8 @@ export default function TontineDetailScreen() {
                   <Ionicons name="wallet-outline" size={21} color={BrandColors.blue} />
                 </View>
                 <View style={styles.navigationCopy}>
-                  <ThemedText style={styles.navigationTitle}>{t("Payouts")}</ThemedText>
-                  <ThemedText style={styles.navigationSubtitle}>
+                  <ThemedText style={[styles.navigationTitle, { color: colors.accent }]}>{t("Payouts")}</ThemedText>
+                  <ThemedText style={[styles.navigationSubtitle, { color: colors.muted }]}>
                     {t("Review payout history")}
                   </ThemedText>
                 </View>
@@ -517,15 +532,15 @@ export default function TontineDetailScreen() {
                   <Ionicons name="alert-circle-outline" size={21} color={BrandColors.blue} />
                 </View>
                 <View style={styles.navigationCopy}>
-                  <ThemedText style={styles.navigationTitle}>{t("Debts")}</ThemedText>
-                  <ThemedText style={styles.navigationSubtitle}>
+                  <ThemedText style={[styles.navigationTitle, { color: colors.accent }]}>{t("Debts")}</ThemedText>
+                  <ThemedText style={[styles.navigationSubtitle, { color: colors.muted }]}>
                     {t("{{count}} open", { count: openDebts.length })}
                   </ThemedText>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color={BrandColors.muted} />
               </Pressable>
             </Link>
-          </View>
+          </AppCard>
 
           {canManage ? (
           <View style={styles.actionGrid}>
@@ -549,7 +564,7 @@ export default function TontineDetailScreen() {
             ) : null}
 
             {canManage && cycles.length === 0 ? (
-              <Pressable style={styles.primaryAction} onPress={() => void onGenerateCycles()}>
+              <Pressable accessibilityRole="button" disabled={isGenerating} style={styles.primaryAction} onPress={() => void onGenerateCycles()}>
                 {isGenerating ? (
                   <ActivityIndicator color="#FFFFFF" />
                 ) : (

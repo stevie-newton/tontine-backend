@@ -124,8 +124,9 @@ function formatCompactNumber(value: number) {
 }
 
 function AdminSkeleton() {
+  const { t } = useI18n();
   return (
-    <View accessibilityLabel="Loading admin overview" style={styles.skeletonWrap}>
+    <View accessibilityLabel={t("Loading admin overview")} style={styles.skeletonWrap}>
       <View style={styles.skeletonMetrics}>
         {[0, 1, 2, 3].map((item) => (
           <View key={item} style={styles.skeletonMetric}>

@@ -12,6 +12,7 @@ import {
 import { subscribeToSessionExpired } from "@/hooks/auth-session";
 import { api, setApiAccessToken } from "@/hooks/api-client";
 import { getErrorMessage } from "@/hooks/error-utils";
+import { translateText } from "@/hooks/use-i18n";
 
 type User = {
   id: number;
@@ -211,20 +212,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
           const credentials = await getBiometricCredentials();
           if (!credentials) {
-            throw new Error(`${biometric.label} is not set up on this device.`);
+            throw new Error(translateText("{{label}} is not set up on this device.", { label: translateText(biometric.label) }));
           }
 
           await requestSignIn(credentials);
         } catch (err) {
           const status = (err as { response?: { status?: number } } | null)?.response?.status;
           const message = getBiometricErrorMessage(err, biometric.label);
-          const shouldReset = status === 401 || message === "Invalid phone or password";
+          const shouldReset = status === 401 || message === translateText("Invalid phone or password");
 
           if (shouldReset) {
             await disableBiometricCredentials();
             await refreshBiometricState();
             throw new Error(
-              `Saved ${biometric.label} credentials are no longer valid. Sign in with your password to enable it again.`
+              translateText("Saved {{label}} credentials are no longer valid. Sign in with your password to enable it again.", { label: translateText(biometric.label) })
             );
           }
 

@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as LocalAuthentication from "expo-local-authentication";
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
+import { translateText } from "@/hooks/use-i18n";
 
 const BIOMETRIC_SETTINGS_KEY = "auth.biometric.settings";
 const BIOMETRIC_CREDENTIALS_KEY = "auth.biometric.credentials";
@@ -43,7 +44,7 @@ function getSecureStoreOptions(label: string): SecureStore.SecureStoreOptions {
   return {
     keychainService: BIOMETRIC_KEYCHAIN_SERVICE,
     requireAuthentication: true,
-    authenticationPrompt: `Use ${label} to continue in Cercora.`,
+    authenticationPrompt: translateText("Use {{label}} to continue in Cercora.", { label: translateText(label) }),
   };
 }
 
@@ -131,15 +132,15 @@ export function getBiometricErrorMessage(error: unknown, label: string) {
   const code = (error as { code?: string } | null)?.code;
 
   if (code === "user_cancel" || code === "system_cancel" || code === "app_cancel") {
-    return `${label} was cancelled.`;
+    return translateText("{{label}} was cancelled.", { label: translateText(label) });
   }
   if (code === "not_available") {
-    return `${label} is not available on this device.`;
+    return translateText("{{label}} is not available on this device.", { label: translateText(label) });
   }
   if (code === "authentication_failed") {
-    return `${label} did not recognize you. Please try again.`;
+    return translateText("{{label}} did not recognize you. Please try again.", { label: translateText(label) });
   }
 
   const message = error instanceof Error ? error.message : null;
-  return message || `Unable to use ${label} right now.`;
+  return message ? translateText(message) : translateText("Unable to use {{label}} right now.", { label: translateText(label) });
 }

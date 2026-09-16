@@ -13,6 +13,7 @@ import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { BrandColors, BrandShadow } from "@/constants/brand";
 import { useI18n } from "@/hooks/use-i18n";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type Tone = "midnight" | "forest" | "plum" | "slate";
 
@@ -28,6 +29,7 @@ type AuthScreenShellProps = {
   tone?: Tone;
   stats?: AuthStat[];
   children: React.ReactNode;
+  compact?: boolean;
 };
 
 const toneStyles: Record<
@@ -82,7 +84,9 @@ export function AuthScreenShell({
   tone = "midnight",
   stats = [],
   children,
+  compact = false,
 }: AuthScreenShellProps) {
+  const insets = useSafeAreaInsets();
   const palette = toneStyles[tone];
   const { locale, setLocale, t } = useI18n();
 
@@ -93,17 +97,17 @@ export function AuthScreenShell({
       keyboardVerticalOffset={Platform.OS === "ios" ? 24 : 0}
     >
       <ThemedView style={styles.container} lightColor={BrandColors.canvas}>
-        <BrandBackdrop />
+        {!compact ? <BrandBackdrop /> : null}
         <ScrollView
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[styles.content, compact ? { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 24, width: "100%", maxWidth: 560, alignSelf: "center" } : null]}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
           automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
           showsVerticalScrollIndicator={false}
         >
-          <View style={[styles.hero, { backgroundColor: palette.hero }]}>
-            <View style={[styles.heroGlowTop, { backgroundColor: palette.glowTop }]} />
-            <View style={[styles.heroGlowBottom, { backgroundColor: palette.glowBottom }]} />
+          <View style={[styles.hero, { backgroundColor: palette.hero }, compact ? { borderRadius: 22, padding: 22, shadowOpacity: 0, elevation: 0 } : null]}>
+            {!compact ? <View style={[styles.heroGlowTop, { backgroundColor: palette.glowTop }]} /> : null}
+            {!compact ? <View style={[styles.heroGlowBottom, { backgroundColor: palette.glowBottom }]} /> : null}
 
             <View style={styles.languageRow}>
               <ThemedText style={[styles.languageLabel, { color: palette.eyebrow }]}>
@@ -111,6 +115,8 @@ export function AuthScreenShell({
               </ThemedText>
               <View style={styles.languagePills}>
                 <Pressable
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: locale === "en" }}
                   style={[
                     styles.languagePill,
                     locale === "en" ? styles.languagePillActive : null,
@@ -127,6 +133,8 @@ export function AuthScreenShell({
                   </ThemedText>
                 </Pressable>
                 <Pressable
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: locale === "fr" }}
                   style={[
                     styles.languagePill,
                     locale === "fr" ? styles.languagePillActive : null,
@@ -148,7 +156,7 @@ export function AuthScreenShell({
             <ThemedText style={[styles.eyebrow, { color: palette.eyebrow }]}>
               {eyebrow}
             </ThemedText>
-            <ThemedText style={styles.heroTitle}>{title}</ThemedText>
+            <ThemedText style={[styles.heroTitle, compact ? { fontSize: 28, lineHeight: 35 } : null]}>{title}</ThemedText>
             <ThemedText style={[styles.heroSubtitle, { color: palette.subtitle }]}>
               {subtitle}
             </ThemedText>
@@ -167,7 +175,7 @@ export function AuthScreenShell({
             ) : null}
           </View>
 
-          <View style={styles.card}>{children}</View>
+          <View style={[styles.card, compact ? { borderRadius: 22, padding: 22, shadowOpacity: 0, elevation: 0 } : null]}>{children}</View>
         </ScrollView>
       </ThemedView>
     </KeyboardAvoidingView>
