@@ -11,6 +11,7 @@ import {
 } from "react-native";
 
 import { BrandBackdrop } from "@/components/brand-backdrop";
+import { ContributionProof } from "@/components/contribution-proof";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { BrandColors, BrandShadow } from "@/constants/brand";
@@ -62,6 +63,7 @@ type CycleContribution = {
   amount: string;
   transaction_reference?: string;
   proof_screenshot_url?: string | null;
+  proof_available?: boolean;
   beneficiary_decision?: string;
   is_confirmed: boolean;
   ledger_entry_created?: boolean;
@@ -468,7 +470,9 @@ export default function CycleDetailScreen() {
                         reference: item.transaction_reference || t("No reference"),
                       })}
                     </ThemedText>
-                    {item.proof_screenshot_url ? (
+                    {item.proof_available && isActiveMember && (item.user_id === user?.id || isBeneficiary) ? (
+                      <ContributionProof contributionId={item.id} />
+                    ) : item.proof_screenshot_url ? (
                       <ThemedText style={styles.supportText}>
                         {t("Proof: {{proof}}", { proof: item.proof_screenshot_url })}
                       </ThemedText>
@@ -501,7 +505,9 @@ export default function CycleDetailScreen() {
                         <ThemedText style={[styles.statusPillText, { color: "#B54708" }]}>{t("pending")}</ThemedText>
                       </View>
                     </View>
-                    {item.proof_screenshot_url ? (
+                    {item.proof_available && isActiveMember ? (
+                      <ContributionProof contributionId={item.id} />
+                    ) : item.proof_screenshot_url ? (
                       <ThemedText style={styles.supportText}>{t("Proof: {{proof}}", { proof: item.proof_screenshot_url })}</ThemedText>
                     ) : (
                       <ThemedText style={styles.supportText}>{t("No proof screenshot provided.")}</ThemedText>

@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Optional, List, Dict, Any
-import uuid
+from app.services.contribution_proof_service import ContributionProofService
 
 from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
@@ -88,6 +88,8 @@ class ContributionService:
         amount: Decimal,  # ✅ Decimal (matches Numeric(12,2))
         transaction_reference: str,
         proof_screenshot_url: Optional[str] = None,
+        *,
+        proof_image: Optional[bytes] = None,
     ) -> Contribution:
         """
         Create a new contribution for a cycle.
@@ -101,6 +103,8 @@ class ContributionService:
         """
 
         now = datetime.now(timezone.utc)
+        proof_key = None
+        commit_attempted = False
 
         try:
             # 🔒 Lock cycle row (avoid contributing while it’s being closed)
@@ -164,10 +168,22 @@ class ContributionService:
                     detail=f"Contribution must be exactly {expected_amount} (provided: {provided_amount})",
                 )
 
-            # ✅ Don’t do a pre-check query; rely on unique constraint + IntegrityError
+            # Keep a reference required for both JSON and multipart submissions.
             ref = (transaction_reference or "").strip()
-            if not ref:
-                ref = str(uuid.uuid4())
+            if not ref or len(ref) > 120:
+                raise HTTPException(status_code=422, detail="A transaction reference of 1 to 120 characters is required")
+
+            # Validate membership/cycle/amount before writing a private object.
+            # The cycle row lock serializes submissions; the unique constraint
+            # remains the final safeguard against duplicate contributions.
+            if proof_image is not None:
+                existing = db.query(Contribution.id).filter(
+                    Contribution.membership_id == membership.id,
+                    Contribution.cycle_id == cycle.id,
+                ).first()
+                if existing:
+                    raise HTTPException(status_code=409, detail="You have already contributed to this cycle")
+                proof_key = ContributionProofService.store(proof_image)
 
             contribution = Contribution(
                 membership_id=membership.id,
@@ -175,6 +191,7 @@ class ContributionService:
                 amount=provided_amount,
                 transaction_reference=ref,
                 proof_screenshot_url=(proof_screenshot_url.strip() if proof_screenshot_url else None),
+                proof_storage_key=proof_key,
                 beneficiary_decision="pending",
                 is_confirmed=False,
                 ledger_entry_created=False,
@@ -182,6 +199,10 @@ class ContributionService:
             )
             db.add(contribution)
 
+            # Detect constraint failures before attempting a commit. Once COMMIT
+            # is sent, a dropped connection can make its outcome unknowable.
+            db.flush()
+            commit_attempted = True
             db.commit()
             db.refresh(contribution)
 
@@ -217,6 +238,11 @@ class ContributionService:
         except SQLAlchemyError:
             db.rollback()
             raise HTTPException(status_code=500, detail="Database error occurred")
+        finally:
+            # Retain proof if COMMIT was attempted: the database may have saved
+            # it even when its acknowledgement was lost. Reconcile orphans later.
+            if proof_key and not commit_attempted:
+                ContributionProofService.delete_best_effort(proof_key)
 
     @staticmethod
     def get_cycle_contributions(
@@ -270,6 +296,7 @@ class ContributionService:
                 "amount": c.amount,
                 "transaction_reference": c.transaction_reference,
                 "proof_screenshot_url": c.proof_screenshot_url,
+                "proof_available": c.proof_available,
                 "beneficiary_decision": c.beneficiary_decision,
                 "is_confirmed": c.is_confirmed,
                 "ledger_entry_created": c.ledger_entry_created,
@@ -313,6 +340,12 @@ class ContributionService:
                 "id": c.id,
                 "cycle_id": c.cycle_id,
                 "cycle_number": cycle_number,
+                "membership_id": c.membership_id,
+                "transaction_reference": c.transaction_reference,
+                "proof_screenshot_url": c.proof_screenshot_url,
+                "proof_available": c.proof_available,
+                "beneficiary_decision": c.beneficiary_decision,
+                "ledger_entry_created": c.ledger_entry_created,
                 "amount": c.amount,
                 "is_confirmed": c.is_confirmed,
                 "paid_at": c.paid_at,
@@ -506,6 +539,7 @@ class ContributionService:
             "amount": contribution.amount,
             "transaction_reference": contribution.transaction_reference,
             "proof_screenshot_url": contribution.proof_screenshot_url,
+            "proof_available": contribution.proof_available,
             "beneficiary_decision": contribution.beneficiary_decision,
             "is_confirmed": contribution.is_confirmed,
             "ledger_entry_created": contribution.ledger_entry_created,
@@ -560,8 +594,11 @@ class ContributionService:
 
         ContributionService._require_owner_or_admin(db, membership.tontine_id, current_user)
 
+        proof_key = contribution.proof_storage_key
         db.delete(contribution)
         db.commit()
+        if proof_key:
+            ContributionProofService.delete_best_effort(proof_key)
 
     @staticmethod
     def get_contribution_summary(

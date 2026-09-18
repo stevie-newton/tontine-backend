@@ -46,3 +46,8 @@ app-example
 # generated native folders
 /ios
 /android
+
+# Local release artifacts, export checks, and deployment worktrees
+/output/android-release/
+/output/liquid-glass-check/
+/output/web-beta-deploy/

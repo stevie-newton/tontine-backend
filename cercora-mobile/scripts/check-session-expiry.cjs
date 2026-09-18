@@ -60,6 +60,9 @@ async function rejectRequest(url, status, detail, token = 'expired-token') {
   await rejectRequest('/tontines', 401, 'Sign in required', null);
   assert.equal(signOuts, previous);
   assert.equal(banners.pop(), 'Sign in required');
+  api.defaults.adapter = async () => { throw new axios.CanceledError('Preview closed'); };
+  await assert.rejects(api.get('/contributions/1/proof'), error => axios.isCancel(error));
+  assert.equal(banners.length, 0, 'Closing a proof viewer must not show a network banner');
 
   // A stored expired token must be removed during startup, not restored.
   const React = require('react');

@@ -1,365 +1,183 @@
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { Image } from "expo-image";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  View,
-} from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
-import { ThemedView } from "@/components/themed-view";
+import { AppButton, AppCard, AppTypography, useSurfaceColors } from "@/components/ui/app-surface";
 import { api } from "@/hooks/api-client";
 import { getErrorMessage } from "@/hooks/error-utils";
-import { getCurrentLocale, useI18n } from "@/hooks/use-i18n";
+import { choosePaymentProof, discardPaymentProof, PaymentProofSelectionError, submitContribution, type ContributionReceipt, type PaymentProof } from "@/hooks/payment-proof";
+import { useI18n } from "@/hooks/use-i18n";
 
-type Tontine = {
-  id: number;
-  name: string;
-  contribution_amount: number;
-  frequency: string;
-  total_cycles: number;
-  current_cycle: number;
-  status: string;
-  owner_id: number;
-  created_at: string;
-};
-
-function formatAmount(value: number) {
-  return new Intl.NumberFormat(getCurrentLocale(), { maximumFractionDigits: 2 }).format(value);
-}
+type Tontine = { id: number; name: string; contribution_amount: number };
 
 export default function ContributeScreen() {
   const router = useRouter();
-  const { tontineId, cycleId } = useLocalSearchParams<{
-    tontineId: string;
-    cycleId: string;
-  }>();
-  const tontineNum = useMemo(() => Number(tontineId), [tontineId]);
-  const cycleNum = useMemo(() => Number(cycleId), [cycleId]);
-  const { t } = useI18n();
-
+  const { tontineId, cycleId } = useLocalSearchParams<{ tontineId: string; cycleId: string }>();
+  const tontineNum = Number(tontineId), cycleNum = Number(cycleId);
+  const { t, locale } = useI18n();
+  const colors = useSurfaceColors();
   const [tontine, setTontine] = useState<Tontine | null>(null);
   const [amount, setAmount] = useState("");
-  const [transactionReference, setTransactionReference] = useState("");
-  const [proofUrl, setProofUrl] = useState("");
+  const [reference, setReference] = useState("");
+  const [proof, setProof] = useState<PaymentProof | null>(null);
+  const [proofAvailable, setProofAvailable] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isPicking, setIsPicking] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [receipt, setReceipt] = useState<ContributionReceipt | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [retry, setRetry] = useState(0);
+  const currentProof = useRef<PaymentProof | null>(null);
+  const mounted = useRef(true);
+  const busy = useRef(false), submitted = useRef(false);
 
   useEffect(() => {
-    let isMounted = true;
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      // A native upload may still be reading this file after navigation.
+      if (!busy.current) void discardPaymentProof(currentProof.current);
+    };
+  }, []);
 
-    async function load() {
-      setError(null);
-      setIsLoading(true);
-      try {
-        const res = await api.get<Tontine>(`/tontines/${tontineNum}`);
-        if (!isMounted) return;
-        setTontine(res.data);
-        setAmount(String(res.data.contribution_amount));
-      } catch (e) {
-        if (!isMounted) return;
-        setError(getErrorMessage(e));
-      } finally {
-        if (!isMounted) return;
-        setIsLoading(false);
-      }
-    }
-
-    if (!Number.isFinite(tontineNum) || !Number.isFinite(cycleNum)) {
-      setIsLoading(false);
+  useEffect(() => {
+    const controller = new AbortController();
+    let active = true;
+    setIsLoading(true);
+    setError(null);
+    if (![tontineNum, cycleNum].every(value => Number.isSafeInteger(value) && value > 0)) {
       setError(t("Invalid route params."));
+      setIsLoading(false);
       return;
     }
+    void Promise.allSettled([
+      api.get<Tontine>("/tontines/" + tontineNum, { signal: controller.signal }),
+      api.get<{ available: boolean }>("/contributions/proof-upload/status", { signal: controller.signal }),
+    ]).then(([group, capability]) => {
+      if (!active) return;
+      if (group.status === "fulfilled") {
+        setTontine(group.value.data);
+        setAmount(String(group.value.data.contribution_amount));
+      } else setError(getErrorMessage(group.reason));
+      setProofAvailable(capability.status === "fulfilled" && capability.value.data.available);
+      setIsLoading(false);
+    });
+    return () => { active = false; controller.abort(); };
+  }, [cycleNum, tontineNum, t, retry]);
 
-    void load();
-    return () => {
-      isMounted = false;
-    };
-  }, [cycleNum, t, tontineNum]);
-
-  async function onSubmit() {
+  function replaceProof(next: PaymentProof | null) {
+    const previous = currentProof.current;
+    currentProof.current = next;
+    setProof(next);
+    void discardPaymentProof(previous);
+  }
+  async function onPickProof() {
+    if (busy.current) return;
+    busy.current = true;
+    setIsPicking(true);
     setError(null);
-    setIsSubmitting(true);
     try {
-      await api.post("/contributions/", {
-        cycle_id: cycleNum,
-        amount: amount.trim(),
-        transaction_reference: transactionReference.trim(),
-        proof_screenshot_url: proofUrl.trim() ? proofUrl.trim() : null,
-      });
-      router.back();
+      const selected = await choosePaymentProof();
+      if (!mounted.current) { await discardPaymentProof(selected); return; }
+      if (selected) replaceProof(selected);
     } catch (e) {
-      setError(getErrorMessage(e));
+      if (mounted.current) setError(e instanceof PaymentProofSelectionError ? e.message : t("Unable to open this image. Please choose another screenshot."));
     } finally {
-      setIsSubmitting(false);
+      busy.current = false;
+      if (mounted.current) setIsPicking(false);
+      else void discardPaymentProof(currentProof.current);
     }
   }
+  async function onSubmit() {
+    if (busy.current || submitted.current || !tontine) return;
+    busy.current = true;
+    setError(null);
+    setProgress(0);
+    setIsSubmitting(true);
+    try {
+      const result = await submitContribution({ cycleId: cycleNum, amount, reference }, proof,
+        value => { if (mounted.current) setProgress(value); });
+      submitted.current = true;
+      if (mounted.current) { setReceipt(result); replaceProof(null); }
+    } catch (e) {
+      if (mounted.current) setError(getErrorMessage(e));
+    } finally {
+      busy.current = false;
+      if (mounted.current) setIsSubmitting(false);
+      else void discardPaymentProof(currentProof.current);
+    }
+  }
+  function openCycle() {
+    router.replace({ pathname: "/(tabs)/tontines/[tontineId]/cycles/[cycleId]", params: { tontineId: String(tontineNum), cycleId: String(cycleNum) } });
+  }
+  const formatAmount = (value: string | number) => new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(Number(value));
+  const disabled = isPicking || isSubmitting;
+  const inputStyle = [styles.input, { color: colors.accent, borderColor: colors.border, backgroundColor: colors.surface }];
 
-  return (
-    <KeyboardAvoidingView
-      style={styles.keyboard}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 24 : 0}
-    >
-      <ThemedView style={styles.container} lightColor="#F4F7FB">
-        <Stack.Screen options={{ title: t("Contribute") }} />
-
-        {isLoading ? (
-          <View style={styles.center}>
-            <ActivityIndicator />
+  return <KeyboardAvoidingView style={[styles.screen, { backgroundColor: colors.background }]} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+    <Stack.Screen options={{ title: t("Contribute") }} />
+    {isLoading ? <View style={styles.center}><ActivityIndicator color={colors.accent} /></View> :
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets>
+        {receipt ? <AppCard>
+          <Ionicons name="checkmark-circle-outline" size={44} color={colors.accent} />
+          <ThemedText accessibilityRole="header" style={AppTypography.heading}>{t("Contribution submitted")}</ThemedText>
+          <ThemedText accessibilityRole="alert" style={{ color: colors.muted }}>{t("Awaiting beneficiary confirmation. Your payment is not confirmed yet.")}</ThemedText>
+          <ThemedText style={AppTypography.section}>{tontine?.name}</ThemedText>
+          <ThemedText>{t("Amount")}: {formatAmount(receipt.amount)}</ThemedText>
+          <ThemedText selectable>{t("Transaction reference")}: {receipt.transaction_reference}</ThemedText>
+          {receipt.proof_available ? <ThemedText>{t("Payment proof attached")}</ThemedText> : null}
+          <AppButton label={t("View cycle details")} onPress={openCycle} />
+        </AppCard> : !tontine ? <AppCard>
+          {error ? <ThemedText accessibilityRole="alert" style={styles.error}>{error}</ThemedText> : null}
+          <AppButton label={t("Try again")} onPress={() => setRetry(value => value + 1)} />
+        </AppCard> : <>
+          <View style={styles.heading}>
+            <ThemedText style={AppTypography.heading}>{t("Submit contribution")}</ThemedText>
+            <ThemedText style={{ color: colors.muted }}>{tontine.name}</ThemedText>
+            <ThemedText>{t("Expected amount")}: {formatAmount(tontine.contribution_amount)}</ThemedText>
           </View>
-        ) : (
-          <ScrollView
-            contentContainerStyle={styles.content}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="on-drag"
-            automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={styles.hero}>
-              <View style={styles.heroGlowTop} />
-              <View style={styles.heroGlowBottom} />
-
-              <ThemedText style={styles.eyebrow}>{t("Contribution")}</ThemedText>
-              <ThemedText style={styles.heroTitle}>{t("Submit your cycle payment")}</ThemedText>
-              <ThemedText style={styles.heroSubtitle}>
-                {t("Add the transfer amount, reference, and proof link so the contribution can be reviewed quickly.")}
-              </ThemedText>
-
-              <View style={styles.heroStats}>
-                <View style={styles.heroStat}>
-                  <ThemedText style={styles.heroStatValue}>
-                    {tontine ? formatAmount(tontine.contribution_amount) : "-"}
-                  </ThemedText>
-                  <ThemedText style={styles.heroStatLabel}>{t("Expected amount")}</ThemedText>
-                </View>
-                <View style={styles.heroStat}>
-                  <ThemedText style={styles.heroStatValue}>{t("Cycle {{number}}", { number: cycleNum })}</ThemedText>
-                  <ThemedText style={styles.heroStatLabel}>{t("Target cycle")}</ThemedText>
-                </View>
-              </View>
-            </View>
-
-            <View style={styles.card}>
-              <ThemedText type="subtitle">{t("Payment details")}</ThemedText>
-              <ThemedText style={styles.supportText}>
-                {tontine
-                  ? t("{{tontine}} expects {{amount}} for this cycle.", {
-                      tontine: tontine.name,
-                      amount: formatAmount(tontine.contribution_amount),
-                    })
-                  : t("Fill in the payment details below.")}
-              </ThemedText>
-
-              <ThemedText style={styles.label}>{t("Amount")}</ThemedText>
-              <TextInput
-                value={amount}
-                onChangeText={setAmount}
-                placeholder={t("Amount")}
-                placeholderTextColor="#98A2B3"
-                keyboardType="decimal-pad"
-                style={styles.input}
-              />
-
-              <ThemedText style={styles.label}>{t("Transaction reference")}</ThemedText>
-              <TextInput
-                value={transactionReference}
-                onChangeText={setTransactionReference}
-                placeholder={t("Transaction reference")}
-                placeholderTextColor="#98A2B3"
-                autoCapitalize="none"
-                style={styles.input}
-              />
-
-              <ThemedText style={styles.label}>{t("Proof screenshot URL")}</ThemedText>
-              <TextInput
-                value={proofUrl}
-                onChangeText={setProofUrl}
-                placeholder={t("Proof screenshot URL")}
-                placeholderTextColor="#98A2B3"
-                autoCapitalize="none"
-                style={styles.input}
-              />
-
-              <View style={styles.helperCard}>
-                <ThemedText style={styles.helperTitle}>{t("Before you submit")}</ThemedText>
-                <ThemedText style={styles.supportText}>
-                  {t("Make sure the amount matches your cycle contribution and the reference matches the transfer. Add screenshot proof if you have it for beneficiary review.")}
-                </ThemedText>
-              </View>
-
-              {error ? <ThemedText style={styles.error}>{error}</ThemedText> : null}
-
-              <Pressable
-                style={styles.primaryButton}
-                disabled={isSubmitting || !transactionReference.trim()}
-                onPress={() => void onSubmit()}
-              >
-                <ThemedText style={styles.primaryButtonText}>
-                  {isSubmitting ? t("Submitting...") : t("Submit contribution")}
-                </ThemedText>
-              </Pressable>
-            </View>
-          </ScrollView>
-        )}
-      </ThemedView>
-    </KeyboardAvoidingView>
-  );
+          <AppCard>
+            <ThemedText style={AppTypography.section}>{t("Payment details")}</ThemedText>
+            <ThemedText style={{ color: colors.muted }}>{t("Enter your transfer amount and reference. You can also attach a screenshot for review.")}</ThemedText>
+            <ThemedText style={styles.label}>{t("Amount")}</ThemedText>
+            <TextInput accessibilityLabel={t("Amount")} value={amount} onChangeText={setAmount} keyboardType="decimal-pad" editable={!disabled} style={inputStyle} />
+            <ThemedText style={styles.label}>{t("Transaction reference")}</ThemedText>
+            <TextInput accessibilityLabel={t("Transaction reference")} value={reference} onChangeText={setReference} maxLength={120} autoCapitalize="none" autoCorrect={false} editable={!disabled} style={inputStyle} />
+            <ThemedText style={{ color: colors.muted }}>{t("Required, even when you attach a screenshot.")}</ThemedText>
+          </AppCard>
+          <AppCard>
+            <ThemedText style={AppTypography.section}>{t("Payment proof (optional)")}</ThemedText>
+            {proofAvailable ? <>
+              <ThemedText style={{ color: colors.muted }}>{t("Attach one screenshot, up to 5 MB. Only you and the beneficiary can view it.")}</ThemedText>
+              {proof ? <>
+                <Image accessibilityLabel={t("Selected payment proof")} accessible source={{ uri: proof.uri }} style={styles.preview} contentFit="contain" cachePolicy="none" />
+                <ThemedText style={{ color: colors.muted }}>{t("Check that the amount and reference are readable before submitting.")}</ThemedText>
+                <AppButton secondary label={t("Remove screenshot")} disabled={disabled} onPress={() => replaceProof(null)} />
+              </> : null}
+              <AppButton secondary label={isPicking ? t("Preparing screenshot...") : proof ? t("Replace screenshot") : t("Add payment proof")} disabled={disabled} onPress={() => { void onPickProof(); }} />
+            </> : <ThemedText style={{ color: colors.muted }}>{t("Screenshot uploads are currently unavailable. You can still submit your transaction reference.")}</ThemedText>}
+          </AppCard>
+          {error ? <ThemedText accessibilityRole="alert" style={styles.error}>{error}</ThemedText> : null}
+          {isSubmitting ? <View accessibilityLiveRegion="polite" style={styles.heading}>
+            <ActivityIndicator color={colors.accent} />
+            <ThemedText>{proof && progress < 100 ? t("Uploading proof: {{percent}}%", { percent: progress }) : t("Submitting...")}</ThemedText>
+            <ThemedText style={{ color: colors.muted }}>{t("Keep this screen open until submission finishes.")}</ThemedText>
+          </View> : null}
+          <AppButton label={t("Submit contribution")} disabled={disabled || !amount.trim() || !reference.trim()} onPress={() => { void onSubmit(); }} />
+        </>}
+      </ScrollView>}
+  </KeyboardAvoidingView>;
 }
 
 const styles = StyleSheet.create({
-  keyboard: {
-    flex: 1,
-  },
-  container: {
-    flex: 1,
-  },
-  center: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  content: {
-    flexGrow: 1,
-    padding: 18,
-    paddingBottom: 56,
-    gap: 18,
-  },
-  hero: {
-    position: "relative",
-    overflow: "hidden",
-    borderRadius: 28,
-    backgroundColor: "#21304F",
-    padding: 22,
-    gap: 14,
-  },
-  heroGlowTop: {
-    position: "absolute",
-    top: -30,
-    right: -18,
-    width: 148,
-    height: 148,
-    borderRadius: 999,
-    backgroundColor: "#4B68A8",
-    opacity: 0.24,
-  },
-  heroGlowBottom: {
-    position: "absolute",
-    left: -12,
-    bottom: -56,
-    width: 148,
-    height: 148,
-    borderRadius: 999,
-    backgroundColor: "#9DD1C4",
-    opacity: 0.16,
-  },
-  eyebrow: {
-    color: "#CDD7F2",
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: "700",
-    textTransform: "uppercase",
-    letterSpacing: 1.1,
-  },
-  heroTitle: {
-    color: "#FFFFFF",
-    fontSize: 30,
-    lineHeight: 34,
-    fontWeight: "800",
-  },
-  heroSubtitle: {
-    color: "#DEE6FA",
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  heroStats: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
-  heroStat: {
-    minWidth: 100,
-    flexGrow: 1,
-    borderRadius: 18,
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.12)",
-    padding: 14,
-    gap: 4,
-  },
-  heroStatValue: {
-    color: "#FFFFFF",
-    fontSize: 22,
-    lineHeight: 26,
-    fontWeight: "800",
-  },
-  heroStatLabel: {
-    color: "#D6E0FA",
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  card: {
-    borderRadius: 24,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#E6ECF5",
-    padding: 16,
-    gap: 14,
-  },
-  supportText: {
-    color: "#475467",
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  label: {
-    color: "#101828",
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: "800",
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#D7E1F2",
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    backgroundColor: "#F9FBFF",
-    color: "#101828",
-  },
-  helperCard: {
-    borderRadius: 18,
-    backgroundColor: "#F8FAFC",
-    borderWidth: 1,
-    borderColor: "#E7EEF7",
-    padding: 14,
-    gap: 4,
-  },
-  helperTitle: {
-    color: "#101828",
-    fontSize: 15,
-    lineHeight: 20,
-    fontWeight: "800",
-  },
-  error: {
-    color: "#B42318",
-    fontWeight: "700",
-    fontSize: 14,
-  },
-  primaryButton: {
-    borderRadius: 16,
-    backgroundColor: "#0A2A66",
-    paddingVertical: 15,
-    alignItems: "center",
-  },
-  primaryButtonText: {
-    color: "#FFFFFF",
-    fontWeight: "800",
-    fontSize: 15,
-  },
+  screen: { flex: 1 }, center: { flex: 1, justifyContent: "center", alignItems: "center" },
+  content: { padding: 20, paddingBottom: 80, gap: 20, width: "100%", maxWidth: 640, alignSelf: "center" },
+  heading: { gap: 10 }, label: { fontSize: 14, fontWeight: "700" },
+  input: { minHeight: 52, borderWidth: 1, borderRadius: 14, padding: 14, fontSize: 16 },
+  preview: { width: "100%", height: 280, borderRadius: 12 },
+  error: { color: "#B42318", fontSize: 14, fontWeight: "600" },
 });

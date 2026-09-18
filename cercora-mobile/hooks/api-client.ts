@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { isAxiosError, isCancel } from "axios";
 
 import { API_BASE_URL } from "@/constants/api";
 import { notifySessionExpired } from "@/hooks/auth-session";
@@ -12,7 +12,7 @@ export const api = axios.create({
 });
 
 function shouldInvalidateSession(error: unknown) {
-  if (!axios.isAxiosError(error) || error.response?.status !== 401) {
+  if (!isAxiosError(error) || error.response?.status !== 401) {
     return false;
   }
 
@@ -32,9 +32,10 @@ function shouldInvalidateSession(error: unknown) {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    if (isCancel(error)) return Promise.reject(error);
     const normalized = normalizeApiError(error);
     if (
-      axios.isAxiosError(error) &&
+      isAxiosError(error) &&
       error.config?.url?.split("?")[0] === "/auth/login" &&
       normalized.status === 401
     ) {

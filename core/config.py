@@ -54,6 +54,15 @@ class Settings:
         default=True,
     )
 
+    # Private payment proof storage. Never expose these values to mobile clients.
+    PROOF_UPLOAD_ENABLED: bool = _as_bool.__func__(os.getenv("PROOF_UPLOAD_ENABLED", "false"))
+    PROOF_STORAGE_BUCKET: str = os.getenv("PROOF_STORAGE_BUCKET", "").strip()
+    PROOF_STORAGE_ENDPOINT_URL: str = os.getenv("PROOF_STORAGE_ENDPOINT_URL", "").strip()
+    PROOF_STORAGE_REGION: str = os.getenv("PROOF_STORAGE_REGION", "us-east-1").strip()
+    PROOF_STORAGE_ACCESS_KEY_ID: str = os.getenv("PROOF_STORAGE_ACCESS_KEY_ID", "").strip()
+    PROOF_STORAGE_SECRET_ACCESS_KEY: str = os.getenv("PROOF_STORAGE_SECRET_ACCESS_KEY", "").strip()
+    PROOF_STORAGE_SERVER_SIDE_ENCRYPTION: str = os.getenv("PROOF_STORAGE_SERVER_SIDE_ENCRYPTION", "").strip()
+
     # Monetbil
     MONETBIL_API_KEY: str = os.getenv("MONETBIL_API_KEY", "")
     MONETBIL_SERVICE_KEY: str = os.getenv("MONETBIL_SERVICE_KEY", "")

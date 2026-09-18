@@ -24,6 +24,14 @@ class ContributionCreate(BaseModel):
     transaction_reference: str = Field(..., min_length=1, max_length=120)
     proof_screenshot_url: Optional[str] = Field(None, max_length=500)
 
+    @field_validator("transaction_reference")
+    @classmethod
+    def require_reference(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Transaction reference is required")
+        return value
+
     @field_validator("amount")
     @classmethod
     def normalize_amount(cls, v: Decimal) -> Decimal:
@@ -51,6 +59,7 @@ class ContributionResponse(BaseModel):
     amount: Decimal
     transaction_reference: str
     proof_screenshot_url: Optional[str] = None
+    proof_available: bool = False
     beneficiary_decision: str
     is_confirmed: bool
     ledger_entry_created: bool

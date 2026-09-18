@@ -1,9 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from decimal import Decimal
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
 from app.core.database import get_db
+from app.core.proof_upload_route import ProofUploadRoute
 from app.core.dependencies import get_current_user
 from app.models.user import User
 from app.models.tontine import Tontine
@@ -17,8 +21,9 @@ from app.schemas.contribution import (
     ContributionSummary
 )
 from app.services.contribution_service import ContributionService
+from app.services.contribution_proof_service import ContributionProofService
 
-router = APIRouter(prefix="/contributions", tags=["contributions"])
+router = APIRouter(prefix="/contributions", tags=["contributions"], route_class=ProofUploadRoute)
 
 class ConfirmBody(BaseModel):
     confirm: bool = True
@@ -56,6 +61,63 @@ def create_contribution(
         proof_screenshot_url=contribution_data.proof_screenshot_url,
     )
     
+
+
+# Optional capability: older clients can continue using the JSON endpoint.
+@router.get("/proof-upload/status")
+def proof_upload_status(current_user: User = Depends(get_current_user)):
+    return {
+        "available": ContributionProofService.available(),
+        "max_bytes": ContributionProofService.MAX_BYTES,
+    }
+
+
+@router.post("/with-proof", response_model=ContributionResponse, status_code=status.HTTP_201_CREATED)
+def create_contribution_with_proof(
+    cycle_id: int = Form(..., gt=0),
+    amount: Decimal = Form(..., gt=0, max_digits=12, decimal_places=2),
+    transaction_reference: str = Form(..., min_length=1, max_length=120),
+    proof: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Submit one optional screenshot together with an unconfirmed contribution."""
+    reference = transaction_reference.strip()
+    if not reference:
+        raise HTTPException(status_code=422, detail="Transaction reference is required")
+    if not ContributionProofService.available():
+        raise HTTPException(status_code=503, detail="Payment proof uploads are not available yet. You can submit with a transaction reference only.")
+    # Validate/re-encode the entire image before touching the contribution.
+    # FastAPI runs this synchronous endpoint in its worker pool.
+    image = ContributionProofService.normalize_image(proof.file, proof.content_type)
+    return ContributionService.create_contribution(
+        db=db,
+        cycle_id=cycle_id,
+        current_user=current_user,
+        amount=amount,
+        transaction_reference=reference,
+        proof_image=image,
+    )
+
+
+@router.get("/{contribution_id}/proof")
+def get_contribution_proof(
+    contribution_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    image = ContributionProofService.read_authorized(db, contribution_id, current_user)
+    return Response(
+        content=image,
+        media_type="image/jpeg",
+        headers={
+            "Cache-Control": "private, no-store, max-age=0",
+            "Pragma": "no-cache",
+            "X-Content-Type-Options": "nosniff",
+            "Content-Disposition": 'inline; filename="payment-proof.jpg"',
+            "Vary": "Authorization",
+        },
+    )
 
 
 # -------------------------

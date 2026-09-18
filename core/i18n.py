@@ -7,6 +7,22 @@ from fastapi import Request
 
 
 _EXACT_FR: dict[str, str] = {
+    # Private contribution screenshot uploads
+    "Payment proof uploads are not available yet. You can submit with a transaction reference only.": "L'ajout d'une preuve de paiement n'est pas encore disponible. Vous pouvez soumettre uniquement la référence de la transaction.",
+    "Choose a JPEG or PNG payment screenshot": "Choisissez une capture du paiement au format JPEG ou PNG",
+    "Payment screenshot must be 5 MB or smaller": "La capture du paiement doit faire 5 Mo maximum",
+    "Payment screenshot is empty": "La capture du paiement est vide",
+    "Screenshot contents do not match the image type": "Le contenu de la capture ne correspond pas au format de l'image",
+    "Choose a single screenshot with smaller dimensions": "Choisissez une seule capture avec des dimensions plus petites",
+    "This screenshot could not be read. Choose a valid JPEG or PNG image.": "Impossible de lire cette capture. Choisissez une image JPEG ou PNG valide.",
+    "Payment screenshot must be 5 MB or smaller after processing": "La capture du paiement doit faire 5 Mo maximum après traitement",
+    "Payment screenshot could not be uploaded. Please try again.": "Impossible d'envoyer la capture du paiement. Veuillez réessayer.",
+    "Only the contributor and cycle beneficiary can view this payment proof": "Seuls le cotisant et le bénéficiaire du cycle peuvent consulter cette preuve de paiement",
+    "No payment screenshot is available": "Aucune capture du paiement n'est disponible",
+    "Payment screenshot is temporarily unavailable. Please try again.": "La capture du paiement est temporairement indisponible. Veuillez réessayer.",
+    "Transaction reference is required": "La référence de la transaction est obligatoire",
+    "A transaction reference of 1 to 120 characters is required": "Une référence de transaction de 1 à 120 caractères est obligatoire",
+
     "Not authenticated": "Non authentifie",
     "Could not validate credentials": "Impossible de valider les identifiants",
     "Token has expired": "Le jeton a expire",

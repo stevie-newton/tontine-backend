@@ -38,6 +38,12 @@ class Contribution(Base):
 
     transaction_reference = Column(String(120), nullable=False)
     proof_screenshot_url = Column(String(500), nullable=True)
+    # Private object key; intentionally absent from every public response schema.
+    proof_storage_key = Column(String(160), nullable=True)
+
+    @property
+    def proof_available(self) -> bool:
+        return bool(self.proof_storage_key)
 
     # Dual confirmation workflow: pending -> confirmed/rejected
     beneficiary_decision = Column(String(20), nullable=False, server_default="pending")
