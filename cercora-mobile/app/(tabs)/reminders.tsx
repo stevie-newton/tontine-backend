@@ -256,7 +256,7 @@ export default function RemindersScreen() {
   ].map(section => ({ ...section, items: section.items.sort((a, b) => Date.parse(a.deadline) - Date.parse(b.deadline)) }));
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View collapsable={false} style={[styles.container, { backgroundColor: colors.background }]}>
       <Stack.Screen options={{ title: t("Reminders") }} />
       <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 120, maxWidth: layout.maxWidth || 640 }]} refreshControl={<RefreshControl refreshing={isRefreshing} tintColor={colors.accent} onRefresh={onRefresh} />}>
         <View style={styles.heading}>

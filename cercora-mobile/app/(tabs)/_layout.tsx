@@ -1,5 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { Tabs } from "expo-router";
+import { Redirect, Tabs, usePathname } from "expo-router";
+import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
+import { Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSurfaceColors } from "@/components/ui/app-surface";
 
@@ -14,6 +16,39 @@ export default function TabLayout() {
   const { user } = useAuth();
   const colors = useSurfaceColors();
   const insets = useSafeAreaInsets();
+  const pathname = usePathname();
+
+  if (Platform.OS === "ios" && Number.parseInt(String(Platform.Version), 10) >= 26) {
+    // Native tabs cannot focus the hidden index redirect route.
+    if (pathname === "/" || (pathname === "/admin" && !user?.is_global_admin)) {
+      return <Redirect href="/(tabs)/dashboard" />;
+    }
+
+    return (
+      <NativeTabs tintColor={colors.accent} minimizeBehavior="onScrollDown">
+        <NativeTabs.Trigger name="dashboard">
+          <Icon sf={{ default: "house", selected: "house.fill" }} />
+          <Label>{t("Home")}</Label>
+        </NativeTabs.Trigger>
+        <NativeTabs.Trigger name="reminders">
+          <Icon sf={{ default: "bell", selected: "bell.fill" }} />
+          <Label>{t("Reminders")}</Label>
+        </NativeTabs.Trigger>
+        <NativeTabs.Trigger name="tontines">
+          <Icon sf={{ default: "person.3", selected: "person.3.fill" }} />
+          <Label>{t("Tontines")}</Label>
+        </NativeTabs.Trigger>
+        <NativeTabs.Trigger name="profile">
+          <Icon sf={{ default: "person.crop.circle", selected: "person.crop.circle.fill" }} />
+          <Label>{t("Profile")}</Label>
+        </NativeTabs.Trigger>
+        <NativeTabs.Trigger name="admin" hidden={!user?.is_global_admin}>
+          <Icon sf={{ default: "checkmark.shield", selected: "checkmark.shield.fill" }} />
+          <Label>{t("Admin")}</Label>
+        </NativeTabs.Trigger>
+      </NativeTabs>
+    );
+  }
 
   return (
     <Tabs

@@ -11,7 +11,7 @@ import {
 } from "@/hooks/biometric-auth";
 import { subscribeToSessionExpired } from "@/hooks/auth-session";
 import { api, setApiAccessToken } from "@/hooks/api-client";
-import { getErrorMessage } from "@/hooks/error-utils";
+import { getErrorMessage, normalizeApiError } from "@/hooks/error-utils";
 import { translateText } from "@/hooks/use-i18n";
 import { PENDING_INVITATION_KEY, parseInvitationId } from "@/hooks/invitation-links";
 
@@ -93,7 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             user = me.data;
             await AsyncStorage.setItem(USER_KEY, JSON.stringify(user));
           } catch (err) {
-            const status = (err as any)?.response?.status as number | undefined;
+            const status = normalizeApiError(err).status;
             if (status === 401) {
               setApiAccessToken(null);
               await Promise.all([

@@ -17,7 +17,7 @@ function shouldInvalidateSession(error: unknown) {
   }
 
   const requestUrl = error.config?.url ?? "";
-  if (requestUrl.startsWith("/auth/")) {
+  if (requestUrl.startsWith("/auth/") && requestUrl.split("?")[0] !== "/auth/me") {
     return false;
   }
 
@@ -33,7 +33,19 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     const normalized = normalizeApiError(error);
+    if (
+      axios.isAxiosError(error) &&
+      error.config?.url?.split("?")[0] === "/auth/login" &&
+      normalized.status === 401
+    ) {
+      // The login form displays invalid credentials beside the inputs.
+      normalized.shouldNotify = false;
+    }
     if (shouldInvalidateSession(error)) {
+      // Session expiry is handled by signing out, not by error UI.
+      // Clear the display message for screen-level catch handlers as well.
+      normalized.shouldNotify = false;
+      normalized.message = "";
       notifySessionExpired();
     }
     if (normalized.shouldNotify) {

@@ -57,7 +57,7 @@ export default function Dashboard() {
     return Number.isNaN(date.getTime()) ? t("View reminders") : new Intl.DateTimeFormat(locale, { month: "short", day: "numeric", year: "numeric" }).format(date);
   }
   return (
-    <View style={[styles.screen, { backgroundColor: colors.background }]}>
+    <View collapsable={false} style={[styles.screen, { backgroundColor: colors.background }]}>
       <ScrollView refreshControl={<RefreshControl refreshing={refreshing} tintColor={colors.accent} onRefresh={() => { setRefreshing(true); void load(); }} />} contentContainerStyle={[styles.content, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 120 }]}>
         <View style={[styles.page, layout.maxWidth ? { maxWidth: layout.maxWidth } : null]}>
           <View style={styles.row}>

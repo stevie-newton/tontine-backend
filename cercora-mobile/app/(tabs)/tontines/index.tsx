@@ -41,7 +41,7 @@ export default function TontinesListScreen() {
   }, []);
   useFocusEffect(useCallback(() => { void load(); return () => { request.current += 1; }; }, [load]));
   const visible = items.filter(item => (filter === "All" || item.status.toLowerCase() === filter.toLowerCase()) && item.name.toLocaleLowerCase(locale).includes(query.trim().toLocaleLowerCase(locale)));
-  return <View style={[styles.screen, { backgroundColor: colors.background }]}>
+  return <View collapsable={false} style={[styles.screen, { backgroundColor: colors.background }]}>
     <FlatList
       key={layout.isTablet ? "tablet" : "phone"}
       data={visible}

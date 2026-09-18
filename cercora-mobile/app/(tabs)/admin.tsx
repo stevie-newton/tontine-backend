@@ -234,9 +234,9 @@ export default function AdminScreen() {
   }
 
   return (
-    <ThemedView style={styles.container} lightColor={BrandColors.canvas}>
-      <BrandBackdrop />
+    <ThemedView collapsable={false} style={styles.container} lightColor={BrandColors.canvas}>
       <ScrollView
+        style={{ zIndex: 1 }}
         contentContainerStyle={styles.content}
         refreshControl={
           <RefreshControl
@@ -457,6 +457,7 @@ export default function AdminScreen() {
           </View>
         </View>
       </ScrollView>
+      <BrandBackdrop />
     </ThemedView>
   );
 }

@@ -2,7 +2,7 @@
   "expo": {
     "name": "Cercora",
     "slug": "cercora-mobile",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "runtimeVersion": {
       "policy": "appVersion"
     },
@@ -50,7 +50,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./public/cercora-splash.png",
+          "image": "./public/cercora-splash-transparent.png",
           "imageWidth": 220,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",

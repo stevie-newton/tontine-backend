@@ -241,8 +241,8 @@ export default function ProfileScreen() {
   }, [user?.name]);
 
   return (
-    <ThemedView style={[styles.container, { backgroundColor: colors.background }]}>
-      <SafeAreaView edges={["top", "left", "right"]} style={styles.container}>
+    <ThemedView collapsable={false} style={[styles.container, { backgroundColor: colors.background }]}>
+      <SafeAreaView collapsable={false} edges={["top", "left", "right"]} style={styles.container}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={refreshing} tintColor={colors.accent} onRefresh={() => { setRefreshing(true); void loadProfileData().finally(() => setRefreshing(false)); }} />}>
           <View
             style={[
