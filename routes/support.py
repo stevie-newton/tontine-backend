@@ -1,10 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
+from datetime import datetime
+from typing import Literal
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.database import get_db
-from app.core.dependencies import get_current_user_optional
+from app.core.dependencies import get_current_global_admin, get_current_user_optional
 from app.models.support_ticket import SupportTicket
 from app.models.user import User
 from app.services.email_service import EmailService
@@ -106,3 +109,64 @@ def create_support_ticket(
         "email_sent": email_sent,
         "email_error": email_error,
     }
+
+
+class AdminSupportTicket(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    requester_name: str | None
+    requester_phone: str | None
+    message: str
+    status: str
+    created_at: datetime
+    tontine_id: int | None
+
+
+class AdminSupportTicketPage(BaseModel):
+    items: list[AdminSupportTicket]
+    next_before_id: int | None
+
+
+class SupportTicketStatusUpdate(BaseModel):
+    status: Literal["open", "resolved"]
+
+
+@router.get("/tickets", response_model=AdminSupportTicketPage)
+def list_support_tickets(
+    response: Response,
+    ticket_status: Literal["open", "resolved", "all"] = Query("open", alias="status"),
+    before_id: int | None = Query(None, gt=0),
+    limit: int = Query(20, ge=1, le=50),
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_global_admin),
+):
+    response.headers["Cache-Control"] = "private, no-store"
+    query = db.query(SupportTicket)
+    if ticket_status != "all":
+        query = query.filter(SupportTicket.status == ticket_status)
+    if before_id is not None:
+        query = query.filter(SupportTicket.id < before_id)
+    rows = query.order_by(SupportTicket.id.desc()).limit(limit + 1).all()
+    return {
+        "items": rows[:limit],
+        "next_before_id": rows[limit - 1].id if len(rows) > limit else None,
+    }
+
+
+@router.patch("/tickets/{ticket_id}", response_model=AdminSupportTicket)
+def update_support_ticket_status(
+    ticket_id: int,
+    payload: SupportTicketStatusUpdate,
+    response: Response,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_global_admin),
+):
+    response.headers["Cache-Control"] = "private, no-store"
+    ticket = db.get(SupportTicket, ticket_id)
+    if ticket is None:
+        raise HTTPException(status_code=404, detail="Report not found")
+    ticket.status = payload.status
+    db.commit()
+    db.refresh(ticket)
+    return ticket

@@ -163,7 +163,19 @@ backend service only: `SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM_EMAIL`, and
 `SUPPORT_EMAIL_TO`, plus `SMTP_USER` and `SMTP_PASSWORD` if the mail server requires
 authentication. The existing email service uses STARTTLS. Tickets are saved even
 if email is unavailable; the confirmation means the ticket was saved, not that an
-email was delivered. There is currently no support-ticket inbox in the Admin tab.
+email was delivered.
+
+Global administrators can read reports in **Admin → Reports**, filter open or
+resolved reports, expand the full message, and resolve or reopen a report. Older
+reports load in pages of 20. The backend protects both `GET /support/tickets` and
+`PATCH /support/tickets/{ticket_id}` with the global-admin dependency; normal
+members and tontine administrators cannot use these endpoints. Existing reports
+are included, and no database migration is needed. Deploy the updated backend and
+mobile app to make this inbox available. The inbox works without SMTP configured.
+
+Run the API authorization and persistence checks from the mobile directory with
+`..\venv\Scripts\python.exe scripts/check-admin-reports.py` (or your backend Python
+environment). These checks use an in-memory SQLite database only.
 
 Verify the form with `node scripts/check-problem-report.cjs`. On a test deployment,
 submit once while signed in and once from the Sign in screen, confirm each report

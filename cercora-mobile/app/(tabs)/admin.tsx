@@ -12,6 +12,7 @@ import {
 } from "react-native";
 
 import { BrandBackdrop } from "@/components/brand-backdrop";
+import { AdminReports } from "@/components/admin-reports";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { BrandColors, BrandShadow } from "@/constants/brand";
@@ -258,6 +259,8 @@ export default function AdminScreen() {
               </ThemedText>
             </View>
           </View>
+
+          <AdminReports />
 
           {error ? (
             <View style={styles.errorCard}>
