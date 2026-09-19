@@ -161,7 +161,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (state.isLoading) return;
 
     const inAuthGroup = segments[0] === "(auth)";
-    if (segments[0] === "invitation") return;
+    if (segments[0] === "invitation" || segments[0] === "report-problem") return;
     if (!state.accessToken && !inAuthGroup) {
       router.replace("/(auth)/login");
       return;

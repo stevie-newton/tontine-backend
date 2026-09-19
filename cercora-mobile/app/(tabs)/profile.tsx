@@ -379,6 +379,25 @@ export default function ProfileScreen() {
             </View>
 
             <View style={styles.section}>
+              <ThemedText style={AppTypography.section}>{t("Beta feedback")}</ThemedText>
+              <AppCard>
+                <View style={styles.securityRow}>
+                  <Ionicons name="chatbox-ellipses-outline" size={24} color={colors.accent} />
+                  <View style={styles.securityCopy}>
+                    <ThemedText style={{ color: colors.muted }}>
+                      {t("Tell us where you got stuck so we can improve Cercora.")}
+                    </ThemedText>
+                  </View>
+                </View>
+                <AppButton
+                  secondary
+                  label={t("Report a problem")}
+                  onPress={() => router.push({ pathname: "/report-problem", params: { from: "profile" } })}
+                />
+              </AppCard>
+            </View>
+
+            <View style={styles.section}>
               <ThemedText type="subtitle">{t("Security")}</ThemedText>
               <AppCard>
                 <View style={styles.securityRow}>

@@ -144,3 +144,27 @@ Notes:
 
 - `google-services.json` and `GoogleService-Info.plist` are ignored by git in this repo.
 - Native push works on a real device build, not on Expo web and not reliably on a simulator.
+
+## Beta feedback
+
+Testers can open **Report a problem** from Profile or the Sign in screen, including
+when they cannot sign in. The form asks where they got stuck and what happened;
+guests also provide their name and phone number. It attaches the app version,
+platform, OS version on mobile, and language. It does not attach logs, tokens,
+device identifiers, or screenshots.
+
+Reports use the existing `POST /support/ticket` endpoint and are saved in the
+backend's `support_tickets` table. A successful submission displays the ticket
+number. Failed requests keep the entered text and are never retried automatically.
+No new database migration or native dependency is needed for this form.
+
+To receive report notifications by email, configure these variables on the
+backend service only: `SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM_EMAIL`, and
+`SUPPORT_EMAIL_TO`, plus `SMTP_USER` and `SMTP_PASSWORD` if the mail server requires
+authentication. The existing email service uses STARTTLS. Tickets are saved even
+if email is unavailable; the confirmation means the ticket was saved, not that an
+email was delivered. There is currently no support-ticket inbox in the Admin tab.
+
+Verify the form with `node scripts/check-problem-report.cjs`. On a test deployment,
+submit once while signed in and once from the Sign in screen, confirm each report
+number, and check the support inbox when email delivery is configured.

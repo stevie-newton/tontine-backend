@@ -161,6 +161,11 @@ export default function LoginScreen() {
               <ThemedText style={authStyles.linkRowText}>{t("Create an account")}</ThemedText>
             </Pressable>
           </Link>
+          <Link href={{ pathname: "/report-problem", params: { from: "sign-in" } }} asChild>
+            <Pressable accessibilityRole="link" style={authStyles.linkRow}>
+              <ThemedText style={authStyles.linkRowText}>{t("Report a problem")}</ThemedText>
+            </Pressable>
+          </Link>
         </View>
       </AuthScreenShell>
     </>
