@@ -1,6 +1,6 @@
 # EAS builds only the mobile project in this monorepo.
 /*
-!/cercora-mobile/
+!/cercora-mobile
 # Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 
 # dependencies
