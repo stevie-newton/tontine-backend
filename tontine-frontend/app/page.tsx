@@ -6,7 +6,7 @@ import BrandLogo from "@/src/components/BrandLogo";
 
 const WHATSAPP_COMMUNITY_URL = "https://chat.whatsapp.com/FPkAMaDSwcDJeeSPObvY59";
 const APP_STORE_URL = "https://apps.apple.com/app/cercora/id6761357559";
-const PLAY_STORE_TEST_URL = "https://play.google.com/apps/testing/com.cercora.mobile";
+const PLAY_STORE_TEST_URL = "https://play.google.com/store/apps/details?id=com.cercora.mobile";
 
 const copy = {
   en: {
