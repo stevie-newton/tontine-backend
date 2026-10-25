@@ -2,7 +2,7 @@ import axios, { isAxiosError, isCancel } from "axios";
 
 import { API_BASE_URL } from "@/constants/api";
 import { notifySessionExpired } from "@/hooks/auth-session";
-import { emitGlobalError } from "@/hooks/error-bus";
+import { clearGlobalError, emitGlobalError } from "@/hooks/error-bus";
 import { normalizeApiError } from "@/hooks/error-utils";
 import { getCurrentLocale } from "@/hooks/use-i18n";
 
@@ -34,6 +34,16 @@ api.interceptors.response.use(
   (error) => {
     if (isCancel(error)) return Promise.reject(error);
     const normalized = normalizeApiError(error);
+    const requestToken = isAxiosError(error)
+      ? error.config?.headers?.Authorization ?? error.config?.headers?.authorization
+      : undefined;
+    // Requests from a signed-out or replaced session must not show errors or
+    // invalidate the user's next session when they finish late.
+    if (requestToken && requestToken !== api.defaults.headers.common.Authorization) {
+      normalized.shouldNotify = false;
+      normalized.message = "";
+      return Promise.reject(normalized);
+    }
     if (
       isAxiosError(error) &&
       error.config?.url?.split("?")[0] === "/auth/login" &&
@@ -47,6 +57,7 @@ api.interceptors.response.use(
       // Clear the display message for screen-level catch handlers as well.
       normalized.shouldNotify = false;
       normalized.message = "";
+      clearGlobalError();
       notifySessionExpired();
     }
     if (normalized.shouldNotify) {
