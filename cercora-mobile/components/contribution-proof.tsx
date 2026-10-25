@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Modal, Pressable, StyleSheet, View } from "react-native";
@@ -106,10 +107,18 @@ function ProofModal({ contributionId, onClose }: ContributionProofProps & { onCl
   }, [accessToken, attempt, contributionId]);
 
   return (
-    <Modal visible animationType="fade" presentationStyle="fullScreen" onRequestClose={onClose}>
+    <Modal visible animationType="slide" presentationStyle="pageSheet" allowSwipeDismissal onRequestClose={onClose}>
       <SafeAreaProvider>
         <SafeAreaView style={[styles.modal, { backgroundColor }]} accessibilityViewIsModal onAccessibilityEscape={onClose}>
           <View style={styles.header}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t("Back")}
+              onPress={onClose}
+              style={[styles.closeButton, { borderColor: buttonColor }]}
+            >
+              <Ionicons name="arrow-back" size={24} color={buttonColor} />
+            </Pressable>
             <ThemedText type="subtitle" accessibilityRole="header" style={styles.title}>{t("Payment proof")}</ThemedText>
             <Pressable
               accessibilityRole="button"
